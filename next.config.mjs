@@ -1,5 +1,10 @@
+// Plain .mjs, not .ts: Hostinger's build servers run a glibc older than 2.29,
+// so Next falls back to its wasm SWC, which cannot compile a TypeScript config
+// and cannot run Turbopack — hence also `next build --webpack` in package.json.
 import { execSync } from "node:child_process";
-import type { NextConfig } from "next";
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -22,12 +27,29 @@ const isDev = process.env.NODE_ENV === "development";
 //
 //   1. VERCEL_GIT_COMMIT_SHA — set by Vercel on every deployment.
 //   2. git HEAD — local builds and any CI with a checkout.
-//   3. "dev" — no git (a bare source tarball); the SW then behaves exactly as
-//      it did before, one fixed cache name.
+//   3. a hash of src/ and public/ — a checkout without .git (Hostinger may
+//      build from one). Same files, same id, so it is still deterministic.
+//   4. "dev" — nothing readable; one fixed cache name, as before MP-035.
 //
 // Redeploying the same commit reuses the same id on purpose: identical code
 // should not throw away a warm cache.
-function buildIdentity(): string {
+function contentHash() {
+  const hash = createHash("sha1");
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+      a.name < b.name ? -1 : 1,
+    )) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else hash.update(path).update(readFileSync(path));
+    }
+  };
+  walk("src");
+  walk("public");
+  return hash.digest("hex").slice(0, 12);
+}
+
+function buildIdentity() {
   const vercel = process.env.VERCEL_GIT_COMMIT_SHA;
   if (vercel) return vercel.slice(0, 12);
   try {
@@ -37,7 +59,11 @@ function buildIdentity(): string {
       .toString()
       .trim();
   } catch {
-    return "dev";
+    try {
+      return contentHash();
+    } catch {
+      return "dev";
+    }
   }
 }
 
@@ -77,7 +103,8 @@ const securityHeaders = [
   },
 ];
 
-const nextConfig: NextConfig = {
+/** @type {import("next").NextConfig} */
+const nextConfig = {
   // Same string on both sides, so "the build id" means one thing: the segment
   // Next stamps into /_next/static/<id>/, and the value the client reads to
   // build the service-worker URL.

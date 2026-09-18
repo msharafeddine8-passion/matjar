@@ -124,7 +124,7 @@ export default async function RootLayout({
       </head>
       <body className="flex min-h-dvh flex-col bg-background font-sans text-foreground antialiased">
         {/* Google Tag Manager was here, and it has never once run.
-            `script-src` in next.config.ts allows 'self' and va.vercel-scripts.com;
+            `script-src` in next.config.mjs allows 'self' and va.vercel-scripts.com;
             googletagmanager.com is not on it, so the browser refused the request
             on every page view since the tag was added — silently, because a CSP
             refusal is not a JavaScript error. Confirmed against the live
@@ -134,7 +134,7 @@ export default async function RootLayout({
             be made on numbers that were never recorded. Vercel Analytics is
             already loaded below and does work.
             To bring GA back, the honest path is to add https://www.googletagmanager.com
-            to script-src in next.config.ts and re-add this block — accepting that
+            to script-src in next.config.mjs and re-add this block — accepting that
             GTM exists to inject arbitrary third-party script, which is exactly
             what that CSP line is holding shut. First-party events
             (store_visits, search_logs) answer the merchant-funnel questions
