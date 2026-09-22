@@ -4,6 +4,7 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import type { Store } from "@/lib/catalog";
 import { Container } from "@/components/ui/container";
 import { StoreCard } from "@/components/store-card";
+import { Tilt } from "@/components/home/tilt";
 import { ChevronNext } from "@/components/ui/directional-icon";
 
 // A premium horizontal "rail" of store cards — the pattern shoppers know from
@@ -65,7 +66,11 @@ export function StoreRail({
         <div className="mx-auto flex max-w-7xl snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:px-6 lg:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {stores.map((store) => (
             <div key={store.id} className="w-[270px] shrink-0 snap-start sm:w-[290px]">
-              <StoreCard store={store} lang={lang} dict={dict} />
+              {/* V5: on a hover device the card tilts toward the pointer with a
+                  glare. On a phone Tilt is an inert div — see tilt.tsx. */}
+              <Tilt>
+                <StoreCard store={store} lang={lang} dict={dict} />
+              </Tilt>
             </div>
           ))}
         </div>
