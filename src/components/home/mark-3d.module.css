@@ -1,0 +1,161 @@
+/*
+ * The brand mark as an object with volume, built from layered planes.
+ *
+ * A CSS module rather than globals.css on purpose. A Leaflet override written
+ * in globals.css compiled locally and never reached matjarlb.com — twice. A
+ * module is bundled with the component that imports it, so it cannot be
+ * dropped by the asset pipeline independently of the markup it styles.
+ *
+ * Every layer is a real plane at a real depth (translateZ). When the scene
+ * rotates, nearer planes travel further across the screen than farther ones,
+ * which is the parallax the eye reads as "solid". No WebGL, no library: the
+ * whole thing is ~0 KB of JavaScript beyond the tilt handler.
+ */
+
+.stage {
+  position: relative;
+  perspective: 1100px;
+  perspective-origin: 50% 45%;
+  touch-action: pan-y;
+  height: 220px;
+}
+@media (min-width: 1024px) {
+  .stage { height: 420px; }
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 8deg)) rotateY(var(--ry, -14deg));
+  transition: transform 0.12s ease-out;
+  will-change: transform;
+}
+.idle { animation: orbit 9s ease-in-out infinite alternate; }
+@keyframes orbit {
+  from { transform: rotateX(8deg) rotateY(-16deg); }
+  to   { transform: rotateX(4deg) rotateY(14deg); }
+}
+
+.layer {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-style: preserve-3d;
+}
+
+/* soft ground shadow, lying flat under everything */
+.ground {
+  width: 78%;
+  height: 34%;
+  border-radius: 50%;
+  transform: translate(-50%, -10%) translateZ(-60px) rotateX(70deg);
+  background: radial-gradient(closest-side, rgba(11, 43, 96, 0.35), transparent 70%);
+  filter: blur(6px);
+}
+
+/* the M block — a front face and a visible side */
+.body {
+  width: 44%;
+  max-width: 250px;
+  aspect-ratio: 1 / 0.88;
+  transform: translate(-50%, -38%) translateZ(0);
+}
+.side {
+  position: absolute;
+  inset: 0;
+  border-radius: 12%;
+  background: #082050;
+  transform: translateZ(-28px) translate(10px, 10px);
+}
+.face {
+  position: absolute;
+  inset: 0;
+  border-radius: 12%;
+  background: linear-gradient(180deg, #2b7be6 0%, #1556c2 50%, #0f4499 100%);
+  box-shadow:
+    inset 0 -14px 24px rgba(0, 0, 0, 0.18),
+    inset 0 3px 0 rgba(255, 255, 255, 0.25);
+  display: grid;
+  place-items: center;
+}
+.m {
+  color: #fff;
+  font-family: var(--font-display, "Alexandria"), system-ui, sans-serif;
+  font-weight: 900;
+  font-size: clamp(64px, 20cqw, 150px);
+  line-height: 1;
+  text-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  transform: translateZ(30px);
+}
+
+/* the awning: three scallops floating in front of the block */
+.awning {
+  width: 52%;
+  max-width: 290px;
+  height: 16%;
+  transform: translate(-50%, -160%) translateZ(46px);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.awning::before {
+  content: "";
+  position: absolute;
+  left: -2%;
+  right: -2%;
+  top: -12px;
+  height: 14px;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, #3b8bf0, #1f6ae0);
+}
+.awning span {
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(180deg, #2b7be6 0%, #1a63d0 55%, #3f3f46 55%, #2a2a30 100%);
+  box-shadow: 0 10px 18px -8px rgba(0, 0, 0, 0.4);
+}
+
+.dot {
+  width: 8%;
+  max-width: 44px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #a7f36a, #4cc51a 60%, #2f8f0e);
+  transform: translate(150%, 45%) translateZ(70px);
+  box-shadow: 0 12px 22px -8px rgba(47, 143, 14, 0.6);
+}
+
+/* sector chips at four different depths */
+.chip {
+  position: absolute;
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  /* No `color` here on purpose: the chip's colour is its sector tint, set by a
+     `text-tint-N` utility on the element, and the dot below is currentColor.
+     Setting a colour in this rule won the cascade over that utility and turned
+     every dot black on the first build. The label text gets its own colour. */
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px -12px rgba(11, 22, 32, 0.35);
+}
+.chip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  background: currentColor;
+}
+.c1 { transform: translate(-160%, -150%) translateZ(110px); }
+.c2 { transform: translate(40%, -190%) translateZ(85px); }
+.c3 { transform: translate(-190%, 40%) translateZ(95px); }
+.c4 { transform: translate(-45%, 115%) translateZ(120px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .scene, .idle { animation: none; transition: none; }
+}

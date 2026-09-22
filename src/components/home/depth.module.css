@@ -1,0 +1,76 @@
+/*
+ * Depth for the things a customer taps: the gateway tiles and the store cards.
+ * A CSS module for the same reason as mark-3d.module.css — it ships with the
+ * component and cannot be dropped independently of it.
+ */
+
+/* ── gateway tile: a face resting on a darker plate, pressed on tap ── */
+.gates {
+  perspective: 900px;
+}
+.gate {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.2s ease;
+}
+.plate {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  transform: translateZ(-14px) translateY(8px);
+  filter: brightness(0.72);
+  opacity: 0.9;
+  pointer-events: none;
+}
+.top {
+  position: relative;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.06);
+}
+.top svg {
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.18));
+}
+@media (hover: hover) {
+  .gate:hover { transform: rotateX(10deg) translateY(-3px); }
+}
+.gate:active { transform: rotateX(14deg) translateY(4px); }
+.gate:active .plate { transform: translateZ(-14px) translateY(3px); }
+
+/* ── card: tilts toward the pointer, with a glare that follows it ── */
+.tilt {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--cx, 0deg)) rotateY(var(--cy, 0deg));
+  transition: transform 0.15s ease, box-shadow 0.2s;
+  border-radius: 1rem;
+  position: relative;
+}
+.tiltWrap {
+  perspective: 1000px;
+}
+@media (hover: hover) {
+  .tilt:hover { box-shadow: 0 30px 60px -24px rgba(11, 43, 96, 0.45); }
+}
+.glare {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  pointer-events: none;
+  background: radial-gradient(
+    420px circle at var(--gx, 50%) var(--gy, 50%),
+    rgba(255, 255, 255, 0.5),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.2s;
+  mix-blend-mode: soft-light;
+  z-index: 2;
+}
+@media (hover: hover) {
+  .tilt:hover .glare { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gate, .tilt { transition: none; }
+  .gate:hover, .gate:active, .tilt { transform: none; }
+}

@@ -3,6 +3,7 @@
     "forYou": "For you",
     "forYouSubtitle": "Stores we think you'll love, based on who you follow and order from.",
     "byArea": "Shop by area",
+    "mark": { "food": "Food", "health": "Clinics", "shopping": "Shopping", "crafts": "Trades" },
     "gateways": {
       "label": "Browse by sector",
       "food": "Food",

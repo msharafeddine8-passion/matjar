@@ -4,6 +4,7 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import type { CategoryKey, GroupKey } from "@/lib/catalog";
 import { sectorConfig } from "@/lib/sectors";
 import { Container } from "@/components/ui/container";
+import d from "./depth.module.css";
 
 // The four doors, directly under the location row and the header's search box.
 //
@@ -66,22 +67,29 @@ export function SectorGateways({
       <Container>
         <nav
           aria-label={t.label}
-          className="grid grid-cols-4 gap-2 sm:gap-3"
+          className={`grid grid-cols-4 gap-2 sm:gap-3 ${d.gates}`}
         >
           {GATEWAYS.map(({ key, face, group }) => {
             const { Icon, iconTint } = sectorConfig[face];
             return (
+              // V5: each tile is a face resting on a darker plate 14px behind
+              // it, so it reads as a raised block and sinks when pressed. The
+              // plate carries the same tint as the face and is
+              // pointer-events:none, so the hit area is still the whole link —
+              // min-h-20 = 80px, well past the 44px floor even at 320px.
               <Link
                 key={key}
                 href={`/${lang}/explore?group=${group}`}
-                // min-h-20 = 80px. Well past the 44px floor even at 320px,
-                // where four columns and two gaps leave each tile 64px wide and
-                // the label takes two lines.
-                className={`flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl px-1 py-3 text-center transition-transform hover:-translate-y-0.5 sm:px-2 ${iconTint}`}
+                className={`block min-h-20 ${d.gate}`}
               >
-                <Icon aria-hidden className="h-6 w-6 shrink-0" />
-                <span className="text-xs font-bold leading-tight sm:text-sm">
-                  {t[key]}
+                <span aria-hidden className={`${d.plate} ${iconTint}`} />
+                <span
+                  className={`flex h-full min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl px-1 py-3 text-center sm:px-2 ${iconTint} ${d.top}`}
+                >
+                  <Icon aria-hidden className="h-6 w-6 shrink-0" />
+                  <span className="text-xs font-bold leading-tight sm:text-sm">
+                    {t[key]}
+                  </span>
                 </span>
               </Link>
             );

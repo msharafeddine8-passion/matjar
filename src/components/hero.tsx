@@ -6,6 +6,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { Container } from "@/components/ui/container";
 import { HeroSearch } from "@/components/hero-search";
+import { Mark3D } from "@/components/home/mark-3d";
 
 // V2 hero: one clear line, one supporting line, and search as the primary
 // action. No statistic wall (the live inventory cannot honestly support one),
@@ -51,10 +52,26 @@ export function Hero({
       ? ["مطاعم", "عيادات", "ملابس", "عقارات", "سيارات", "صيانة"]
       : ["Restaurants", "Clinics", "Clothing", "Real estate", "Cars", "Repair"];
   const t = dict.hero;
+  // The mark's four chips: the same four doors as the gateway row below, in
+  // the short form that fits a floating pill.
+  const chips: [string, string, string, string] = [
+    dict.home.mark.food,
+    dict.home.mark.health,
+    dict.home.mark.shopping,
+    dict.home.mark.crafts,
+  ];
 
   return (
     <section className="border-b border-border bg-surface-muted/30">
-      <Container className="py-4 text-center lg:py-14">
+      {/* V5: the mark. At `lg` the hero becomes two columns — the copy that
+          was already here on the start side, the brand mark as a 3D object on
+          the end side, in the room the desktop always had. Below `lg` the mark
+          is a compact 220px stage under the location row: the phone's first
+          viewport still reaches the gateways (measured, see the commit), and
+          the mark is the one thing on this page that says "app, not website"
+          before a customer has read a word. */}
+      <Container className="grid gap-4 py-4 text-center lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-10 lg:py-14 lg:text-start">
+       <div>
         {/* V4: below `lg` the headline is read, not seen.
             `max-lg:sr-only` keeps the <h1> in the document and in the
             accessibility tree — a crawler still gets the page's one H1, a
@@ -64,14 +81,14 @@ export function Hero({
             a11y tree and leave the page without an announced title on the
             width most customers arrive at. At `lg` and up nothing is hidden and
             every class below is the one that was already there. */}
-        <h1 className="mx-auto max-w-2xl text-xl font-extrabold leading-snug tracking-tight text-balance max-lg:sr-only sm:text-4xl sm:leading-[1.15] lg:text-5xl">
+        <h1 className="mx-auto max-w-2xl text-xl font-extrabold leading-snug tracking-tight text-balance max-lg:sr-only sm:text-4xl sm:leading-[1.15] lg:mx-0 lg:text-5xl">
           {t.title} <span className="text-primary">{t.titleHighlight}</span>
         </h1>
 
         {/* The supporting line is desktop-only now rather than `sm`-and-up:
             it restates the headline as a verb list, and the headline itself is
             no longer on screen below `lg`. */}
-        <p className="mx-auto mt-4 hidden max-w-xl text-base text-muted-foreground lg:block lg:text-lg">
+        <p className="mx-auto mt-4 hidden max-w-xl text-base text-muted-foreground lg:mx-0 lg:block lg:text-lg">
           {t.subtitle}
         </p>
 
@@ -100,6 +117,9 @@ export function Hero({
           <ShoppingBag className="h-5 w-5" />
           {t.ctaPrimary}
         </Link>
+       </div>
+
+        <Mark3D chips={chips} className="mt-1 lg:mt-0" />
       </Container>
     </section>
   );
