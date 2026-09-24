@@ -11,7 +11,7 @@ Every issue is a row in `MATJAR_PRELAUNCH_ISSUES.csv`.
 - Copy that names a plan number carries a placeholder filled by `src/lib/plan-copy.ts` (pricing, help incl. JSON-LD, merchants, legal, subscription, items limit gate, product form).
 - Real bug fixed: a Basic store at its 30-product cap was told "limit (3 products)".
 - Guard: `plan-price-ssot.test.ts` fails if a plan number is typed into source or dictionaries, or if UI reads `public.plans`.
-- Open: `public.plans` still says Pro $12/$120 with no Basic/Business rows. Nothing reads it. Aligning it is a live-DB change awaiting approval.
+- Done: `public.plans` now matches plan-tiers (basic 10/120, pro 25/300, business 65/780; standard annual, the promo stays time-bound in code). Migration 0305, owner-approved 2026-09-24, applied after a rolled-back test.
 
 ## 2. PRO is not VERIFIED
 - `src/lib/trust.ts`: trust kinds `registration` (commercial_reg_verified), `documents` (store_verifications status verified), `identity` (craft/freelancer admin toggles, worded as "reviewed by the Matjar team", not an ID check). Paid status is a separate type and never a trust signal.
@@ -28,7 +28,7 @@ Every issue is a row in `MATJAR_PRELAUNCH_ISSUES.csv`.
 ## 4. Offering experience resolver
 - `resolveOffering` now also answers showsStock / showsQuantity / showsOptions / showsDuration / showsUnitPrice / cardBadge / addableToCart; product page, cards, store grid and JSON-LD (Service vs Product) read it.
 - Restaurant cards now say «أضف إلى الطلب», matching the sticky CTA.
-- Open P0: the order RPCs do not reject service items server-side. The fix (a BEFORE INSERT trigger on `order_items`, zero existing conflicts) is designed but was not written or tested against the live DB — blocked as a production change pending owner approval.
+- Done: the order RPCs now reject service items server-side through a BEFORE INSERT trigger on `order_items` (migration 0304, owner-approved 2026-09-24). Rolled-back test first: the service line was rejected with SQLSTATE 23514 and a product line on the same order went through. 0 service items had ever been ordered.
 
 ## 5. Public data quality gate
 - `src/lib/data-quality.ts`: `ok / incomplete / blocked`; blocked only for no name, placeholder/digit-only name, or no contact; blocked stores leave ranked lists but stay reachable by URL; admin sees a quality column and cannot approve a blocked store; merchants see their gaps in the checklist.

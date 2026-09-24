@@ -15,7 +15,7 @@ Production was NOT deployed by this program. Merging the branch is the owner's d
 
 ## Existing model (inspected before touching anything)
 
-- **Plans**: code source of truth `src/lib/plan-tiers.ts` (basic/pro/business, PROMO_END 2026-09-30). DB table `public.plans` still says pro = $12/$120 with no basic/business rows; `subscriptions` has 0 rows; `stores.plan` is set by hand (free 24 · pro 9 · business 5). `docs/plans-alignment-PENDING.sql` is waiting for the owner's price decision. → unclear financial rule, not migrated.
+- **Plans**: code source of truth `src/lib/plan-tiers.ts` (basic/pro/business, PROMO_END 2026-09-30). DB table `public.plans` still says pro = $12/$120 with no basic/business rows; `subscriptions` has 0 rows; `stores.plan` is set by hand (free 24 · pro 9 · business 5). Resolved 2026-09-24: the owner confirmed the code prices and migration 0305 aligned the table.
 - **Verification**: `stores.is_verified`, `stores.commercial_reg_verified`, table `store_verifications` (kind/status/reviewed_by). All 15 active stores unverified; 0 verification rows. `craft_providers.verified`, freelancer verified flag exist separately.
 - **Feature availability**: `src/lib/feature-availability.ts` (`live | beta | soon`, CAPABILITIES) consumed by pricing/merchants/subscription/business-os; three surfaces hand-wrote «قريباً».
 - **Sectors/offerings**: `src/lib/sectors.ts` (modules, profile order), `src/lib/offering.ts` (`resolveOffering` → variant/cta/noun/sections), `src/lib/discovery.ts` (per-sector search fields, filters, card facts).
@@ -26,4 +26,4 @@ Production was NOT deployed by this program. Merging the branch is the owner's d
 
 ## Phase log
 
-- Phase 1 (P0 consistency): done except two items awaiting owner approval (DB price table, server-side service guard) — see `01_P0_CONSISTENCY.md`.
+- Phase 1 (P0 consistency): done. Every P0 row is fixed, including the two live-DB changes the owner approved on 2026-09-24 (migrations 0304, 0305). See `01_P0_CONSISTENCY.md`.
