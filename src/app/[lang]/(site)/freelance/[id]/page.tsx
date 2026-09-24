@@ -2,13 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import {
-  User,
-  Check,
-  Images,
-  ExternalLink,
-  BadgeCheck,
-} from "lucide-react";
+import { User, Check, Images, ExternalLink } from "lucide-react";
 import { ChevronNext, ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
@@ -26,6 +20,8 @@ import { formatLbp } from "@/lib/currency";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ContactFreelancerButton } from "@/components/contact-freelancer-button";
+import { TrustBadges } from "@/components/trust-badges";
+import { resolveProfessionalTrust } from "@/lib/trust";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -180,12 +176,15 @@ export default async function GigDetailPage({
                 className="flex items-center gap-1 text-sm font-bold"
               >
                 <span className="truncate">{personName}</span>
-                {profile?.freelancer_verified && (
-                  <BadgeCheck
-                    className="h-4 w-4 shrink-0 text-primary"
-                    aria-label={t.verifiedTitle}
-                  />
-                )}
+                {/* Inside a Link, so an icon mark rather than a badge link. */}
+                <TrustBadges
+                  variant="mark"
+                  signals={resolveProfessionalTrust({
+                    identityVerified: Boolean(profile?.freelancer_verified),
+                  })}
+                  dict={dict}
+                  lang={lang}
+                />
               </span>
               <span className="block text-xs text-muted-foreground">
                 {gigCount > 1

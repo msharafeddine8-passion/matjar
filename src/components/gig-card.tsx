@@ -6,13 +6,15 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Image as ImageIcon, BadgeCheck } from "lucide-react";
+import { Image as ImageIcon } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { formatLbp } from "@/lib/currency";
+import { resolveProfessionalTrust } from "@/lib/trust";
 import { Money } from "@/components/ui/money";
 import { NEUTRAL_BLUR } from "@/lib/image-placeholder";
 import { TrustChips, fill } from "@/components/trust-chips";
+import { TrustBadges } from "@/components/trust-badges";
 
 export type BrowsedGig = {
   id: string;
@@ -107,12 +109,17 @@ export function GigCard({
           <span className="min-w-0">
             <span className="flex items-center gap-1 text-sm font-bold">
               <span className="truncate">{name}</span>
-              {gig.freelancer_verified && (
-                <BadgeCheck
-                  className="h-4 w-4 shrink-0 text-primary"
-                  aria-label={t.verifiedTitle}
-                />
-              )}
+              {/* `mark`, not `link`: the whole card is one anchor. The label
+                  says what was actually done (a hand review by the team), not
+                  "ID verified" — see lib/trust.ts. */}
+              <TrustBadges
+                variant="mark"
+                signals={resolveProfessionalTrust({
+                  identityVerified: Boolean(gig.freelancer_verified),
+                })}
+                dict={dict}
+                lang={lang}
+              />
             </span>
             {gig.category && (
               <span className="block text-xs text-muted-foreground">

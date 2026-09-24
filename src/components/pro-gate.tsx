@@ -39,7 +39,7 @@ export function ProGate({
   const headline = title ?? (isBiz ? t.lockedTitleBusiness : t.lockedTitle);
   const blurb = body ?? (isBiz ? t.lockedBodyBusiness : t.lockedBody);
   // Price the ACTUAL required tier from the single source of truth (plan-tiers),
-  // promo-aware — not a hardcoded string. Pro = $25/mo, Business = $65/mo.
+  // promo-aware — not a hardcoded string (the numbers live only in PLAN_TIERS).
   const tier = PLAN_TIERS[requiredPlan];
   const promoActive = promoState(new Date()).active;
   const priceLine = `$${tier.monthly}${dict.pricing.perMonth} · $${annualPrice(

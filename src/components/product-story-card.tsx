@@ -15,6 +15,8 @@ export function ProductStoryCard({
   imageUrl,
   baseUrl,
   dict,
+  priceText,
+  scanLabel,
 }: {
   productId: string;
   name: string;
@@ -22,8 +24,15 @@ export function ProductStoryCard({
   imageUrl: string | null;
   baseUrl: string;
   dict: Dictionary;
+  /** The price as the offering page words it — "$90", or for an unpriced
+   *  service "السعر بعد الاستشارة". Omitted = the formatted number. */
+  priceText?: string;
+  /** The line under the QR. A service says "scan to book", not "to order". */
+  scanLabel?: string;
 }) {
   const t = dict.share;
+  const priceLine = priceText ?? formatUsd(price);
+  const scanLine = scanLabel ?? t.scanToOrder;
   const [busy, setBusy] = useState(false);
   const [png, setPng] = useState<string | null>(null);
 
@@ -124,7 +133,7 @@ export function ProductStoryCard({
       // Price.
       ctx.fillStyle = "#1556c2";
       ctx.font = "bold 96px Tajawal, sans-serif";
-      ctx.fillText(formatUsd(price), W / 2, cardY + cardH + 300);
+      ctx.fillText(priceLine, W / 2, cardY + cardH + 300);
 
       // QR to the product page.
       const url = `${baseUrl}/product/${productId}`;
@@ -136,7 +145,7 @@ export function ProductStoryCard({
       }
       ctx.fillStyle = "#334155";
       ctx.font = "600 40px Tajawal, sans-serif";
-      ctx.fillText(t.scanToOrder, W / 2, H - 90);
+      ctx.fillText(scanLine, W / 2, H - 90);
 
       setPng(canvas.toDataURL("image/png"));
     } catch {

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { CategoryKey } from "@/lib/catalog";
+import { toCategoryKey, type CategoryKey } from "@/lib/catalog";
 import type { OfferingKind } from "@/lib/offering";
 import { FETCH_BOUNDS, warnIfTruncated } from "./bounds";
 
@@ -19,19 +19,31 @@ export type RelatedProduct = {
   discountPrice: number | null;
   imageUrl: string | null;
   storeName: string;
+  /** The two resolver inputs plus the one fact a service card shows — so the
+   *  card can ask `resolveOffering` instead of assuming it holds a product. */
+  itemKind: OfferingKind;
+  category: CategoryKey;
+  durationMinutes: number | null;
 };
 
-function mapRows(
-  rows: {
-    id: string;
-    name: string;
-    name_en: string | null;
-    price: number;
-    discount_price: number | null;
-    image_url: string | null;
-    stores: { name: string } | null;
-  }[],
-): RelatedProduct[] {
+/** The columns every related query selects. `item_kind` and the store's
+ *  sector are what let a card in a "خدمات مشابهة" rail render as a service. */
+const RELATED_COLUMNS =
+  "id, name, name_en, price, discount_price, image_url, item_kind, duration_minutes";
+
+type RelatedRow = {
+  id: string;
+  name: string;
+  name_en: string | null;
+  price: number;
+  discount_price: number | null;
+  image_url: string | null;
+  item_kind: string | null;
+  duration_minutes: number | null;
+  stores: { name: string; business_types?: { slug: string } | null } | null;
+};
+
+function mapRows(rows: RelatedRow[]): RelatedProduct[] {
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
@@ -40,6 +52,10 @@ function mapRows(
     discountPrice: r.discount_price != null ? Number(r.discount_price) : null,
     imageUrl: r.image_url,
     storeName: r.stores?.name ?? "",
+    itemKind: (r.item_kind ?? "product") as OfferingKind,
+    category: toCategoryKey(r.stores?.business_types?.slug, `related ${r.id}`),
+    durationMinutes:
+      r.duration_minutes != null ? Number(r.duration_minutes) : null,
   }));
 }
 
@@ -56,7 +72,7 @@ export async function getBoughtTogether(
   if (ids.length === 0) return [];
   const { data } = await supabase
     .from("products")
-    .select("id, name, name_en, price, discount_price, image_url, stores(name)")
+    .select(`${RELATED_COLUMNS}, stores(name, business_types(slug))`)
     .in("id", ids)
     .eq("status", "active")
     .eq("is_available", true)
@@ -64,9 +80,7 @@ export async function getBoughtTogether(
     // Already bounded upstream by the RPC's p_limit; explicit so the ceiling
     // is stated at the query rather than inferred from another file.
     .limit(FETCH_BOUNDS.productVariants);
-  const mapped = mapRows(
-    (data ?? []) as unknown as Parameters<typeof mapRows>[0],
-  );
+  const mapped = mapRows((data ?? []) as unknown as RelatedRow[]);
   // Preserve the co-purchase frequency order.
   const order = new Map(ids.map((id, i) => [id, i]));
   return mapped.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
@@ -87,7 +101,7 @@ export async function getMoreFromStore(
   const supabase = await createClient();
   let q = supabase
     .from("products")
-    .select("id, name, name_en, price, discount_price, image_url, stores(name)")
+    .select(`${RELATED_COLUMNS}, stores(name, business_types(slug))`)
     .eq("store_id", storeId)
     .eq("status", "active")
     .eq("is_available", true)
@@ -97,7 +111,7 @@ export async function getMoreFromStore(
   const { data } = await q
     .order("created_at", { ascending: false })
     .limit(limit);
-  return mapRows((data ?? []) as unknown as Parameters<typeof mapRows>[0]);
+  return mapRows((data ?? []) as unknown as RelatedRow[]);
 }
 
 /** Active offerings of the same kind in the same sector, from other stores. */
@@ -121,7 +135,7 @@ export async function getSimilarProducts(
   let q = supabase
     .from("products")
     .select(
-      "id, name, name_en, price, discount_price, image_url, store_id, stores!inner(name, status, business_type_id)",
+      `${RELATED_COLUMNS}, store_id, stores!inner(name, status, business_type_id, business_types(slug))`,
     )
     .eq("status", "active")
     .eq("is_available", true)
@@ -134,7 +148,7 @@ export async function getSimilarProducts(
   const { data } = await q
     .order("created_at", { ascending: false })
     .limit(limit);
-  return mapRows((data ?? []) as unknown as Parameters<typeof mapRows>[0]);
+  return mapRows((data ?? []) as unknown as RelatedRow[]);
 }
 
 /** Who on the store's team delivers this service.

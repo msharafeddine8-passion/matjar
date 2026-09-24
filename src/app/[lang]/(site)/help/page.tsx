@@ -8,6 +8,7 @@ import { jsonLdScript } from "@/lib/jsonld";
 import { Container } from "@/components/ui/container";
 import { ButtonLink } from "@/components/ui/button";
 import { supportWaLink } from "@/lib/support";
+import { fillPlanCopy, planCopyVars } from "@/lib/plan-copy";
 
 export async function generateMetadata({
   params,
@@ -34,11 +35,20 @@ export default async function HelpPage({
   const dict = await getDictionary(lang);
   const t = dict.faq;
 
+  // Plan facts in the answers (the free product cap today) are placeholders
+  // filled from plan-tiers / plan.ts, so this page and /pricing quote the same
+  // numbers. Filled once and used for both the structured data and the markup.
+  const vars = planCopyVars();
+  const items = t.items.map((it) => ({
+    q: fillPlanCopy(it.q, vars),
+    a: fillPlanCopy(it.a, vars),
+  }));
+
   // FAQPage structured data (eligible for rich results in Google).
   const faqLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: t.items.map((it) => ({
+    mainEntity: items.map((it) => ({
       "@type": "Question",
       name: it.q,
       acceptedAnswer: { "@type": "Answer", text: it.a },
@@ -59,7 +69,7 @@ export default async function HelpPage({
         <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
 
         <div className="mt-8 space-y-3">
-          {t.items.map((it, i) => (
+          {items.map((it, i) => (
             <details
               key={i}
               className="group rounded-2xl border border-border bg-surface p-4 shadow-xs transition-colors open:border-primary/30 [&_summary::-webkit-details-marker]:hidden"

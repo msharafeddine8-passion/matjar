@@ -5,6 +5,8 @@ import { History } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { toCategoryKey } from "@/lib/catalog";
+import type { OfferingKind } from "@/lib/offering";
 import { ProductMiniCard } from "@/components/product-mini-card";
 
 const KEY = "matjar-recent";
@@ -18,6 +20,10 @@ type Row = {
   discountPrice: number | null;
   imageUrl: string | null;
   storeName: string;
+  /** Resolver inputs: a recently viewed أشعة must come back as a service. */
+  itemKind: OfferingKind;
+  category: ReturnType<typeof toCategoryKey>;
+  durationMinutes: number | null;
 };
 
 // Records the current product in localStorage and shows the previously viewed
@@ -56,7 +62,9 @@ export function RecentlyViewed({
       const supabase = createClient();
       const { data } = await supabase
         .from("products")
-        .select("id, name, name_en, price, discount_price, image_url, stores(name)")
+        .select(
+          "id, name, name_en, price, discount_price, image_url, item_kind, duration_minutes, stores(name, business_types(slug))",
+        )
         .in("id", others)
         .eq("status", "active")
         .eq("is_available", true)
@@ -69,7 +77,12 @@ export function RecentlyViewed({
           price: number;
           discount_price: number | null;
           image_url: string | null;
-          stores: { name: string } | null;
+          item_kind: string | null;
+          duration_minutes: number | null;
+          stores: {
+            name: string;
+            business_types: { slug: string } | null;
+          } | null;
         }[]).map((r) => [
           r.id,
           {
@@ -80,6 +93,13 @@ export function RecentlyViewed({
             discountPrice: r.discount_price != null ? Number(r.discount_price) : null,
             imageUrl: r.image_url,
             storeName: r.stores?.name ?? "",
+            itemKind: (r.item_kind ?? "product") as OfferingKind,
+            category: toCategoryKey(
+              r.stores?.business_types?.slug,
+              `recently viewed ${r.id}`,
+            ),
+            durationMinutes:
+              r.duration_minutes != null ? Number(r.duration_minutes) : null,
           } as Row,
         ]),
       );
@@ -108,6 +128,12 @@ export function RecentlyViewed({
             discountPrice={p.discountPrice}
             imageUrl={p.imageUrl}
             storeName={p.storeName}
+            offering={{
+              itemKind: p.itemKind,
+              category: p.category,
+              durationMinutes: p.durationMinutes,
+            }}
+            copy={dict.offering}
           />
         ))}
       </div>

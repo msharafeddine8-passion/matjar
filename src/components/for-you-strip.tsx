@@ -73,7 +73,7 @@ export function ForYouStrip({
   dict,
 }: {
   lang: Locale;
-  dict: Pick<Dictionary, "home" | "catalog" | "explore" | "featured">;
+  dict: Pick<Dictionary, "home" | "catalog" | "explore" | "featured" | "trust">;
 }) {
   const [stores, setStores] = useState<Store[] | null>(null);
 

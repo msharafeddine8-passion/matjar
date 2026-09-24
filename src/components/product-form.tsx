@@ -11,6 +11,7 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import type { CategoryKey } from "@/lib/catalog";
 import { attrEntryFields } from "@/lib/attributes";
 import { sectorHasTeam } from "@/lib/sectors";
+import { planCopy } from "@/lib/plan-copy";
 import { ImageUpload } from "@/components/image-upload";
 import { DigitalFileUpload, type DigitalFile } from "@/components/digital-file-upload";
 import { fieldClass } from "@/components/ui/field";
@@ -183,7 +184,7 @@ export function ProductForm({
       // Server trigger blocks free stores past the product limit.
       setError(
         insertError?.message?.includes("free_product_limit")
-          ? dict.os.pro.productLimitBody
+          ? planCopy(dict.os.pro.productLimitBody)
           : dict.auth.errorGeneric,
       );
       setLoading(false);

@@ -106,6 +106,14 @@ export function offeringSectionSlot(key: OfferingSectionKey): OfferingSlot {
   return DETAIL_SECTIONS.has(key) ? "detail" : "page";
 }
 
+/** How a price is worded. `fixed` prints the number; `from` prefixes it with
+ *  "يبدأ من" (the caller knows the number is a floor — a size range, a menu of
+ *  options); `onConsult` prints no number at all, because a service whose
+ *  merchant entered no price is priced after the consultation and "$0" would
+ *  be a lie in the merchant's mouth. Goods never resolve to `onConsult`: a
+ *  good with no price is a data error, not a pricing model. */
+export type OfferingPriceLabel = "fixed" | "from" | "onConsult";
+
 export type OfferingExperience = {
   variant: OfferingVariant;
   cta: OfferingCtaKey;
@@ -123,6 +131,33 @@ export type OfferingExperience = {
   /** The buy box transacts on this page (cart/order). False when the offering
    *  routes into the booking engine or is directory-only. */
   transacts: boolean;
+  // ── Facts every OTHER surface asks (cards, cart, rails, JSON-LD) ──────────
+  // Each one used to be re-derived by the surface from `stock != null` or from
+  // the sector, which is how a service card grew a stock badge. They are
+  // answered here once, per variant, and tested per variant.
+  /** Stock is a retail fact: the "متوفّر / باقي 3 / نفد المخزون" badge, the
+   *  low-stock count on a card and the back-in-stock waitlist. Off for a dish
+   *  (a kitchen runs out, it does not carry inventory) and for a service. */
+  showsStock: boolean;
+  /** A quantity stepper exists only where a basket does. */
+  showsQuantity: boolean;
+  /** Variants, add-ons and modifier groups — things you pick before it can be
+   *  made or packed. A service has none: who performs it is `provider`, when
+   *  is the booking engine's. */
+  showsOptions: boolean;
+  /** The merchant-entered `duration_minutes`, rendered where a duration means
+   *  something (an appointment). Never inferred. */
+  showsDuration: boolean;
+  /** "/ كيلو" after the price — a goods-only reading of `sold_by`. */
+  showsUnitPrice: boolean;
+  /** What the card says the thing IS, when the card would otherwise pass for
+   *  a product: "خدمة" on a service. Null where the picture and the price
+   *  already say enough. */
+  cardBadge: OfferingNoun | null;
+  /** May a surface put this in a basket? True only for the two cart CTAs on a
+   *  page that transacts. This is the ONE test the cart paths run: a service
+   *  is never addable, whatever page it is standing on. */
+  addableToCart: boolean;
 };
 
 type Composition = {
@@ -194,6 +229,64 @@ const RELATED_KIND: Record<OfferingVariant, OfferingKind> = {
   appointmentService: "service",
   menuItem: "product",
 };
+
+/** The per-variant facts that do not depend on the sector's engine. */
+const FACTS: Record<
+  OfferingVariant,
+  Pick<
+    OfferingExperience,
+    | "showsStock"
+    | "showsOptions"
+    | "showsDuration"
+    | "showsUnitPrice"
+    | "cardBadge"
+  >
+> = {
+  physicalProduct: {
+    showsStock: true,
+    showsOptions: true,
+    showsDuration: false,
+    showsUnitPrice: true,
+    cardBadge: null,
+  },
+  appointmentService: {
+    showsStock: false,
+    showsOptions: false,
+    showsDuration: true,
+    showsUnitPrice: false,
+    cardBadge: "service",
+  },
+  menuItem: {
+    showsStock: false,
+    showsOptions: true,
+    showsDuration: false,
+    showsUnitPrice: false,
+    cardBadge: null,
+  },
+};
+
+/** The two CTAs that put something in a basket. */
+export function isCartCta(cta: OfferingCtaKey): boolean {
+  return cta === "addToCart" || cta === "addToOrder";
+}
+
+/** How to word a price for an offering — see `OfferingPriceLabel`.
+ *
+ *  Pure and data-driven: `onConsult` is returned only when the row genuinely
+ *  carries no price (null or 0) AND the thing is a service. Nothing here
+ *  invents a number, and a merchant who typed $0 on a t-shirt still gets $0
+ *  printed, because that is what they typed. */
+export function offeringPriceLabel(args: {
+  variant: OfferingVariant;
+  price: number | null | undefined;
+  /** The caller knows this number is a floor (variants at different prices,
+   *  a service menu). Ignored when there is no number to be a floor of. */
+  isFloor?: boolean;
+}): OfferingPriceLabel {
+  const priced = args.price != null && args.price > 0;
+  if (!priced && args.variant === "appointmentService") return "onConsult";
+  return priced && args.isFloor ? "from" : "fixed";
+}
 
 /** The page shape for an offering. */
 export function offeringVariant(args: {
@@ -273,14 +366,44 @@ export function resolveOffering(args: {
     const listed = new Set(chosen);
     sections = [...chosen, ...base.filter((k) => !listed.has(k))];
   }
+  const cta = offeringCta(args);
+  const transacts =
+    variant !== "appointmentService" && !isDirectoryOnlySector(args.category);
   return {
     variant,
-    cta: offeringCta(args),
+    cta,
     noun: NOUN[variant],
     sections,
     omitted: DEFAULT_OFFERING_SECTIONS.filter((k) => omitted.has(k)),
     relatedKind: RELATED_KIND[variant],
-    transacts:
-      variant !== "appointmentService" && !isDirectoryOnlySector(args.category),
+    transacts,
+    ...FACTS[variant],
+    showsQuantity: transacts,
+    addableToCart: transacts && isCartCta(cta),
   };
+}
+
+/** The cart guard, in one place.
+ *
+ *  There is no server action between a basket and the order RPC — the two
+ *  surfaces that build a basket call `place_customer_order` / `place_guest_order`
+ *  directly, and those functions check status and availability but not
+ *  `item_kind`. So the only guard this codebase can put in front of the RPC
+ *  without a migration is this one: every surface that assembles a basket
+ *  asks it first, and it throws rather than returns false, so a caller cannot
+ *  forget to read the answer. The RPC-side counterpart (reject a service row
+ *  in `p_items`) is described in the audit report; it is a DB change. */
+export class OfferingNotAddableError extends Error {
+  readonly cta: OfferingCtaKey;
+  constructor(cta: OfferingCtaKey) {
+    super(`offering_not_addable:${cta}`);
+    this.name = "OfferingNotAddableError";
+    this.cta = cta;
+  }
+}
+
+export function assertAddableToCart(
+  offering: Pick<OfferingExperience, "addableToCart" | "cta">,
+): void {
+  if (!offering.addableToCart) throw new OfferingNotAddableError(offering.cta);
 }

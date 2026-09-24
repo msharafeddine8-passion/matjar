@@ -20,6 +20,7 @@ import {
   sectorPrimarySetup,
 } from "@/lib/sectors";
 import { computeCompleteness } from "@/lib/completeness";
+import { validateStorePublic } from "@/lib/data-quality";
 import { parseHours } from "@/lib/hours";
 import { SITE_URL } from "@/lib/site";
 import { Container } from "@/components/ui/container";
@@ -133,7 +134,9 @@ export default async function StoreOsHomePage({
       // status_reason/status_changed_at: the owner of a suspended shop is the
       // one person who most needs to know why and since when, and audit_logs is
       // super-admin-only by RLS — so it rides on their own store row (0282).
-      "id, name, slug, status, accent_color, owner_id, short_code, plan, trial_ends_at, logo_url, cover_url, description, hours, whatsapp, lat, lng, status_reason, status_changed_at, business_types(slug, name_ar, name_en)",
+      // phone/area/service_area/region: read by the public data quality gate
+      // (lib/data-quality.ts) whose notes the checklist shows the owner.
+      "id, name, slug, status, accent_color, owner_id, short_code, plan, trial_ends_at, logo_url, cover_url, description, hours, whatsapp, phone, area, service_area, region, lat, lng, status_reason, status_changed_at, business_types(slug, name_ar, name_en)",
     )
     .eq("id", storeId)
     .maybeSingle();
@@ -153,6 +156,10 @@ export default async function StoreOsHomePage({
     description: string | null;
     hours: unknown;
     whatsapp: string | null;
+    phone: string | null;
+    area: string | null;
+    service_area: string | null;
+    region: string | null;
     lat: number | null;
     lng: number | null;
     status_reason: string | null;
@@ -750,6 +757,28 @@ export default async function StoreOsHomePage({
   );
   const checklistDone = completeness.next === null;
 
+  // The public data quality gate, on the same facts. Not a second checklist:
+  // completeness is what the merchant still wants to do, this is what the
+  // platform checks before ranking the page — and the one state ("blocked")
+  // that keeps a live page out of explore is something the owner must be told
+  // in plain words rather than infer from a percentage.
+  const storeQuality = validateStorePublic(
+    {
+      name: s.name,
+      category: s.business_types?.slug ?? null,
+      area: s.area,
+      service_area: s.service_area,
+      region: s.region,
+      phone: s.phone,
+      whatsapp: s.whatsapp,
+      description: s.description,
+      logo_url: s.logo_url,
+      cover_url: s.cover_url,
+      offerings: isOwner ? (primaryCount ?? itemsCount) : undefined,
+    },
+    { sector: category, modules: enabledModules },
+  );
+
   // ---- Smart suggestions (rule-based, from data already on hand) -----------
   const hasAudience =
     (followersRes.count ?? 0) > 0 || (report?.total_orders ?? 0) > 0;
@@ -1139,6 +1168,7 @@ export default async function StoreOsHomePage({
                 storeSlug={s.slug}
                 status={s.status}
                 completeness={completeness}
+                quality={storeQuality}
               />
             </div>
           )}

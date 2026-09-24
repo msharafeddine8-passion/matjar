@@ -5,6 +5,7 @@
 // Adding a guide = one entry here.
 
 import type { LucideIcon } from "lucide-react";
+import type { FeatureStatus } from "@/lib/feature-availability";
 import {
   Megaphone,
   ShoppingBag,
@@ -33,8 +34,11 @@ export type AcademyCategory =
   | "management"
   | "growth";
 
-// Display order. accounting is kept in the type but not surfaced (no guides yet);
-// management + growth are new "coming soon" categories.
+// Display order. accounting is kept in the type but not surfaced (no guides yet).
+// management + growth are listed before they have guides: their state is NOT
+// written here — it is derived from the guide count by academyCategoryStatus()
+// and printed with the registry's one word for it (featureCopy), so a category
+// that gains its first guide stops reading as pending without an edit here.
 export const ACADEMY_CATEGORIES: AcademyCategory[] = [
   "marketing",
   "ecommerce",
@@ -44,6 +48,14 @@ export const ACADEMY_CATEGORIES: AcademyCategory[] = [
   "management",
   "growth",
 ];
+
+/** A category's availability in the vocabulary of the feature registry: it is
+ *  `available` the moment one guide exists under it and `coming_soon` until
+ *  then. Content supply, resolved the same way section-supply.ts resolves a
+ *  vertical — never a flag someone has to remember to flip. */
+export function academyCategoryStatus(guideCount: number): FeatureStatus {
+  return guideCount > 0 ? "available" : "coming_soon";
+}
 
 // Line icon per category (lucide — minimal, single-color; no emoji).
 export const CATEGORY_ICON: Record<AcademyCategory, LucideIcon> = {

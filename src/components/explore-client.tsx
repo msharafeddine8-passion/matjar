@@ -9,10 +9,14 @@ import { getCurrentPosition } from "@/lib/native";
 import { createClient } from "@/lib/supabase/client";
 import { resolveSearch, type SearchAnswer } from "@/lib/search-state";
 import type { DiscoveryStore } from "@/lib/data/discovery";
+import { toCategoryKey, type CategoryKey } from "@/lib/catalog";
+import type { OfferingKind } from "@/lib/offering";
 import { StoreCard } from "@/components/store-card";
 import { ProductMiniCard } from "@/components/product-mini-card";
 
-// A product hit from the search_products_fuzzy RPC (migration 0114).
+// A product hit from the search_products_fuzzy RPC (migration 0114), plus the
+// resolver inputs the RPC does not return — read in a second bounded query on
+// the hit ids so a clinic's service renders as a service, not as a product.
 type ProductHit = {
   id: string;
   name: string;
@@ -22,6 +26,9 @@ type ProductHit = {
   image_url: string | null;
   store_id: string;
   store_name: string;
+  item_kind?: OfferingKind;
+  category?: CategoryKey;
+  duration_minutes?: number | null;
 };
 
 /**
@@ -41,7 +48,10 @@ export function ExploreClient({
   term,
 }: {
   lang: Locale;
-  dict: Pick<Dictionary, "explore" | "catalog" | "featured" | "discovery">;
+  dict: Pick<
+    Dictionary,
+    "explore" | "catalog" | "featured" | "discovery" | "trust" | "offering"
+  >;
   stores: DiscoveryStore[];
   lbpRate: number;
   /** The committed search term from the URL. */
@@ -76,7 +86,43 @@ export function ExploreClient({
         p_q: query,
       });
       if (cancelled || latestTermRef.current !== query) return;
-      const hits = error ? null : ((data ?? []) as ProductHit[]);
+      let hits = error ? null : ((data ?? []) as ProductHit[]);
+      if (hits && hits.length > 0) {
+        // What each hit IS. RLS shows anon the same active rows the RPC did,
+        // so this can only annotate, never widen; a row it cannot see simply
+        // renders as it did before.
+        const { data: facts } = await supabase
+          .from("products")
+          .select("id, item_kind, duration_minutes, stores(business_types(slug))")
+          .in(
+            "id",
+            hits.map((h) => h.id),
+          );
+        if (cancelled || latestTermRef.current !== query) return;
+        const byId = new Map(
+          ((facts ?? []) as unknown as {
+            id: string;
+            item_kind: string | null;
+            duration_minutes: number | null;
+            stores: { business_types: { slug: string } | null } | null;
+          }[]).map((r) => [r.id, r]),
+        );
+        hits = hits.map((h) => {
+          const f = byId.get(h.id);
+          return f
+            ? {
+                ...h,
+                item_kind: (f.item_kind ?? "product") as OfferingKind,
+                category: toCategoryKey(
+                  f.stores?.business_types?.slug,
+                  `explore ${h.id}`,
+                ),
+                duration_minutes:
+                  f.duration_minutes != null ? Number(f.duration_minutes) : null,
+              }
+            : h;
+        });
+      }
       setAnswer({ term: query, hits });
 
       // A zero here is the whole point: a search that found nothing is demand
@@ -187,6 +233,16 @@ export function ExploreClient({
                 imageUrl={p.image_url}
                 storeName={p.store_name}
                 lbpRate={lbpRate}
+                offering={
+                  p.item_kind && p.category
+                    ? {
+                        itemKind: p.item_kind,
+                        category: p.category,
+                        durationMinutes: p.duration_minutes ?? null,
+                      }
+                    : undefined
+                }
+                copy={dict.offering}
               />
             ))}
           </div>

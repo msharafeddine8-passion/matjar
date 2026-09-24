@@ -9,6 +9,7 @@ import { Container } from "@/components/ui/container";
 import { RequestProButton } from "@/components/request-pro-button";
 import { StartTrialButton } from "@/components/start-trial-button";
 import { PLAN_TIERS, promoState, annualPrice, planRank } from "@/lib/plan-tiers";
+import { planCopy } from "@/lib/plan-copy";
 import { PLAN_HIGHLIGHTS } from "@/lib/feature-availability";
 import { requestNow } from "@/lib/now";
 import { Money } from "@/components/ui/money";
@@ -147,13 +148,14 @@ export default async function StoreSubscriptionPage({
           )}
         </div>
 
-        {/* Never trialed (older store): offer the self-serve 14-day trial — it
-            activates instantly and starts counting, no admin approval. */}
+        {/* Never trialed (older store): offer the self-serve free trial — it
+            activates instantly and starts counting, no admin approval. The
+            title's {days} is TRIAL_DAYS, filled by plan-copy. */}
         {!isPaid && trialEndsAt === null && (
           <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-6">
             <h2 className="flex items-center gap-2 text-lg font-extrabold text-primary">
               <Sparkles className="h-5 w-5" />
-              {t.startTrialTitle}
+              {planCopy(t.startTrialTitle)}
             </h2>
             <p className="mt-2 text-sm font-medium text-primary/80">
               {t.startTrialBody}

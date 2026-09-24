@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { storeJsonLd, productJsonLd, jsonLdScript } from "@/lib/jsonld";
+import {
+  storeJsonLd,
+  productJsonLd,
+  offeringJsonLd,
+  jsonLdScript,
+} from "@/lib/jsonld";
 
 describe("storeJsonLd", () => {
   it("emits a LocalBusiness with address and rating when provided", () => {
@@ -45,6 +50,72 @@ describe("productJsonLd", () => {
       available: false,
     }) as { offers: { availability: string } };
     expect(out.offers.availability).toBe("https://schema.org/OutOfStock");
+  });
+});
+
+// Every `products` row used to be emitted as a Product with InStock and the
+// store as its brand — a clinic's أشعة told Google it was an in-stock product
+// branded by the clinic (verified on the baseline build). The noun from the
+// offering resolver now picks the type.
+describe("offeringJsonLd", () => {
+  const base = { name: "أشعة", url: "u", storeName: "مركز الضنية الطبي" };
+
+  it("keeps a good exactly as productJsonLd emits it", () => {
+    const d = offeringJsonLd({ ...base, noun: "product", price: 10 });
+    expect(d).toEqual(productJsonLd({ ...base, price: 10 }));
+    expect(d["@type"]).toBe("Product");
+  });
+
+  it("emits a Service provided by the store, with no stock and no brand", () => {
+    const d = offeringJsonLd({
+      ...base,
+      noun: "service",
+      price: 90,
+      available: true,
+    }) as {
+      "@type": string;
+      provider: { "@type": string; name: string };
+      offers: { price: number; availability?: string };
+      brand?: unknown;
+    };
+    expect(d["@type"]).toBe("Service");
+    expect(d.provider).toEqual({ "@type": "LocalBusiness", name: base.storeName });
+    expect(d.brand).toBeUndefined();
+    expect(d.offers.price).toBe(90);
+    expect(d.offers.availability).toBeUndefined();
+  });
+
+  it("emits no Offer for a service the merchant never priced", () => {
+    const d = offeringJsonLd({ ...base, noun: "service", price: null });
+    expect(d.offers).toBeUndefined();
+    expect(offeringJsonLd({ ...base, noun: "service", price: 0 }).offers).toBeUndefined();
+  });
+
+  it("emits a MenuItem for a dish, with its price and no availability", () => {
+    const d = offeringJsonLd({ ...base, noun: "dish", price: 7 }) as {
+      "@type": string;
+      offers: { price: number; availability?: string };
+      provider?: unknown;
+    };
+    expect(d["@type"]).toBe("MenuItem");
+    expect(d.offers.price).toBe(7);
+    expect(d.offers.availability).toBeUndefined();
+    expect(d.provider).toBeUndefined();
+  });
+
+  it("carries the rating for any noun, only when there are reviews", () => {
+    const rated = offeringJsonLd({
+      ...base,
+      noun: "service",
+      price: 90,
+      rating: 4.25,
+      reviewCount: 2,
+    }) as { aggregateRating: { ratingValue: number } };
+    expect(rated.aggregateRating.ratingValue).toBe(4.3);
+    expect(
+      offeringJsonLd({ ...base, noun: "dish", price: 7, rating: 5, reviewCount: 0 })
+        .aggregateRating,
+    ).toBeUndefined();
   });
 });
 

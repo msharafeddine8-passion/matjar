@@ -12,10 +12,12 @@ import {
   CATEGORY_ICON,
   RECOMMEND_TOPICS,
   RECOMMEND_MAP,
+  academyCategoryStatus,
   type AcademyCategory,
   type GuideLevel,
   type RecommendTopic,
 } from "@/content/academy";
+import { featureCopy } from "@/lib/feature-availability";
 
 export type LightGuide = {
   slug: string;
@@ -82,8 +84,15 @@ export function AcademyExplorer({
           const s = CATEGORY_STYLE[c];
           const Icon = CATEGORY_ICON[c];
           const on = cat === c;
-          const empty = n === 0;
-          const label = empty ? a.soon : n === 1 ? a.oneGuide : a.nGuides.replace("{n}", String(n));
+          const status = academyCategoryStatus(n);
+          const empty = status !== "available";
+          // The pending word is the registry's (features.status.coming_soon),
+          // not the academy's own — one spelling of "not yet" across the site.
+          const label = empty
+            ? featureCopy(status, dict)
+            : n === 1
+              ? a.oneGuide
+              : a.nGuides.replace("{n}", String(n));
           return (
             <button
               key={c}

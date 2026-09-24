@@ -6,6 +6,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { localeAlternates } from "@/lib/site";
 import { supportWaLink } from "@/lib/support";
+import { planCopy } from "@/lib/plan-copy";
 import {
   LEGAL_ENV_KEYS,
   LEGAL_VAT_KEY,
@@ -96,7 +97,7 @@ const AR = {
     {
       title: "للتجّار: شو عم تاخد وشو عم تلتزم فيه",
       items: [
-        "فتح المتجر مجّاني، وبتقدر تضيف لحدّ ٣ منتجات على الخطة المجانية. الخطط المدفوعة سعرها منشور على صفحة الأسعار.",
+        "فتح المتجر مجّاني، وبتقدر تضيف لحدّ {freeProducts} منتجات على الخطة المجانية. الخطط المدفوعة سعرها منشور على صفحة الأسعار.",
         "ما منطلب منّك بطاقة ولا رقم حساب لتفتح متجر. الاشتراك المدفوع بينحسب بالاتفاق معنا ويداً بيد — ما في دفع أونلاين على المنصّة.",
         "٠٪ عمولة على مبيعاتك. مصاري طلباتك بتوصلك إنت.",
         "كل متجر بينراجع قبل ما ينشر. إذا المتجر خالف القانون اللبناني أو ضحّك على زباينو، فينا نوقّفو أو نشيلو عن المنصّة.",
@@ -169,7 +170,7 @@ const EN = {
     {
       title: "For merchants: what you get, and what you agree to",
       items: [
-        "Opening a store is free, and the free plan lets you list up to 3 products. Paid plan prices are published on the pricing page.",
+        "Opening a store is free, and the free plan lets you list up to {freeProducts} products. Paid plan prices are published on the pricing page.",
         "We never ask you for a card or bank details to open a store. A paid subscription is settled by arrangement with us, by hand — there is no online payment on the platform.",
         "0% commission on your sales. Your customers' money goes to you.",
         "Every store is reviewed before it publishes. If a store breaks Lebanese law or deceives its customers, we can suspend it or remove it from the platform.",
@@ -328,10 +329,13 @@ export default async function LegalPage({
           <section key={block.title} className="mt-8">
             <h2 className="text-lg font-bold">{block.title}</h2>
             <ul className="mt-3 space-y-3">
+              {/* The free product cap in the merchants block is {freeProducts},
+                  filled from planProductLimit("free") — the terms cannot quote a
+                  cap the product no longer enforces. */}
               {block.items.map((item) => (
                 <li key={item} className="flex items-start gap-3">
                   <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                  <span className="leading-7 text-muted-foreground">{item}</span>
+                  <span className="leading-7 text-muted-foreground">{planCopy(item)}</span>
                 </li>
               ))}
             </ul>

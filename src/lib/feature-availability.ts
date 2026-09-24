@@ -37,10 +37,13 @@
 // this file only ever reads PLAN_TIERS for the count cells.)
 
 import { PLAN_ORDER, PLAN_RANK, PLAN_TIERS, type PlanKey } from "./plan-tiers";
-import type { CategoryKey } from "./catalog";
+import { categoryKeys, type CategoryKey } from "./catalog";
 import type { FeatureModuleKey } from "./modules-catalog";
 import { resolveStoreModules, type OsModuleKey } from "./sectors";
 import { resolveStoreExperience, type StoreExperience } from "./store-experience";
+// Type-only: erased at compile time, so the `server-only` marker inside
+// get-dictionary never reaches a client bundle through this module.
+import type { Dictionary } from "@/i18n/get-dictionary";
 
 /** `live` — a working screen ships today and the claim may be stated plainly.
  *  `beta` — the mechanism ships but has not produced a real outcome yet.
@@ -732,4 +735,286 @@ export function matrixCell(id: FeatureId, plan: PlanKey): MatrixCell {
 export function firstPlanColumn(id: FeatureId): PlanKey {
   const floor = FEATURES[id].plan;
   return floor === "free" ? "basic" : floor;
+}
+
+// ---------------------------------------------------------------------------
+// The unified registry — one answer to "is this available?", one word for it
+// ---------------------------------------------------------------------------
+//
+// The two tables above answer two different questions (what a storefront does,
+// what a plan buys) and every page reads the one it needs. What they did NOT
+// give the rest of the codebase was a single call that takes a feature, a
+// plan and a sector and says what to print — so the footer typed "قريباً" by
+// hand for the app badges, the storefront carried a fixed "booking and direct
+// purchase coming soon" note for every directory-only sector regardless of
+// what that sector's bundle actually promises, the academy wrote its own
+// "soon", and the module manager labelled inventory "Pro" from a tier field
+// that nothing enforces while the inventory screen itself is gated at
+// Business. Four spellings of availability, four ways to contradict /pricing.
+//
+// FEATURE_REGISTRY is DERIVED from CAPABILITIES + FEATURES (never a third
+// hand-written list), `featureStatus()` resolves an entry for a plan and a
+// sector, and `featureCopy()` returns the one dictionary word for the result.
+// Nothing under src/components or src/app may spell "قريباً" / "Soon" itself
+// again — src/lib/__tests__/feature-availability-ssot.test.ts scans for it.
+
+/** The public vocabulary of availability.
+ *  `available`   — works today, may be stated plainly.
+ *  `beta`        — the mechanism ships but has not produced a real outcome yet.
+ *  `coming_soon` — planned and named, no working screen (or no engine for
+ *                  this sector yet).
+ *  `internal`    — exists for staff/admin only; never advertised.
+ *  `disabled`    — not offered here: the plan is below the floor, or the
+ *                  sector does not carry it. */
+export type FeatureStatus =
+  | "available"
+  | "beta"
+  | "coming_soon"
+  | "internal"
+  | "disabled";
+
+export const FEATURE_STATUSES: readonly FeatureStatus[] = [
+  "available",
+  "beta",
+  "coming_soon",
+  "internal",
+  "disabled",
+];
+
+/** The internal three-state `FeatureState` mapped onto the public vocabulary.
+ *  Kept as a mapping rather than a migration so every existing consumer of
+ *  `state` keeps compiling. */
+export const STATUS_OF_STATE: Record<FeatureState, FeatureStatus> = {
+  live: "available",
+  beta: "beta",
+  soon: "coming_soon",
+};
+
+/** Every key the registry answers for: the storefront capabilities and the
+ *  plan features. Six ids exist in both tables (pos, inventory, team, rentals,
+ *  messaging, reviews); the tests assert those pairs agree, so a shared key
+ *  has one truth. */
+export type FeatureKey = CapabilityKey | FeatureId;
+
+export type FeatureRecord = {
+  feature_key: FeatureKey;
+  /** Base status, before a plan or sector is applied. */
+  status: FeatureStatus;
+  /** Which of the three paid tiers include it (derived from the plan floor).
+   *  A "free" floor means all three — and an unsubscribed store too, which
+   *  `featureStatus({ plan: "free" })` answers. */
+  eligible_plans: PlanKey[];
+  /** The sectors whose storefront genuinely surfaces it. Plan features that
+   *  are not tied to a storefront module (reports, staff accounts…) list every
+   *  sector. */
+  eligible_sectors: CategoryKey[];
+  /** Dictionary path of the human label, e.g. "pricing.features.pos". */
+  label: string;
+  /** Dictionary path of the one-line description, e.g. "features.desc.pos". */
+  description: string;
+  /** Where the entry came from, so an auditor knows which table to read. */
+  source: "feature" | "capability";
+};
+
+function plansFrom(floor: PlanFloor): PlanKey[] {
+  return PLAN_ORDER.filter((p) => PLAN_RANK[p] >= floorRank(floor));
+}
+
+function isCapabilityKey(key: FeatureKey): key is CapabilityKey {
+  return key in CAPABILITIES;
+}
+
+function isFeatureId(key: FeatureKey): key is FeatureId {
+  return key in FEATURES;
+}
+
+// Which sectors surface each capability — computed once from the same
+// function the merchant page renders its sector cards from.
+const CAPABILITY_SECTORS: Record<CapabilityKey, CategoryKey[]> = (() => {
+  const out = {} as Record<CapabilityKey, CategoryKey[]>;
+  for (const key of CAPABILITY_ORDER) out[key] = [];
+  for (const sector of categoryKeys) {
+    for (const cap of sectorCapabilities(sector)) out[cap].push(sector);
+  }
+  return out;
+})();
+
+function sectorsForFeature(id: FeatureId): CategoryKey[] {
+  const covers = FEATURES[id].covers;
+  if (!covers || covers.length === 0) return [...categoryKeys];
+  const set = new Set<CategoryKey>();
+  for (const cap of covers) for (const s of CAPABILITY_SECTORS[cap]) set.add(s);
+  return categoryKeys.filter((s) => set.has(s));
+}
+
+export const FEATURE_REGISTRY: Record<FeatureKey, FeatureRecord> = (() => {
+  const out = {} as Record<FeatureKey, FeatureRecord>;
+  // Plan features first: where a key is in both tables the marketing label
+  // (pricing.features.*) is the one the public pages already use for it.
+  for (const id of ALL_FEATURE_IDS) {
+    const entry = FEATURES[id];
+    out[id] = {
+      feature_key: id,
+      status: STATUS_OF_STATE[entry.state],
+      eligible_plans: plansFrom(entry.plan),
+      eligible_sectors: sectorsForFeature(id),
+      label: `pricing.features.${id}`,
+      description: `features.desc.${id}`,
+      source: "feature",
+    };
+  }
+  for (const key of CAPABILITY_ORDER) {
+    if (key in out) continue;
+    const entry = CAPABILITIES[key];
+    out[key] = {
+      feature_key: key,
+      status: STATUS_OF_STATE[entry.state],
+      eligible_plans: plansFrom(entry.plan),
+      eligible_sectors: CAPABILITY_SECTORS[key],
+      label: `os.modules.labels.${key}`,
+      description: `features.desc.${key}`,
+      source: "capability",
+    };
+  }
+  return out;
+})();
+
+export const ALL_FEATURE_KEYS = Object.keys(FEATURE_REGISTRY) as FeatureKey[];
+
+/** Why `featureStatus` answered what it did.
+ *  `state`          — the entry's own status, nothing narrowed it.
+ *  `plan`           — the plan asked about is below the feature's floor.
+ *  `sector`         — the sector's bundle does not carry it at all.
+ *  `sector_pending` — the sector's bundle declares it but the sector is held
+ *                     in directory-only mode until its engine ships — the one
+ *                     case where "coming soon" is the honest word.
+ *  `sector_routed`  — the bundle declares it but the storefront routes that
+ *                     need through another engine (a hotel's hourly slots are
+ *                     replaced by the stay engine). Not coming; superseded. */
+export type FeatureReason =
+  | "state"
+  | "plan"
+  | "sector"
+  | "sector_pending"
+  | "sector_routed";
+
+export type FeatureResolution = {
+  status: FeatureStatus;
+  /** Dictionary path — resolve with `dictPath(dict, label)`. */
+  label: string;
+  description: string;
+  reason: FeatureReason;
+};
+
+/** Whether a sector's own module bundle (or the resolver's engine list)
+ *  declares this capability — the statement of intent, before the storefront
+ *  resolver decides what really renders. */
+function sectorIntends(cap: CapabilityKey, sector: CategoryKey): boolean {
+  if (cap === "leads" || cap === "stays" || cap === "tickets") {
+    return CAPABILITY_SECTORS[cap].includes(sector);
+  }
+  return resolveStoreModules(sector).has(cap);
+}
+
+function directoryOnly(sector: CategoryKey): boolean {
+  return resolveStoreExperience({
+    category: sector,
+    enabledModules: resolveStoreModules(sector),
+  }).directoryOnly;
+}
+
+/** The capabilities a key stands for, for sector narrowing. */
+function capabilitiesOf(key: FeatureKey): CapabilityKey[] {
+  if (isFeatureId(key)) return FEATURES[key].covers ?? [];
+  return isCapabilityKey(key) ? [key] : [];
+}
+
+/**
+ * The one public answer. Resolves a feature for an optional plan and sector:
+ *
+ *   featureStatus("pos")                        → available (base)
+ *   featureStatus("pos", { plan: "free" })      → disabled, reason "plan"
+ *   featureStatus("appointments",
+ *                 { sector: "realEstate" })     → coming_soon, reason "sector_pending"
+ *   featureStatus("timeslot",
+ *                 { sector: "hospitality" })    → disabled, reason "sector_routed"
+ *   featureStatus("nativeApp")                  → coming_soon, reason "state"
+ *
+ * A feature that is not live to begin with stays that way whatever the plan or
+ * sector — a Business store does not make online payment exist.
+ */
+export function featureStatus(
+  key: FeatureKey,
+  opts: { plan?: PlanFloor; sector?: CategoryKey } = {},
+): FeatureResolution {
+  const rec = FEATURE_REGISTRY[key];
+  const base: FeatureResolution = {
+    status: rec.status,
+    label: rec.label,
+    description: rec.description,
+    reason: "state",
+  };
+  if (rec.status !== "available" && rec.status !== "beta") return base;
+
+  if (opts.sector && !rec.eligible_sectors.includes(opts.sector)) {
+    const caps = capabilitiesOf(key);
+    const intended = caps.some((c) => sectorIntends(c, opts.sector as CategoryKey));
+    if (!intended) return { ...base, status: "disabled", reason: "sector" };
+    return directoryOnly(opts.sector)
+      ? { ...base, status: "coming_soon", reason: "sector_pending" }
+      : { ...base, status: "disabled", reason: "sector_routed" };
+  }
+
+  if (opts.plan !== undefined) {
+    const floor = isFeatureId(key) ? FEATURES[key].plan : CAPABILITIES[key as CapabilityKey].plan;
+    if (floorRank(opts.plan) < floorRank(floor)) {
+      return { ...base, status: "disabled", reason: "plan" };
+    }
+  }
+
+  return base;
+}
+
+/** The capabilities a sector's bundle promises that its storefront cannot
+ *  deliver yet — the honest content of a "coming soon" note on that sector's
+ *  store page. Empty for every sector that is not held in directory-only mode,
+ *  so the note cannot render where nothing is pending. */
+export function sectorPendingCapabilities(sector: CategoryKey): CapabilityKey[] {
+  return CAPABILITY_ORDER.filter(
+    (cap) => featureStatus(cap, { sector }).reason === "sector_pending",
+  );
+}
+
+/** The lowest plan a feature needs, as the registry knows it — for surfaces
+ *  (the module manager) that lock a toggle rather than print a matrix. */
+export function featurePlanFloor(key: FeatureKey): PlanFloor {
+  return isFeatureId(key) ? FEATURES[key].plan : CAPABILITIES[key as CapabilityKey].plan;
+}
+
+/** Resolve a dotted dictionary path ("features.desc.pos") to its string, or
+ *  null when the path is missing — so a page can fall back rather than print
+ *  "undefined". */
+export function dictPath(dict: Dictionary, path: string): string | null {
+  const value = path
+    .split(".")
+    .reduce<unknown>((node, k) => (node as Record<string, unknown> | undefined)?.[k], dict);
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+/** The ONE canonical word for a status, from the dictionary: متاح / تجريبي /
+ *  قريباً / غير متاح. Every badge, chip and note that names availability
+ *  prints this and nothing else. */
+export function featureCopy(status: FeatureStatus, dict: Dictionary): string {
+  return dict.features.status[status];
+}
+
+/** The label a page prints for a feature — the same string /pricing or the
+ *  module manager already uses for it. */
+export function featureLabel(key: FeatureKey, dict: Dictionary): string {
+  return dictPath(dict, FEATURE_REGISTRY[key].label) ?? key;
+}
+
+/** The one-line description behind a label. */
+export function featureDescription(key: FeatureKey, dict: Dictionary): string {
+  return dictPath(dict, FEATURE_REGISTRY[key].description) ?? "";
 }

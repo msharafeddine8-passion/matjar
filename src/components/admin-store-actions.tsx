@@ -18,6 +18,8 @@ export function AdminStoreActions({
   errorLabel,
   cancelLabel,
   t,
+  quality,
+  dq,
 }: {
   storeId: string;
   approveLabel: string;
@@ -27,9 +29,16 @@ export function AdminStoreActions({
   /** The /admin/stores strings, reused so the two screens ask for a reason in
    *  exactly the same words. */
   t: Dictionary["admin"]["storesAdmin"];
+  /** The public data quality gate's verdict for this store (lib/data-quality.ts),
+   *  with the issues already translated. `blocked` disables approval — the only
+   *  transition gated — and the list is shown for any level so the reviewer
+   *  sees what the merchant still owes before deciding. */
+  quality?: { level: "ok" | "incomplete" | "blocked"; issues: string[] };
+  dq?: Dictionary["dataQuality"];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const blocked = quality?.level === "blocked";
   // Rejecting used to be a yes/no confirm, which is how a merchant ends up
   // refused with nothing to read. The reason IS the confirmation now.
   const [rejecting, setRejecting] = useState(false);
@@ -64,6 +73,10 @@ export function AdminStoreActions({
   }
 
   async function approve() {
+    if (blocked) {
+      notifyError(dq?.blockedApprove ?? errorLabel);
+      return;
+    }
     const message = await setStatus("active");
     if (message) notifyError(message);
   }
@@ -121,10 +134,20 @@ export function AdminStoreActions({
   }
 
   return (
-    <div className="flex shrink-0 gap-2">
+    <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+      {quality && quality.issues.length > 0 && dq && (
+        <p
+          className={`max-w-md text-xs ${blocked ? "font-semibold text-danger" : "text-muted-foreground"}`}
+        >
+          {blocked ? dq.blockedApprove : dq.adminHeading + ":"}{" "}
+          {quality.issues.join(" · ")}
+        </p>
+      )}
+      <div className="flex gap-2">
       <Button
         size="sm"
-        disabled={busy}
+        disabled={busy || blocked}
+        title={blocked ? dq?.blockedApprove : undefined}
         onClick={approve}
         leftIcon={<Check className="h-4 w-4" />}
       >
@@ -144,6 +167,7 @@ export function AdminStoreActions({
       >
         {rejectLabel}
       </Button>
+      </div>
     </div>
   );
 }

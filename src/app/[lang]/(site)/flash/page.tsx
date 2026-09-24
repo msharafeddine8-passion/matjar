@@ -6,6 +6,8 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { getUsdLbpRate } from "@/lib/data/settings";
 import { localeAlternates } from "@/lib/site";
+import { toCategoryKey } from "@/lib/catalog";
+import type { OfferingKind } from "@/lib/offering";
 import { Container } from "@/components/ui/container";
 import { PageHero } from "@/components/ui/page-hero";
 import { ProductMiniCard } from "@/components/product-mini-card";
@@ -32,7 +34,14 @@ type Row = {
   price: number;
   flash_price: number;
   image_url: string | null;
-  stores: { name: string; status: string; deleted_at: string | null } | null;
+  item_kind: string | null;
+  duration_minutes: number | null;
+  stores: {
+    name: string;
+    status: string;
+    deleted_at: string | null;
+    business_types: { slug: string } | null;
+  } | null;
 };
 
 export default async function FlashPage({
@@ -49,7 +58,7 @@ export default async function FlashPage({
   const { data } = await supabase
     .from("products")
     .select(
-      "id, name, name_en, price, flash_price, flash_start, flash_end, image_url, stores(name, status, deleted_at)",
+      "id, name, name_en, price, flash_price, flash_start, flash_end, image_url, item_kind, duration_minutes, stores(name, status, deleted_at, business_types(slug))",
     )
     .not("flash_price", "is", null)
     .lte("flash_start", nowIso)
@@ -87,6 +96,18 @@ export default async function FlashPage({
                 imageUrl={p.image_url}
                 storeName={p.stores?.name}
                 lbpRate={lbpRate}
+                offering={{
+                  itemKind: (p.item_kind ?? "product") as OfferingKind,
+                  category: toCategoryKey(
+                    p.stores?.business_types?.slug,
+                    `flash ${p.id}`,
+                  ),
+                  durationMinutes:
+                    p.duration_minutes != null
+                      ? Number(p.duration_minutes)
+                      : null,
+                }}
+                copy={dict.offering}
               />
             ))}
           </div>

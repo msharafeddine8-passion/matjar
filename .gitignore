@@ -60,3 +60,7 @@ next-env.d.ts
 # docs/professional-v2/key/ and ARE committed.
 docs/professional-v2/before/
 docs/professional-v2/after/
+
+# Full before/after screenshot sweeps from scripts/shots-prelaunch.mjs (204 PNGs).
+# The STATUS.md tables next to them are kept.
+audit/prelaunch-v2/shots/**/*.png

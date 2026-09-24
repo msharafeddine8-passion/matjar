@@ -1,7 +1,7 @@
 import { CircleDashed, Hourglass } from "lucide-react";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { Badge } from "@/components/ui/badge";
-import { FEATURES, ROADMAP } from "@/lib/feature-availability";
+import { ROADMAP, featureCopy, featureStatus } from "@/lib/feature-availability";
 
 // The half of the truth marketing pages normally leave out.
 //
@@ -29,7 +29,11 @@ export function FeatureRoadmap({ dict }: { dict: Dictionary }) {
 
       <ul className="mt-6 grid gap-3 sm:grid-cols-2">
         {ROADMAP.map((id) => {
-          const beta = FEATURES[id].state === "beta";
+          // The badge word is the registry's canonical status label
+          // (features.status.*), the same one the footer and the storefront
+          // print — not a second vocabulary kept under pricing.states.
+          const { status } = featureStatus(id);
+          const beta = status === "beta";
           return (
             <li
               key={id}
@@ -41,7 +45,7 @@ export function FeatureRoadmap({ dict }: { dict: Dictionary }) {
                   {t.features[id]}
                 </h3>
                 <Badge variant={beta ? "info" : "neutral"}>
-                  {beta ? t.states.beta : t.states.soon}
+                  {featureCopy(status, dict)}
                 </Badge>
               </div>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">

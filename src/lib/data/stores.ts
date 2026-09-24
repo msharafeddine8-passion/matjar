@@ -12,6 +12,11 @@ import {
 } from "@/lib/catalog";
 import { isOpenNow, parseHours } from "@/lib/hours";
 import type { StorePlan } from "@/lib/plan-tiers";
+import {
+  sanitizeDisplayName,
+  validateStorePublic,
+  type QualityLevel,
+} from "@/lib/data-quality";
 import { FETCH_BOUNDS, fetchAllByIds, warnIfTruncated } from "./bounds";
 import { escapeForOr } from "./discovery";
 
@@ -19,12 +24,29 @@ import { escapeForOr } from "./discovery";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** A store as the public listings return it: the card shape plus the data
+ *  quality level (lib/data-quality.ts). `blocked` rows never reach a ranked
+ *  list — every loader below drops them — so a consumer of these lists only
+ *  ever sees `ok` or `incomplete`; the type keeps the third value so the
+ *  same shape can describe a store fetched by id. */
+export type ListedStore = Store & { quality: QualityLevel };
+
+/** The columns every listing query selects. `description`, `phone`,
+ *  `whatsapp` and `service_area` ride along only so the quality gate can
+ *  read them; the card renders none of them. */
+const LISTING_SELECT =
+  "id, name, area, region, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, description, phone, whatsapp, service_area, business_types(slug)";
+
 // Maps a database store row into the shape the StoreCard expects.
 function rowToStore(row: {
   id: string;
   name: string;
   area: string | null;
   region: string | null;
+  description?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  service_area?: string | null;
   plan: StorePlan | null;
   is_verified: boolean | null;
   commercial_reg_verified: boolean | null;
@@ -38,7 +60,7 @@ function rowToStore(row: {
   business_types: { slug: string } | null;
   rating_avg: number | null;
   rating_count: number | null;
-}): Store {
+}): ListedStore {
   // Real open/closed from structured hours; stores without configured hours
   // default to open (never scare customers away over missing data).
   const open = isOpenNow(parseHours(row.hours), new Date());
@@ -46,12 +68,35 @@ function rowToStore(row: {
   // 0091). rating stays undefined at 0 reviews so the card hides the rating
   // block; reviews carries the raw count.
   const ratingAvg = row.rating_avg != null ? Number(row.rating_avg) : 0;
+  const category = toCategoryKey(row.business_types?.slug, `store ${row.id}`);
+  // Render-only clean-up: the stored name is untouched, the card just never
+  // shows the trailing space one production store carries. The quality level
+  // is computed from the row alone — no catalogue count here, so an empty
+  // catalogue is reported by the admin roster and the merchant's checklist
+  // rather than guessed at by a listing.
+  const name = sanitizeDisplayName(row.name);
+  const { level } = validateStorePublic(
+    {
+      name: row.name,
+      category: row.business_types?.slug ?? null,
+      area: row.area,
+      service_area: row.service_area,
+      region: row.region,
+      phone: row.phone,
+      whatsapp: row.whatsapp,
+      description: row.description,
+      logo_url: row.logo_url,
+      cover_url: row.cover_url,
+    },
+    { sector: category },
+  );
   return {
     id: row.id,
-    name: { ar: row.name, en: row.name },
+    name: { ar: name, en: name },
     area: { ar: row.area ?? "", en: row.area ?? "" },
     region: (row.region as RegionKey) ?? undefined,
-    category: toCategoryKey(row.business_types?.slug, `store ${row.id}`),
+    category,
+    quality: level,
     isOpen: open ?? true,
     plan: row.plan ?? "free",
     verified: row.is_verified ?? false,
@@ -68,6 +113,16 @@ function rowToStore(row: {
   };
 }
 
+/** The gate. A `blocked` store is dropped from every RANKED surface this file
+ *  feeds (home rails, explore, search, the map) and from nothing else: its own
+ *  page still answers its URL through store-view.ts, and the admin roster
+ *  shows why it is held. Nothing on production is blocked today (see
+ *  lib/data-quality.ts); this is what keeps the next unnamed, unreachable
+ *  store out of the rails while the owner reviews it. */
+function listable(list: ListedStore[]): ListedStore[] {
+  return list.filter((s) => s.quality !== "blocked");
+}
+
 // Bounded so the explore/category pages never issue an unbounded query. The
 // client still filters + sorts (incl. "near me", which needs coordinates in
 // memory) within this window; beyond it, users rely on search. Raise or move
@@ -80,17 +135,19 @@ const STORE_FETCH_LIMIT = 200;
 // Per-user data (favourites) is layered on AFTER, uncached (see markFavorites).
 // Tagged "stores" so a store create/edit could bust it immediately if wired.
 const fetchActiveStores = unstable_cache(
-  async (): Promise<Store[]> => {
+  async (): Promise<ListedStore[]> => {
     const supabase = createPublicClient();
     const { data } = await supabase
       .from("stores")
-      .select("id, name, area, region, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, business_types(slug)")
+      .select(LISTING_SELECT)
       .eq("status", "active")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(STORE_FETCH_LIMIT);
-    const list = ((data ?? []) as unknown as Parameters<typeof rowToStore>[0][]).map(
-      rowToStore,
+    const list = listable(
+      ((data ?? []) as unknown as Parameters<typeof rowToStore>[0][]).map(
+        rowToStore,
+      ),
     );
     // Paid featured stores float to the top of the default listing (stable
     // otherwise — the pages re-sort for "near me"/rating when the user asks).
@@ -244,9 +301,7 @@ export async function searchStores(
   const supabase = await createClient();
   let query = supabase
     .from("stores")
-    .select(
-      "id, name, area, region, plan, is_verified, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, business_types(slug)",
-    )
+    .select(LISTING_SELECT)
     .eq("status", "active")
     .is("deleted_at", null)
     .or(
@@ -254,8 +309,10 @@ export async function searchStores(
     );
   if (region && region !== "all") query = query.eq("region", region);
   const { data } = await query.limit(24);
-  const list = ((data ?? []) as unknown as Parameters<typeof rowToStore>[0][]).map(
-    rowToStore,
+  const list = listable(
+    ((data ?? []) as unknown as Parameters<typeof rowToStore>[0][]).map(
+      rowToStore,
+    ),
   );
   return markFavorites(list);
 }
@@ -275,16 +332,16 @@ export async function getFeaturedStores(limit = 4): Promise<Store[]> {
   const nowIso = new Date().toISOString();
   const { data } = await supabase
     .from("stores")
-    .select(
-      "id, name, area, region, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, business_types(slug)",
-    )
+    .select(LISTING_SELECT)
     .eq("status", "active")
     .is("deleted_at", null)
     .or(`plan.in.(pro,business),featured_until.gt.${nowIso}`)
     .limit(limit);
-  const real = (
-    (data ?? []) as unknown as Parameters<typeof rowToStore>[0][]
-  ).map(rowToStore);
+  const real = listable(
+    ((data ?? []) as unknown as Parameters<typeof rowToStore>[0][]).map(
+      rowToStore,
+    ),
+  );
   // Featured (paid placement) floats above plain Pro.
   real.sort((a, b) => Number(b.featured ?? false) - Number(a.featured ?? false));
   if (!SHOW_DEMO_STORES) return markFavorites(real.slice(0, limit));

@@ -12,6 +12,7 @@ import { ChevronNext } from "@/components/ui/directional-icon";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import type { Completeness, CompletenessItem } from "@/lib/completeness";
+import type { QualityResult } from "@/lib/data-quality";
 import { publishStage, isFirstRun } from "@/lib/store-onboarding";
 import { SITE_URL } from "@/lib/site";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +55,7 @@ export function StoreChecklist({
   storeSlug,
   status,
   completeness,
+  quality,
 }: {
   lang: Locale;
   dict: Dictionary;
@@ -63,9 +65,46 @@ export function StoreChecklist({
   /** `stores.status` — admin-controlled. Read here, never written. */
   status: string;
   completeness: Completeness;
+  /** The public data quality gate's verdict (lib/data-quality.ts). Distinct
+   *  from completeness: that is the merchant's own to-do list, this is what
+   *  the platform checks before ranking the page. Optional so callers that
+   *  have not computed it render the checklist exactly as before. */
+  quality?: QualityResult;
 }) {
   const t = dict.merchant.checklist;
   const base = `/${lang}/merchant/${storeId}`;
+
+  // The gate's notes, drawn under every branch below. `blocked` is the one
+  // state a merchant must hear about in plain words: the page exists and
+  // answers its URL, but it is not in explore or search until this is fixed.
+  const qualityNotes =
+    quality && quality.issues.length > 0 ? (
+      <div
+        className={`mt-4 rounded-xl border p-3 ${
+          quality.level === "blocked"
+            ? "border-danger/30 bg-danger-soft/30"
+            : "border-border bg-surface"
+        }`}
+      >
+        <p className="text-sm font-bold">{dict.dataQuality.merchantHeading}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {quality.level === "blocked"
+            ? dict.dataQuality.merchantBlocked
+            : dict.dataQuality.merchantIncomplete}
+        </p>
+        <ul className="mt-2 space-y-1">
+          {quality.issues.map((issue) => (
+            <li
+              key={`${issue.code}:${issue.field}`}
+              className="flex items-center gap-2 text-xs font-semibold sm:text-sm"
+            >
+              <Circle className="h-3 w-3 shrink-0 text-muted-foreground" />
+              {dict.dataQuality.issues[issue.code]}
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null;
 
   // Labels are mapped explicitly rather than by indexing the dictionary with a
   // loose string: a new completeness item then cannot ship without its copy —
@@ -118,6 +157,7 @@ export function StoreChecklist({
           {t.addItems}
           <ChevronNext className="h-4 w-4" />
         </Link>
+        {qualityNotes}
       </div>
     );
   }
@@ -152,6 +192,7 @@ export function StoreChecklist({
             </Link>
           </div>
         </div>
+        {qualityNotes}
       </div>
     );
   }

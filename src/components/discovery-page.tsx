@@ -149,6 +149,8 @@ export async function DiscoveryPage({
                 "catalog",
                 "featured",
                 "discovery",
+                "trust",
+                "offering",
               ])}
               stores={result.stores}
               lbpRate={lbpRate}

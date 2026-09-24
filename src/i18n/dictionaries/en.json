@@ -1058,8 +1058,8 @@
       "upgradeBusiness": "Upgrade to Business",
       "seePlans": "See plans",
       "benefitsTitle": "What the plan adds",
-      "productLimitTitle": "You've reached the limit (3 products)",
-      "productLimitBody": "An unsubscribed store can list 3 products. Basic raises that to 30, Pro to 200, and Business has no limit."
+      "productLimitTitle": "You've reached the limit ({limit} products)",
+      "productLimitBody": "An unsubscribed store can list {freeProducts} products. Basic raises that to {basicProducts}, Pro to {proProducts}, and Business has no limit."
     },
     "serviceForm": {
       "title": "Add a new service",
@@ -1188,7 +1188,7 @@
     "finalSub": "Open your store free in minutes, and see the difference.",
     "seePricing": "See pricing",
     "entryReassure": [
-      "Opening a store is free — up to 3 products without paying anything",
+      "Opening a store is free — up to {freeProducts} products without paying anything",
       "No card, no bank details",
       "Your customer pays cash on delivery — the money never passes through us",
       "Share your store link on WhatsApp — that's where most of your customers come from"
@@ -2191,7 +2191,7 @@
     "subscription": {
       "title": "Store subscription",
       "trialBanner": "Free Pro trial — {days} days left. Subscribe to keep your Pro features.",
-      "startTrialTitle": "Try Pro free for 14 days",
+      "startTrialTitle": "Try Pro free for {days} days",
       "startTrialBody": "Activate your free trial instantly — every Pro feature unlocks and the countdown starts now. No card, no approval needed. Payment only comes up once the trial ends.",
       "startTrialCta": "Start free trial",
       "startTrialBusy": "Activating…",
@@ -3502,7 +3502,7 @@
     "countdown": "Offer ends in {n} days",
     "promoBadge": "Launch offer",
     "commission": "0% commission on sales",
-    "trialLine": "14 days free — no card",
+    "trialLine": "{days} days free — no card",
     "cta": "Open your store free",
     "everythingIn": "Everything in {plan}, plus:",
     "mo": "/mo",
@@ -3590,15 +3590,15 @@
     "goPro": "Go Pro",
     "perYear": "/year",
     "contactNote": "Payment is manual for now — contact us to activate Pro after payment.",
-    "freeTrial": "14-day free trial",
-    "trialBanner": "Try all Pro features free for 14 days — no card, no commitment.",
+    "freeTrial": "{days}-day free trial",
+    "trialBanner": "Try all Pro features free for {days} days — no card, no commitment.",
     "faqTitle": "Frequently asked questions",
     "faq": [
-      { "q": "Is opening a store free?", "a": "Yes — creating your store and account is free, and you get a full 14-day trial with no card. The plan is only for the extra features." },
-      { "q": "What's the difference between the three plans?", "a": "Basic to start (up to 30 products), Pro for active shops (POS, sales and profit reports, the customer book, offers, and we build the store with you), and Business for chains & branches (inventory, kitchen, suppliers, accounting, automation, campaigns, attendance & payroll). Your store page, orders and bookings are on every plan — Pro and Business add the management screens behind them." },
+      { "q": "Is opening a store free?", "a": "Yes — creating your store and account is free, and you get a full {days}-day trial with no card. The plan is only for the extra features." },
+      { "q": "What's the difference between the three plans?", "a": "Basic to start (up to {basicProducts} products), Pro for active shops (POS, sales and profit reports, the customer book, offers, and we build the store with you), and Business for chains & branches (inventory, kitchen, suppliers, accounting, automation, campaigns, attendance & payroll). Your store page, orders and bookings are on every plan — Pro and Business add the management screens behind them." },
       { "q": "Do I need Pro to take bookings?", "a": "No. Appointments, table reservations, classes and court slots work on every plan, including a store that never subscribed. Pro adds the team page and the reports on top of them." },
       { "q": "Does paying make my store verified?", "a": "No. Every store is reviewed before it goes live, on any plan. The verified badge is a separate, stricter check of a business's documents — no plan buys it, and it has not been awarded to anyone yet." },
-      { "q": "How long does the annual offer last?", "a": "The annual promo prices ($75 / $150 / $300) run for a limited time — the countdown above shows how long is left. After that, annual reverts to the standard yearly price." },
+      { "q": "How long does the annual offer last?", "a": "The annual promo prices (${basicAnnual} / ${proAnnual} / ${businessAnnual}) run for a limited time — the countdown above shows how long is left. After that, annual reverts to the standard yearly price." },
       { "q": "Is there a commission on sales?", "a": "Never — Matjar takes 0% commission on your orders, on any plan. Only the plan subscription." },
       { "q": "Can I change or cancel my plan?", "a": "Of course — upgrade, downgrade, or cancel anytime, and your store and products stay." },
       { "q": "How do I pay?", "a": "Payment is manual for now — request the plan from your store dashboard and we'll contact you to activate it. Online payment is coming soon." }
@@ -3661,6 +3661,44 @@
     "supportTitle": "Support",
     "supportBody": "Have a question or a problem? Reach out and we'll reply as soon as possible.",
     "contactCta": "Contact us"
+  },
+  "trust": {
+    "groupLabel": "Verification badges",
+    "sectionTitle": "What each badge means",
+    "sectionIntro": "Every badge on Matjar states one specific thing we checked, and tapping it brings you here. This is what each one means — and what it does not.",
+    "checked": "What we checked",
+    "limits": "What it does not mean",
+    "nobodyYet": "No business has earned this badge yet.",
+    "kinds": {
+      "registration": {
+        "label": "Registration confirmed",
+        "aria": "Commercial registration confirmed by the Matjar team — tap to see what we checked",
+        "heading": "Commercial registration confirmed",
+        "body": "The merchant entered their commercial registration number in their store settings, and a member of the Matjar team reviewed the number by hand and confirmed it before this badge appeared. The number is not shown to customers.",
+        "limits": "This is a manual review by our team, not an automated lookup in the official registry. It does not mean we vouch for the quality of the goods or the service."
+      },
+      "documents": {
+        "label": "Verified document",
+        "aria": "A licence or certificate reviewed by the Matjar team — tap to see what we checked",
+        "heading": "Verified licence or certificate",
+        "body": "The merchant uploaded a document — a licence, certificate, accreditation or award — and the Matjar team opened it, followed its verification link when there was one, and approved it. The badge appears only when at least one document has been approved. Documents not yet reviewed appear on the store page marked \"not reviewed\".",
+        "limits": "We review the document itself; we do not contact the body that issued it. An expired document is marked \"expired\". The badge does not mean we vouch for the work."
+      },
+      "identity": {
+        "label": "Reviewed by Matjar",
+        "aria": "Account reviewed by hand by the Matjar team — tap to see what we checked",
+        "heading": "Account reviewed by the Matjar team",
+        "body": "In the crafts and freelance sections, this badge is awarded only after a member of the Matjar team has reviewed the account and the services on it by hand and confirmed it. Nobody can award it to themselves.",
+        "limits": "The app does not collect an official ID document, so the badge means a review by our team, not a government identity check. It does not mean we vouch for their work."
+      }
+    },
+    "paid": {
+      "label": "Pro",
+      "title": "Paid plan",
+      "heading": "The Pro badge",
+      "body": "Pro means the merchant subscribes to a paid plan that gives their store extra features. It is a plan they buy, not a certificate from us.",
+      "limits": "A subscription awards no verification badge. Every verification badge above is awarded only after a review by our team, and no plan buys it."
+    }
   },
   "contactPage": {
     "intro": "For inquiries or support, reach out — we reply as soon as possible."
@@ -4174,7 +4212,7 @@
       },
       {
         "q": "Is Matjar free to use?",
-        "a": "Yes — browsing and buying are completely free. Opening a store is free too: without a subscription you can list 3 products and still take orders and bookings, with no commission on your sales. A paid plan raises the product limit and adds the management screens."
+        "a": "Yes — browsing and buying are completely free. Opening a store is free too: without a subscription you can list {freeProducts} products and still take orders and bookings, with no commission on your sales. A paid plan raises the product limit and adds the management screens."
       }
     ],
     "contactCta": "Still have a question? Contact us"
@@ -4223,7 +4261,22 @@
     "fulfillmentTitle": "Delivery & pickup",
     "fulfillmentDelivery": "Delivery to your address is available.",
     "fulfillmentPickup": "You can pick it up from the shop.",
-    "contactLead": "This one isn't ordered online — visit the store page and get in touch."
+    "contactLead": "This one isn't ordered online — visit the store page and get in touch.",
+    "cardBadge": {
+      "product": "Product",
+      "service": "Service",
+      "dish": "Dish"
+    },
+    "priceOnConsult": "Price after consultation",
+    "priceFrom": "From",
+    "durationShort": "{n} min",
+    "scanToBook": "Scan to book · matjarlb.com",
+    "soldOut": {
+      "product": "Out of stock",
+      "service": "Not available right now",
+      "dish": "Not available right now"
+    },
+    "notAddable": "This one can't go in a cart — it's booked, or you get in touch with the store."
   },
   "productQa": {
     "title": "Questions & answers",
@@ -4564,8 +4617,8 @@
   "professional": {
     "trust": {
       "hint": "Tap a badge to see what it means",
-      "identity": "ID verified",
-      "identityWhy": "We checked their ID and it matches the name they work under.",
+      "identity": "Reviewed by Matjar",
+      "identityWhy": "A member of the Matjar team reviewed this account and the services on it by hand and confirmed it. The app does not collect an official ID document, so this is a review by our team, not a government identity check.",
       "phone": "Phone confirmed",
       "phoneWhy": "We sent a code to the number and they confirmed it, so it works and it is theirs.",
       "credential": "Trade certificate",
@@ -4975,6 +5028,110 @@
       "north": "North",
       "south": "South",
       "bekaa": "Bekaa"
+    }
+  },
+  "dataQuality": {
+    "adminHeading": "Data quality",
+    "blockedApprove": "This store can't be approved until these issues are fixed",
+    "merchantHeading": "Complete your store details",
+    "merchantBlocked": "Your store won't appear in search and browsing until you fix:",
+    "merchantIncomplete": "Your store is visible, but customers will trust it more once you add:",
+    "levels": {
+      "ok": "Complete",
+      "incomplete": "Incomplete",
+      "blocked": "Held"
+    },
+    "issues": {
+      "name_missing": "No store name",
+      "name_placeholder": "The name looks like a test name",
+      "name_digits_only": "The name is only digits",
+      "name_untrimmed": "Extra spaces at the start or end of the name",
+      "name_edge_punctuation": "Punctuation at the start or end of the name",
+      "name_garbled": "The name contains unreadable characters",
+      "category_missing": "No category",
+      "location_missing": "No area or service area",
+      "contact_missing": "No phone or WhatsApp number",
+      "contact_invalid": "The contact number is not valid",
+      "description_missing": "No description",
+      "description_placeholder": "The description looks like placeholder text",
+      "image_missing": "No logo or cover photo",
+      "offerings_missing": "No products or services yet",
+      "price_invalid": "The price is not valid",
+      "price_zero": "The price is zero",
+      "discount_not_lower": "The sale price is not lower than the original",
+      "kind_mismatch": "The item type doesn't fit the store's sector"
+    }
+  },
+  "features": {
+    "status": {
+      "available": "Available",
+      "beta": "Beta",
+      "coming_soon": "Coming soon",
+      "internal": "Not available",
+      "disabled": "Not available"
+    },
+    "requiresPlan": "Requires the {plan} plan",
+    "pendingNote": "This section is browse and contact only for now — {items}: {status}. To ask or book, contact the store.",
+    "desc": {
+      "storePage": "Your store page on Matjar, in Arabic and English, with a short link and QR code.",
+      "discovery": "Your store appears in the directory, search results and the map.",
+      "products": "Add your products or services with photos and prices, within your plan's limit.",
+      "whatsappOrders": "Orders reach your dashboard and the customer over WhatsApp; payment is cash on delivery.",
+      "dualCurrency": "Prices in USD and LBP at an exchange rate you set.",
+      "bookings": "Appointments, table reservations, classes and court slots in one calendar.",
+      "messaging": "A direct conversation between the customer and your store inside the platform.",
+      "reviews": "Customer ratings, reviews and questions on your store page.",
+      "documents": "Upload your licences and certificates to show on your store page.",
+      "moduleManager": "Switch your store's modules on or off to fit your business.",
+      "qrLink": "A short link and QR code for your store, to print and share.",
+      "academy": "Short, practical guides to run and grow your store.",
+      "staffSeats": "How many accounts can work on your store, by plan.",
+      "support": "Support over chat and WhatsApp, at a level that rises with the plan.",
+      "commission": "No commission on your sales, on any plan.",
+      "onboarding": "We build your store with you: uploading products and setting things up.",
+      "staffAccounts": "Accounts for your staff with specific permissions (orders, bookings, products).",
+      "pos": "Sell in the shop straight from your dashboard, with barcode and receipt.",
+      "reports": "What you sold, what it cost you, and what you kept, in numbers.",
+      "profitAnalytics": "Cost of goods and profit margin per product, inside the reports screen.",
+      "customers": "Your customer book: what they ordered and how to reach them again.",
+      "coupons": "Coupons, offers and loyalty points for your customers.",
+      "team": "A page for your team and providers, with each one's services.",
+      "tasks": "Daily tasks for you and your team inside the store dashboard.",
+      "tools": "Calculators and generators for the shop's daily arithmetic.",
+      "courierDispatch": "Send an order to a delivery company from the orders screen.",
+      "homeFeatured": "A place for your store in the featured strip on the home page.",
+      "branches": "Multiple branches with their addresses and hours under one store.",
+      "inventory": "Stock counts and a warning before any item runs out.",
+      "kitchen": "Kitchen display: orders shown in sequence and completed one by one.",
+      "suppliers": "Your suppliers and what you owe each of them.",
+      "accounting": "A simple ledger for expenses and revenue.",
+      "automations": "Rules that run on their own: a message on order, a reminder before the appointment.",
+      "campaigns": "Message campaigns to your customers.",
+      "hr": "Attendance, payroll and leave for your staff.",
+      "verifiedBadge": "A badge awarded after a stricter review of the business's documents. No plan buys it.",
+      "rentals": "Day-based vehicle rental with double-booking prevented.",
+      "onlinePayment": "Online payment for orders and subscriptions.",
+      "nativeApp": "The Matjar app on the Apple and Google stores.",
+      "menu": "A sectioned menu on your store page.",
+      "catalog": "The products or services grid on your store page.",
+      "listings": "Listings with detailed attributes (property, cars).",
+      "orders": "Cart, order and tracking from the store page.",
+      "delivery": "Delivery zones, minimum order and preparation time.",
+      "appointments": "Booking an appointment from the store page on the provider's calendar.",
+      "reservations": "Reserving a table from the restaurant's page.",
+      "timeslot": "Booking a court or room by the hour.",
+      "classes": "The class timetable and enrolment.",
+      "courses": "Courses, tutors and enrolment.",
+      "memberships": "Recurring membership plans.",
+      "requests": "A service request or quote from the store page.",
+      "leads": "Request a viewing, a test drive or make an offer from the listing.",
+      "stays": "Search and book a stay by check-in and check-out dates.",
+      "tickets": "Buying event tickets from the organiser's page.",
+      "portfolio": "A showcase of past work on the store page.",
+      "verifications": "Licences and certificates shown on the store page.",
+      "marketing": "Offers, coupons and loyalty points on the store page.",
+      "location": "The store's map pin, branches and distance.",
+      "media": "The photo gallery and cover."
     }
   }
 }

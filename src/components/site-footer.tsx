@@ -6,6 +6,7 @@ import { Container } from "@/components/ui/container";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import type { NavSections } from "@/lib/data/section-supply";
 import { SUPPORT_WHATSAPP, supportWaLink } from "@/lib/support";
+import { featureCopy, featureStatus } from "@/lib/feature-availability";
 
 export function SiteFooter({
   lang,
@@ -19,7 +20,14 @@ export function SiteFooter({
   sections: NavSections;
 }) {
   const L = dict.footer.links;
-  const soon = lang === "ar" ? "قريباً" : "Soon";
+  // The two app-store badges stand for ONE feature — `nativeApp` in the
+  // availability registry — and the word on them is the registry's, not this
+  // file's. The day the app is submitted the registry flips and the badge
+  // vanishes here without anyone remembering the footer had its own "Soon".
+  // (The section links below are gated on SUPPLY, not on feature status: a
+  // vertical with no rows is hidden, never labelled — see section-supply.ts.)
+  const app = featureStatus("nativeApp");
+  const appBadge = app.status === "available" ? null : featureCopy(app.status, dict);
 
   // `on` is written per link rather than filtered after the fact so that the
   // gate is visible at the point where the link is declared — the failure mode
@@ -225,9 +233,11 @@ export function SiteFooter({
                       {b.name}
                     </span>
                   </span>
-                  <span className="absolute -end-1.5 -top-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[11px] font-extrabold text-primary-foreground">
-                    {soon}
-                  </span>
+                  {appBadge && (
+                    <span className="absolute -end-1.5 -top-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[11px] font-extrabold text-primary-foreground">
+                      {appBadge}
+                    </span>
+                  )}
                 </span>
               ))}
             </div>

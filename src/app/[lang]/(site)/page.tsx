@@ -136,7 +136,7 @@ export default async function Home({
           is why it can sit above the real-store rail without risking a gap. */}
       <ForYouStrip
         lang={lang}
-        dict={dictSlice(dict, ["home", "catalog", "explore", "featured"])}
+        dict={dictSlice(dict, ["home", "catalog", "explore", "featured", "trust"])}
       />
 
       {/* Not "near you": only a minority of live stores have coordinates and

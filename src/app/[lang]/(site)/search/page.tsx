@@ -309,11 +309,14 @@ export default async function SearchPage({
 
             {products.length > 0 && (
               <section aria-labelledby="sec-products">
+                {/* The fuzzy RPC matches services as readily as goods (a
+                    clinic's أشعة is a `products` row), so the heading says
+                    both on every width — the phone label already did. */}
                 <KindHeading
                   id="sec-products"
                   icon={Package}
                   label={t.kindProducts}
-                  desktopLabel={t.products}
+                  desktopLabel={t.kindProducts}
                   count={products.length}
                 />
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
@@ -329,6 +332,12 @@ export default async function SearchPage({
                       imageUrl={p.imageUrl}
                       storeName={p.storeName}
                       lbpRate={lbpRate}
+                      offering={{
+                        itemKind: p.itemKind,
+                        category: p.category,
+                        durationMinutes: p.durationMinutes,
+                      }}
+                      copy={dict.offering}
                     />
                   ))}
                 </div>

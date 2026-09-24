@@ -9,6 +9,11 @@ import type { ItemSurface } from "@/lib/store-experience";
 import { attributeSummary } from "@/lib/attributes";
 import { waLink } from "@/lib/whatsapp";
 import { parseHours } from "@/lib/hours";
+import {
+  featureCopy,
+  featureLabel,
+  sectorPendingCapabilities,
+} from "@/lib/feature-availability";
 import { StoreProducts } from "@/components/store-products";
 import type { CheckoutViewer, StoreCheckout } from "@/lib/checkout";
 import type { DoctorView } from "@/components/store/store-doctors";
@@ -87,6 +92,19 @@ export function StoreProductsSection({
     canOrderProducts &&
     goods.length > 0 &&
     checkout != null;
+
+  // What THIS sector's bundle promises that its storefront cannot deliver yet,
+  // from the availability registry — empty for any sector that is not held in
+  // directory-only mode, so the note below cannot render where nothing is
+  // pending. The label per item is the same string /pricing and the module
+  // manager print for it; the status word is the registry's one word.
+  const pending = directoryOnly ? sectorPendingCapabilities(store.category) : [];
+  const pendingNote =
+    pending.length > 0
+      ? dict.features.pendingNote
+          .replace("{items}", pending.map((c) => featureLabel(c, dict)).join(" · "))
+          .replace("{status}", featureCopy("coming_soon", dict))
+      : null;
 
   return (
     <>
@@ -178,16 +196,28 @@ export function StoreProductsSection({
             />
           ) : (
             /* Catalog surface: browse-only listing + contact via the header.
-               Used by directory-only sectors (hotels/real-estate/cars/events)
-               whose real transaction engine is not built yet, and by service
-               sectors whose primary action is the request form above. No cart,
-               no wrong booking flow. */
+               Used by directory-only sectors (today: real estate — see
+               DIRECTORY_ONLY_SECTORS in store-experience.ts) whose transaction
+               engine is not switched on yet, and by service sectors whose
+               primary action is the request form above. No cart, no wrong
+               booking flow.
+
+               The note under it used to be one fixed sentence promising
+               "booking and direct purchase coming soon" to every directory-only
+               sector, whether or not that sector's bundle contains a cart at
+               all (real estate's does not). It now names exactly the
+               capabilities the availability registry reports as pending for
+               THIS sector, and prints the registry's word for their state —
+               so it cannot promise a flat in a shopping basket, and it stops
+               rendering the moment the sector leaves directory-only mode. */
             <>
-              {directoryOnly && (
+              {directoryOnly && (pendingNote || store.whatsapp) && (
                 <div className="mb-4 rounded-xl border border-border bg-surface-muted/50 px-4 py-3">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {dict.store.comingSoonNote}
-                  </p>
+                  {pendingNote && (
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {pendingNote}
+                    </p>
+                  )}
                   {store.whatsapp && (
                     <a
                       href={waLink(

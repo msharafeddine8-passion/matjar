@@ -134,6 +134,68 @@ export function productJsonLd(opts: {
   return data;
 }
 
+/** One offering row, typed by what it IS rather than by the table it sits in.
+ *
+ *  Every row of `products` used to be emitted as a schema.org Product with an
+ *  `InStock` availability and the store as its `brand` — so a clinic's أشعة
+ *  told Google it was an in-stock product branded by the clinic. The noun comes
+ *  from the offering resolver (src/lib/offering.ts) and picks the type:
+ *
+ *  - product → Product (unchanged: offer, availability, brand, rating)
+ *  - service → Service, provided by the store (LocalBusiness). An Offer only
+ *    when the merchant priced it; never an availability, never a brand.
+ *  - dish    → MenuItem with its Offer. No availability: a kitchen runs out,
+ *    it does not carry inventory.
+ *
+ *  Pure — the caller resolves the noun; this maps it. */
+export function offeringJsonLd(opts: {
+  noun: "product" | "service" | "dish";
+  name: string;
+  description?: Nullable<string>;
+  image?: Nullable<string>;
+  url: string;
+  /** null/0 = the merchant entered no price (a service priced after the
+   *  consultation). No Offer is emitted for it — never a placeholder 0. */
+  price: number | null;
+  storeName?: Nullable<string>;
+  /** Goods only; ignored for a service or a dish. */
+  available?: boolean;
+  rating?: Nullable<number>;
+  reviewCount?: Nullable<number>;
+}) {
+  if (opts.noun === "product") {
+    return productJsonLd({ ...opts, price: opts.price ?? 0 });
+  }
+  const data: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": opts.noun === "service" ? "Service" : "MenuItem",
+    name: opts.name,
+    url: opts.url,
+  };
+  if (opts.description) data.description = opts.description;
+  if (opts.image) data.image = opts.image;
+  if (opts.noun === "service" && opts.storeName) {
+    data.provider = { "@type": "LocalBusiness", name: opts.storeName };
+  }
+  if (opts.price != null && opts.price > 0) {
+    data.offers = {
+      "@type": "Offer",
+      price: opts.price,
+      priceCurrency: "USD",
+      url: opts.url,
+    };
+  }
+  if (opts.rating && opts.reviewCount) {
+    data.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: Number(opts.rating.toFixed(1)),
+      reviewCount: opts.reviewCount,
+      bestRating: 5,
+    };
+  }
+  return data;
+}
+
 // Google Jobs rich result: a JobPosting per /jobs/[id]. Google requires title,
 // description, datePosted and hiringOrganization; jobLocation (or a TELECOMMUTE
 // type for remote roles) is strongly recommended. Our `salary_note` is free text

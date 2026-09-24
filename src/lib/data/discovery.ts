@@ -13,6 +13,7 @@ import { isOpenNow, parseHours } from "@/lib/hours";
 import type { StorePlan } from "@/lib/plan-tiers";
 import { FETCH_BOUNDS, warnIfTruncated } from "./bounds";
 import { followedAmong } from "./stores";
+import { sanitizeDisplayName, validateStorePublic } from "@/lib/data-quality";
 import {
   DISCOVERY_PAGE_SIZE,
   EMPTY_COVERAGE,
@@ -40,8 +41,10 @@ export type DiscoveryResult = {
   pageCount: number;
 };
 
+// phone / whatsapp / service_area are selected for the data quality gate
+// only (lib/data-quality.ts); the card renders none of them.
 const STORE_SELECT =
-  "id, name, description, area, region, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, created_at, business_types!inner(slug)";
+  "id, name, description, area, region, phone, whatsapp, service_area, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, created_at, business_types!inner(slug)";
 
 type StoreRow = {
   id: string;
@@ -49,6 +52,9 @@ type StoreRow = {
   description: string | null;
   area: string | null;
   region: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  service_area?: string | null;
   plan: StorePlan | null;
   is_verified: boolean | null;
   commercial_reg_verified: boolean | null;
@@ -65,11 +71,37 @@ type StoreRow = {
   business_types: { slug: string } | null;
 };
 
+/** The public data quality gate (lib/data-quality.ts): a `blocked` row —
+ *  no usable name, or no way to contact the business — is not ranked on
+ *  /explore. Its own page still answers; the admin roster says why. Nothing
+ *  on production is blocked today; this holds the next one. */
+function isListable(row: StoreRow): boolean {
+  return (
+    validateStorePublic(
+      {
+        name: row.name,
+        category: row.business_types?.slug ?? null,
+        area: row.area,
+        service_area: row.service_area,
+        region: row.region,
+        phone: row.phone,
+        whatsapp: row.whatsapp,
+        description: row.description,
+        logo_url: row.logo_url,
+        cover_url: row.cover_url,
+      },
+      { sector: toCategoryKey(row.business_types?.slug) },
+    ).level !== "blocked"
+  );
+}
+
 function rowToStore(row: StoreRow): Store {
   const ratingAvg = row.rating_avg != null ? Number(row.rating_avg) : 0;
+  // Render-only: the stored name keeps its stray whitespace, the card does not.
+  const name = sanitizeDisplayName(row.name);
   return {
     id: row.id,
-    name: { ar: row.name, en: row.name },
+    name: { ar: name, en: name },
     area: { ar: row.area ?? "", en: row.area ?? "" },
     region: (row.region as RegionKey) ?? undefined,
     category: toCategoryKey(row.business_types?.slug, `store ${row.id}`),
@@ -341,7 +373,9 @@ export async function getDiscoveryResults(
   }
 
   const { data } = await query.limit(DISCOVERY_FETCH_LIMIT);
-  let list = ((data ?? []) as unknown as StoreRow[]).map(rowToStore);
+  let list = ((data ?? []) as unknown as StoreRow[])
+    .filter(isListable)
+    .map(rowToStore);
 
   if (q.openNow) list = list.filter((s) => s.isOpen);
 

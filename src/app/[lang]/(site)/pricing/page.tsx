@@ -10,6 +10,8 @@ import { Container } from "@/components/ui/container";
 import { PricingPlans } from "@/components/pricing-plans";
 import { FeatureRoadmap } from "@/components/feature-roadmap";
 import { PLAN_ORDER, PLAN_TIERS, promoState, type PlanKey } from "@/lib/plan-tiers";
+import { TRIAL_DAYS } from "@/lib/plan";
+import { fillPlanCopy, planCopy, planCopyVars } from "@/lib/plan-copy";
 import { PRICING_MATRIX, matrixCell, type FeatureId } from "@/lib/feature-availability";
 
 export async function generateMetadata({
@@ -20,10 +22,13 @@ export async function generateMetadata({
   const { lang } = await params;
   if (!isLocale(lang)) return {};
   const title = lang === "ar" ? "الأسعار والخطط" : "Pricing & plans";
-  const description =
+  // The trial length is a plan fact, so it is filled from plan.ts like every
+  // other plan number in copy (see lib/plan-copy.ts) — not typed in here.
+  const description = planCopy(
     lang === "ar"
-      ? "ثلاث خطط تناسب كل مرحلة — أساسية، احترافية، وأعمال. 0% عمولة على المبيعات، وتجربة مجانية ١٤ يوم."
-      : "Three plans for every stage — Basic, Pro, and Business. 0% commission on sales, with a 14-day free trial.";
+      ? "ثلاث خطط تناسب كل مرحلة — أساسية، احترافية، وأعمال. 0% عمولة على المبيعات، وتجربة مجانية {days} يوم."
+      : "Three plans for every stage — Basic, Pro, and Business. 0% commission on sales, with a {days}-day free trial.",
+  );
   return { title, description, alternates: localeAlternates(lang, "/pricing") };
 }
 
@@ -59,8 +64,20 @@ export default async function PricingPage({
   const lbpRate = await getUsdLbpRate();
   // Reading cookies above makes this route dynamic, so `new Date()` is per
   // request — the promo flips off automatically after PROMO_END.
-  const { active: promoActive, daysLeft } = promoState(new Date());
+  const now = new Date();
+  const { active: promoActive, daysLeft } = promoState(now);
   const t = dict.pricing;
+
+  // The FAQ names the promo prices, the trial length and the Basic product cap.
+  // None of those numbers live in the dictionary any more: the strings carry
+  // placeholders and plan-copy fills them from PLAN_TIERS / TRIAL_DAYS, promo-
+  // resolved for this request — so the FAQ cannot drift from the cards above.
+  // An answer that quotes the promo prices only makes sense while the promo is
+  // running (it points at "the countdown above"), so it is dropped after PROMO_END.
+  const copyVars = planCopyVars(now);
+  const faq = t.faq
+    .filter((f) => promoActive || !/\{(basic|pro|business)Annual\}/.test(f.a))
+    .map((f) => ({ q: fillPlanCopy(f.q, copyVars), a: fillPlanCopy(f.a, copyVars) }));
 
   // Every cell is computed, never typed in. Ticks come from the plan floor the
   // merchant screens actually enforce (feature-availability.ts checks each floor
@@ -103,6 +120,7 @@ export default async function PricingPage({
             plans={PLAN_TIERS}
             promoActive={promoActive}
             daysLeft={daysLeft}
+            trialDays={TRIAL_DAYS}
             ctaHref={ctaHref}
             lbpRate={lbpRate}
           />
@@ -162,7 +180,7 @@ export default async function PricingPage({
             {t.faqTitle}
           </h2>
           <div className="mt-6 space-y-3">
-            {t.faq.map((f, i) => (
+            {faq.map((f, i) => (
               <div
                 key={i}
                 className="rounded-2xl border border-border bg-surface p-5"

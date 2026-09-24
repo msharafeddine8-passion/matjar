@@ -2,10 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Star,
-  BadgeCheck,
   Navigation,
   Sparkles,
-  Landmark,
   Package,
   Percent,
   Users,
@@ -16,8 +14,8 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import { categoryStyles, type FeaturedStore } from "@/lib/catalog";
 import { resolveCardFacts, type StoreFactSource } from "@/lib/discovery";
 import { categoryIcons } from "@/components/category-icon";
-import { ProBadge } from "@/components/pro-badge";
-import { hasPlan } from "@/lib/plan-tiers";
+import { PaidPlanBadge, TrustBadges } from "@/components/trust-badges";
+import { resolvePaidStatus, resolveStoreTrust } from "@/lib/trust";
 import { NEUTRAL_BLUR } from "@/lib/image-placeholder";
 import { FavoriteButton } from "@/components/favorite-button";
 
@@ -33,7 +31,7 @@ export function StoreCard({
 }: {
   store: FeaturedStore;
   lang: Locale;
-  dict: Pick<Dictionary, "catalog" | "explore" | "featured">;
+  dict: Pick<Dictionary, "catalog" | "explore" | "featured" | "trust">;
   /** Real, per-store counts. A card renders a decision field only when the
    *  page has actually counted one — there is no placeholder and no estimate. */
   facts?: StoreFactSource;
@@ -51,6 +49,14 @@ export function StoreCard({
   // anything to say. Nothing here is invented — an absent field is absent.
   const cardFacts =
     facts && factsDict ? resolveCardFacts(store.category, facts) : [];
+  // Paid status and trust status, resolved apart and drawn apart. `verified`
+  // (stores.is_verified) is handed in and ignored by the resolver on purpose —
+  // see lib/trust.ts for what that column turned out to mean.
+  const trust = resolveStoreTrust({
+    isVerified: store.verified,
+    commercialRegVerified: store.registered,
+  });
+  const paid = resolvePaidStatus(store.plan);
 
   return (
     <article className="group relative overflow-hidden rounded-2xl border border-border bg-surface transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md">
@@ -140,19 +146,8 @@ export function StoreCard({
           >
             {store.name[lang]}
           </h3>
-          {hasPlan(store.plan, "pro") && <ProBadge />}
-          {store.verified && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold text-primary">
-              <BadgeCheck className="h-3 w-3" />
-              {dict.featured.verified}
-            </span>
-          )}
-          {store.registered && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold text-success">
-              <Landmark className="h-3 w-3" />
-              {dict.featured.registered}
-            </span>
-          )}
+          {paid.showsProMarker && <PaidPlanBadge dict={dict} lang={lang} />}
+          <TrustBadges signals={trust} dict={dict} lang={lang} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
           {cat.name} · {store.area[lang]}
