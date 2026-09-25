@@ -100,6 +100,8 @@ export function productJsonLd(opts: {
   url: string;
   price: number;
   storeName?: Nullable<string>;
+  /** `products.brand`, when the merchant recorded one. */
+  brand?: Nullable<string>;
   available?: boolean;
   rating?: Nullable<number>;
   reviewCount?: Nullable<number>;
@@ -122,7 +124,12 @@ export function productJsonLd(opts: {
   };
   if (opts.description) data.description = opts.description;
   if (opts.image) data.image = opts.image;
-  if (opts.storeName) data.brand = { "@type": "Brand", name: opts.storeName };
+  // The product's own brand when the merchant typed one (a shop reselling
+  // Nivea is not the brand of it); the store's name otherwise, which is what
+  // the page already presents as the seller. Same rule as the Google feed's
+  // g:brand (lib/google-feed.ts), so the two never disagree about one item.
+  const brand = opts.brand?.trim() || opts.storeName;
+  if (brand) data.brand = { "@type": "Brand", name: brand };
   if (opts.rating && opts.reviewCount) {
     data.aggregateRating = {
       "@type": "AggregateRating",
@@ -158,6 +165,8 @@ export function offeringJsonLd(opts: {
    *  consultation). No Offer is emitted for it — never a placeholder 0. */
   price: number | null;
   storeName?: Nullable<string>;
+  /** Goods only: `products.brand`. A service or a dish carries no brand. */
+  brand?: Nullable<string>;
   /** Goods only; ignored for a service or a dish. */
   available?: boolean;
   rating?: Nullable<number>;

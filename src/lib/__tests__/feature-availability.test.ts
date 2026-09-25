@@ -347,7 +347,9 @@ describe("the dictionaries hold no hand-written claim lists", () => {
         (d.os as { modules: { labels: Record<string, string> } }).modules
       ).labels;
 
-      for (const id of ALL_FEATURE_IDS)
+      // A feature with its own `copy` paths is labelled in its own namespace;
+      // feature-availability-ssot.test.ts resolves those paths in both files.
+      for (const id of ALL_FEATURE_IDS.filter((f) => !FEATURES[f].copy))
         expect(features[id], `${locale}.json has no label for feature "${id}"`).toBeTruthy();
       for (const key of CAPABILITY_ORDER)
         expect(modules[key], `${locale}.json has no label for capability "${key}"`).toBeTruthy();

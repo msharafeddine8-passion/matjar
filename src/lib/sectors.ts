@@ -46,6 +46,7 @@ import {
   Images,
   BookOpen,
   Inbox,
+  NotebookPen,
 } from "lucide-react";
 import type { CategoryKey } from "./catalog";
 import { categoryModule } from "./modules";
@@ -77,6 +78,7 @@ export type OsModuleKey =
   | "items"
   | "doctors"
   | "customers"
+  | "ledger"
   | "campaigns"
   | "staff"
   | "hr"
@@ -109,7 +111,7 @@ export const OS_MODULE_META: Record<
     Icon: LucideIcon;
     path: string;
     ownerOnly?: boolean;
-    perm?: "orders" | "bookings" | "products";
+    perm?: "orders" | "bookings" | "products" | "customers";
     /** Minimum paid tier to open this module (stores below see a lock +
      *  upsell). Absent = available on every plan. */
     minPlan?: "pro" | "business";
@@ -139,6 +141,11 @@ export const OS_MODULE_META: Record<
   items: { Icon: Package, path: "items", perm: "products" },
   doctors: { Icon: Stethoscope, path: "doctors", perm: "bookings", minPlan: "pro" },
   customers: { Icon: Users, path: "customers", perm: "orders", minPlan: "pro" },
+  // دفتر الدين. No minPlan: free on every plan (FEATURES.debtLedger). Gated on
+  // the `customers` staff permission — the exact key the database has used for
+  // customer_transactions and store_customers since 0211 — so the nav shows it
+  // to precisely the staff the RLS lets read it. The owner always sees it.
+  ledger: { Icon: NotebookPen, path: "ledger", perm: "customers" },
   campaigns: { Icon: Megaphone, path: "campaigns", perm: "orders", minPlan: "business" },
   staff: { Icon: UserCog, path: "staff", ownerOnly: true, minPlan: "pro" },
   // Owner-only regardless of plan tier: this screen shows every salary in the
@@ -182,10 +189,14 @@ export type SectorConfig = {
   modules: Record<OsGroupKey, OsModuleKey[]>;
 };
 
-const MONEY: OsModuleKey[] = ["accounting", "reports", "coupons", "subscription"];
+// `ledger` (دفتر الدين — what customers owe the shop) leads the money group in
+// every sector: it is the one money screen that is free on every plan, so on a
+// free store it is the first unlocked row rather than one buried under locks.
+const MONEY: OsModuleKey[] = ["ledger", "accounting", "reports", "coupons", "subscription"];
 const STORE: OsModuleKey[] = ["tools", "branches", "verifications", "modules", "edit", "settings"];
 // Real estate has no goods suppliers; every other sector tracks supplier debts.
 const MONEY_WITH_SUPPLIERS: OsModuleKey[] = [
+  "ledger",
   "accounting",
   "suppliers",
   "reports",

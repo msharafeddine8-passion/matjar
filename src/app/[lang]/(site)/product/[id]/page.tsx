@@ -746,6 +746,7 @@ export default async function ProductPage({
               url: `${SITE_URL}/${lang}/product/${id}`,
               price: priceLabel === "onConsult" ? null : basePrice,
               storeName: product.storeName,
+              brand: product.brand,
               available: !soldOut,
               rating: productReviews.avg,
               reviewCount: productReviews.count,

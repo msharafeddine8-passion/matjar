@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Truck, Store, Wallet, Clock, ShoppingBasket, RotateCcw } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -22,6 +23,7 @@ export function StoreFulfillment({
   prepTime,
   paymentNote,
   returnPolicy,
+  policiesHref = null,
   zones,
   couriers,
   dict,
@@ -33,6 +35,8 @@ export function StoreFulfillment({
   prepTime: string | null;
   paymentNote: string | null;
   returnPolicy: string | null;
+  /** Link to the store's public policies page, when the caller has one. */
+  policiesHref?: string | null;
   zones: DeliveryZone[];
   couriers: CourierOption[];
   dict: Dictionary;
@@ -188,6 +192,18 @@ export function StoreFulfillment({
             ))}
           </ul>
         </div>
+      )}
+
+      {/* The full policies page (/store/<id>/policies) — the address a shop
+          gives Google Merchant Center and Meta. Only linked when there is a
+          policy to show, so the link never lands on a 404. */}
+      {policiesHref && returnPolicy && (
+        <Link
+          href={policiesHref}
+          className="mt-4 inline-block text-sm font-semibold text-primary underline-offset-4 hover:underline"
+        >
+          {dict.googleFeed.storeLink}
+        </Link>
       )}
     </section>
   );

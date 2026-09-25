@@ -605,6 +605,7 @@ export default async function StorePage({
         prepTime={store.prepTime ?? null}
         paymentNote={store.paymentNote ?? null}
         returnPolicy={store.returnPolicy ?? null}
+        policiesHref={UUID_RE.test(id) ? `/${lang}/store/${id}/policies` : null}
         zones={zones}
         couriers={couriers}
         dict={dict}

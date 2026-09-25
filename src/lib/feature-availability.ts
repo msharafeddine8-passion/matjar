@@ -260,6 +260,7 @@ export type FeatureId =
   | "staffSeats"
   | "support"
   | "commission"
+  | "debtLedger"
   // Pro
   | "onboarding"
   | "staffAccounts"
@@ -273,6 +274,7 @@ export type FeatureId =
   | "tools"
   | "courierDispatch"
   | "homeFeatured"
+  | "googleFeed"
   // Business
   | "branches"
   | "inventory"
@@ -306,7 +308,22 @@ export type FeatureEntry = {
   /** Where to look in the repo to confirm this entry. Kept because the whole
    *  point of the file is that a reader can check it, not trust it. */
   evidence: string;
+  /** Dictionary paths for a feature whose words live in its own namespace
+   *  rather than under `pricing.features` / `features.desc`. Such a feature is
+   *  not a /pricing row (see PricedFeatureId) until it is given a
+   *  `pricing.features` label as well. */
+  copy?: { label: string; description: string };
 };
+
+/** Features that carry their own dictionary copy (`FeatureEntry.copy`) and so
+ *  have no `pricing.features` label. Kept out of the lists the price surfaces
+ *  render straight from `dict.pricing.features[id]`, so the compiler refuses a
+ *  pricing row that would print `undefined`. */
+export type OwnCopyFeatureId = "googleFeed" | "debtLedger";
+
+/** The features a price card, the /pricing table or the upgrade prompt may
+ *  list — every one of them labelled under `pricing.features`. */
+export type PricedFeatureId = Exclude<FeatureId, OwnCopyFeatureId>;
 
 export const FEATURES: Record<FeatureId, FeatureEntry> = {
   // ── Every store ──────────────────────────────────────────────────────────
@@ -419,6 +436,20 @@ export const FEATURES: Record<FeatureId, FeatureEntry> = {
     cell: "commission",
     evidence: "no commission is taken anywhere in the order path",
   },
+  // دفتر الدين — the customer credit book. Free on every plan on purpose: it is
+  // the reason a shop that still keeps a paper notebook opens Matjar at all.
+  // Deliberately NOT behind the Pro `customers` module: the screen carries no
+  // plan guard, OS_MODULE_META.ledger has no minPlan, and migration 0307 puts
+  // no plan check in the database. Zero recurring cost — reminders are wa.me
+  // links, statements are a server-rendered page printed by the browser.
+  debtLedger: {
+    state: "live",
+    plan: "free",
+    osModule: "ledger",
+    evidence:
+      "merchant/[storeId]/ledger — no plan guard; staff need the `customers` permission; migrations 0211 + 0307",
+    copy: { label: "ledger.feature.label", description: "ledger.feature.desc" },
+  },
 
   // ── Pro ──────────────────────────────────────────────────────────────────
   onboarding: {
@@ -499,6 +530,17 @@ export const FEATURES: Record<FeatureId, FeatureEntry> = {
     state: "live",
     plan: "pro",
     evidence: "lib/data/stores.ts getFeaturedStores — plan.in.(pro,business)",
+  },
+  // The per-store product feed for Google's free listings (and Meta catalogs).
+  // Zero recurring cost: the merchant connects it in their own Merchant
+  // Center. The route re-checks the effective plan on every render, so the
+  // floor below is the floor the code enforces, not just the one it claims.
+  googleFeed: {
+    state: "live",
+    plan: "pro",
+    evidence:
+      "app/feeds/[slug]/google.xml/route.ts — feedServes() → feedPlanAllowed(); merchant/[storeId]/google-feed gates on hasPlan(…,'pro')",
+    copy: { label: "googleFeed.featureLabel", description: "googleFeed.featureDesc" },
   },
 
   // ── Business ─────────────────────────────────────────────────────────────
@@ -587,7 +629,7 @@ export function isFeatureLive(id: FeatureId): boolean {
 
 /** The /pricing comparison table, in row order. Free-floor rows first, then
  *  what Pro adds, then Business — the order a merchant reads the page in. */
-export const PRICING_MATRIX: FeatureId[] = [
+export const PRICING_MATRIX: PricedFeatureId[] = [
   "storePage",
   "discovery",
   "products",
@@ -629,7 +671,7 @@ export const PRICING_MATRIX: FeatureId[] = [
 /** The bullets on each price card: the marquee rows for that tier only. Every
  *  id must be `live` and must sit at that tier's floor, both asserted in tests,
  *  so a card can never promise what the matrix denies. */
-export const PLAN_HIGHLIGHTS: Record<PlanKey, FeatureId[]> = {
+export const PLAN_HIGHLIGHTS: Record<PlanKey, PricedFeatureId[]> = {
   basic: [
     "storePage",
     "discovery",
@@ -858,8 +900,8 @@ export const FEATURE_REGISTRY: Record<FeatureKey, FeatureRecord> = (() => {
       status: STATUS_OF_STATE[entry.state],
       eligible_plans: plansFrom(entry.plan),
       eligible_sectors: sectorsForFeature(id),
-      label: `pricing.features.${id}`,
-      description: `features.desc.${id}`,
+      label: entry.copy?.label ?? `pricing.features.${id}`,
+      description: entry.copy?.description ?? `features.desc.${id}`,
       source: "feature",
     };
   }

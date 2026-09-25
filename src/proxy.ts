@@ -32,5 +32,10 @@ export const config = {
   // 307 to `/ar/.well-known/assetlinks.json` and silently break deep links for
   // every installed app. Naming it here means a future edit to the dot rule
   // cannot re-break it by accident.
-  matcher: ["/((?!_next|api|s/|\\.well-known|.*\\..*).*)"],
+  //
+  // `feeds/` is named for the same reason: /feeds/<slug>/google.xml is fetched
+  // by Google Merchant Center and Meta's catalog fetcher, both of which treat a
+  // redirect to /ar/feeds/... as a failed fetch. The `.xml` already exempts it
+  // through the dot rule; naming it keeps that true if the rule ever changes.
+  matcher: ["/((?!_next|api|s/|feeds/|\\.well-known|.*\\..*).*)"],
 };

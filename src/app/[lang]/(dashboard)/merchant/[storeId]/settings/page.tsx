@@ -156,6 +156,17 @@ export default async function StoreSettingsPage({
             isHealthcare={isHealthcare}
           />
         </div>
+        {/* Google Shopping / Meta catalog feed — its own page (Pro), linked
+            here because both policies it needs are store settings. */}
+        <Link
+          href={`/${lang}/merchant/${storeId}/google-feed`}
+          className="mt-6 block rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-primary/40"
+        >
+          <span className="block font-bold">{dict.googleFeed.settingsLink}</span>
+          <span className="mt-1 block text-sm text-muted-foreground">
+            {dict.googleFeed.settingsLinkHint}
+          </span>
+        </Link>
         <div className="mt-6">
           <DeliveryZonesManager storeId={storeId} dict={dict} initial={zones} />
         </div>

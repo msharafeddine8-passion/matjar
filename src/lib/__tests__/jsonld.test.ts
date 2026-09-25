@@ -124,3 +124,42 @@ describe("jsonLdScript", () => {
     expect(jsonLdScript({ a: 1 })).toBe('{"a":1}');
   });
 });
+
+// The product's own brand when the merchant recorded one, the store otherwise —
+// the same rule the Google feed uses for g:brand, so the page and the feed
+// never tell Google two different brands for one item.
+describe("productJsonLd brand", () => {
+  it("prefers products.brand over the store name", () => {
+    const d = productJsonLd({
+      name: "كريم",
+      url: "u",
+      price: 5,
+      storeName: "صيدلية",
+      brand: "Nivea",
+    }) as { brand: { name: string } };
+    expect(d.brand.name).toBe("Nivea");
+  });
+
+  it("falls back to the store name when the brand is blank", () => {
+    const d = productJsonLd({
+      name: "صابون",
+      url: "u",
+      price: 5,
+      storeName: "misk",
+      brand: "  ",
+    }) as { brand: { name: string } };
+    expect(d.brand.name).toBe("misk");
+  });
+
+  it("never gives a service a brand, even when one is passed", () => {
+    const d = offeringJsonLd({
+      noun: "service",
+      name: "S",
+      url: "u",
+      price: 10,
+      storeName: "Clinic",
+      brand: "X",
+    }) as { brand?: unknown };
+    expect(d.brand).toBeUndefined();
+  });
+});
