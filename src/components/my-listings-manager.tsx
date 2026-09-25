@@ -120,6 +120,18 @@ export function MyListingsManager({
                 {l.price != null && (
                   <p className="text-sm text-primary">{formatUsd(l.price)}</p>
                 )}
+                {l.status === "rejected" && l.moderationNote && (
+                  // The moderator's reason (0313). Stored as a reason key so it
+                  // reads in the seller's language; free text passes through.
+                  <p className="mt-0.5 text-xs text-danger">
+                    {dict.moderation.rejectedBecause.replace(
+                      "{reason}",
+                      (dict.moderation.rejectReasons as Record<string, string>)[
+                        l.moderationNote
+                      ] ?? l.moderationNote,
+                    )}
+                  </p>
+                )}
               </div>
               <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
                 <Link href={`/${lang}/market/${l.id}/edit`} className="flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-semibold transition-colors hover:bg-surface-muted">

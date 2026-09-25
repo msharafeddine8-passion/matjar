@@ -53,6 +53,9 @@ import {
   type BrowsedGigRow,
 } from "@/lib/data/freelance";
 import { GigCard, type BrowsedGig } from "@/components/gig-card";
+import { getSectionSupply } from "@/lib/data/section-supply";
+import { localeAlternates } from "@/lib/site";
+import { supplyRobots } from "@/lib/professional";
 import { FreelanceSearch } from "@/components/freelance/freelance-search";
 import { ProfessionalCard } from "@/components/professional/professional-card";
 import { Container } from "@/components/ui/container";
@@ -62,15 +65,33 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { lang } = await params;
   if (!isLocale(lang)) return {};
-  const dict = await getDictionary(lang);
+  const [dict, sp, supply] = await Promise.all([
+    getDictionary(lang),
+    searchParams,
+    getSectionSupply(),
+  ]);
+  // The zero-supply rule: the bare /freelance is indexable while at least one
+  // active gig exists (the same cached count the header uses), and every
+  // filtered, searched or services-tab view is noindex — permutations of one
+  // list are not pages. Canonical points every variant at the bare URL.
+  const filtered = ["cat", "region", "verified", "available", "q", "view"].some(
+    (k) => sp[k] != null && sp[k] !== "",
+  );
   return {
     title: dict.freelance.title,
     description: dict.freelance.subtitle,
+    alternates: localeAlternates(lang, "/freelance"),
+    robots: supplyRobots({
+      supply: supply.find((x) => x.section === "freelance")?.count ?? 0,
+      filtered,
+    }),
   };
 }
 
@@ -104,6 +125,7 @@ export default async function FreelancePage({
   const sp = await searchParams;
   const dict = await getDictionary(lang);
   const t = dict.freelance;
+  const pm = dict.proMarket;
 
   // Validate every param before it reaches the RPC. An unrecognised category is
   // dropped rather than passed through, so a crawler inventing `?cat=xyz`
@@ -358,20 +380,39 @@ export default async function FreelancePage({
             ))}
           </div>
         ) : (
-          <div
-            data-animate
-            className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            {rows.map((g) => (
-              <GigCard
-                key={g.id}
-                gig={g as unknown as BrowsedGig}
-                lang={lang as Locale}
-                dict={dict}
-                todayIso={todayIso}
-                lbpRate={lbpRate}
-                regionLabels={regionLabels}
-              />
+          // Services, still grouped by the person who offers them (phase 4):
+          // three cards from one freelancer read as three sellers unless they
+          // sit under that one name, which links to the profile.
+          <div data-animate className="mt-6 space-y-8">
+            {people.map((p) => (
+              <section key={p.id} aria-label={pm.servicesBy.replace("{name}", p.name || t.freelancer)}>
+                {people.length > 1 || p.gigs.length > 1 ? (
+                  <h2 className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-base font-extrabold">
+                      {pm.servicesBy.replace("{name}", p.name || t.freelancer)}
+                    </span>
+                    <Link
+                      href={`/${lang}/freelance/pro/${p.id}`}
+                      className="inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline"
+                    >
+                      {t.people.viewProfile}
+                    </Link>
+                  </h2>
+                ) : null}
+                <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {p.gigs.map((g) => (
+                    <GigCard
+                      key={g.id}
+                      gig={g as unknown as BrowsedGig}
+                      lang={lang as Locale}
+                      dict={dict}
+                      todayIso={todayIso}
+                      lbpRate={lbpRate}
+                      regionLabels={regionLabels}
+                    />
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         )}

@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { createClient } from "@/lib/supabase/server";
-import { localeAlternates } from "@/lib/site";
 import StorePage, {
   generateMetadata as storeMetadata,
 } from "../store/[id]/page";
@@ -39,9 +38,10 @@ export async function generateMetadata({
   if (!isLocale(lang)) return {};
   const id = await resolveSlug(handle);
   if (!id) return {};
-  const meta = await storeMetadata({ params: Promise.resolve({ lang, id }) });
-  // Prefer the vanity URL as the canonical/alternate links.
-  return { ...meta, alternates: localeAlternates(lang, `/${handle}`) };
+  // The store's metadata already canonicalises to its slug (lib/seo-rules
+  // buildStoreMetadata) — the stored, lower-case slug, not whatever casing
+  // arrived in the URL, so /Passion and /passion state one canonical.
+  return storeMetadata({ params: Promise.resolve({ lang, id }) });
 }
 
 export default async function StoreHandlePage({

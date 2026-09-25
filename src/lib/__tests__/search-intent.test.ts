@@ -423,3 +423,11 @@ describe("intentLinks — the real discovery / section URLs", () => {
     expect(intentLinks(parseSearchIntent("قطة"), "ar", () => false)).toEqual([]);
   });
 });
+
+describe("electricity is an electrician problem (dialect)", () => {
+  for (const q of ["الكهربا مقطوعة", "كهرباء البيت", "الفيوز عم يطفي"]) {
+    it(q, () => {
+      expect(parseSearchIntent(q).trade).toBe("electrician");
+    });
+  }
+});

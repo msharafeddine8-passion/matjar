@@ -16,6 +16,9 @@ import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MarketFilters } from "@/components/market-filters";
 import { MarketListingCard } from "@/components/market-listing-card";
+import { localeAlternates } from "@/lib/site";
+import { getSectionSupply } from "@/lib/data/section-supply";
+import { sectionRobots } from "@/lib/seo-rules";
 
 export async function generateMetadata({
   params,
@@ -24,11 +27,26 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await params;
   if (!isLocale(lang)) return {};
-  const dict = await getDictionary(lang);
+  const [dict, supply] = await Promise.all([
+    getDictionary(lang),
+    getSectionSupply().catch(() => []),
+  ]);
+  const live = supply.find((s) => s.section === "market")?.count ?? 0;
   return {
     title: dict.market.title,
     description: dict.market.subtitle,
-    openGraph: { title: dict.market.title, description: dict.market.subtitle },
+    // Every filter combination (?q=, ?category=, ?sort=…) canonicalises to the
+    // bare /market — the facets are disallowed in robots.ts and are rendered
+    // per request, so they must not compete with the section page.
+    alternates: localeAlternates(lang, "/market"),
+    openGraph: {
+      type: "website",
+      title: dict.market.title,
+      description: dict.market.subtitle,
+    },
+    // No live listing → a thin page for a crawler (lib/seo-rules; the sitemap
+    // leaves it out on the same count).
+    robots: sectionRobots(live),
   };
 }
 

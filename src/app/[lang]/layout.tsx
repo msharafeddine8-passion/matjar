@@ -12,6 +12,7 @@ import {
 } from "@/lib/app-mode";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 import { SwRegister } from "@/components/sw-register";
+import { AttributionCapture } from "@/components/attribution/attribution-capture";
 
 // Tajawal — a modern, premium typeface that covers Arabic and Latin.
 const tajawal = Tajawal({
@@ -142,6 +143,7 @@ export default async function RootLayout({
         <ConfirmProvider>{children}</ConfirmProvider>
         <SwRegister />
         <NativeBridge />
+        <AttributionCapture />
         <Analytics />
       </body>
     </html>

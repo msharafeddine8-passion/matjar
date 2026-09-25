@@ -62,8 +62,13 @@ import {
 } from "@/components/os-dashboard/reviews-widget";
 import { MerchantToday } from "@/components/merchant/merchant-today";
 import { dictSlice } from "@/lib/dict-slice";
-import type { StorePlan } from "@/lib/plan-tiers";
+import { effectivePlan, hasPlan, type StorePlan } from "@/lib/plan-tiers";
+import { isBusiness } from "@/lib/plan";
 import { formatUsd } from "@/lib/currency";
+import { labelMap } from "@/lib/status-labels";
+import type { QuickChip } from "@/lib/quick-panel";
+import { QuickPanel } from "@/components/quick-panel/quick-panel";
+import { MatjarBroughtCard } from "@/components/attribution/matjar-brought-card";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -193,6 +198,7 @@ export default async function StoreOsHomePage({
   const canOrders = isOwner || (perms.orders ?? false);
   const canBookings = isOwner || (perms.bookings ?? false);
   const canProducts = isOwner || (perms.products ?? false);
+  const canCustomers = isOwner || (perms.customers ?? false);
   const canRevenue = canOrders;
 
   const allModules = new Set(Object.values(sector.modules).flat());
@@ -1016,6 +1022,22 @@ export default async function StoreOsHomePage({
 
   const SectorIcon = sector.Icon;
 
+  // ---- «المساعد الذكي» (Pro + Business) -------------------------------------
+  // Chips follow the person's permissions (the key each answer's rows are
+  // gated on) and the sector's modules. Below Pro the same chips render
+  // locked with the upgrade prompt, and no query runs. Every answer is fetched
+  // on tap by merchant/[storeId]/quick-panel-actions.ts, which re-checks all
+  // of this server-side.
+  const panelPlan = effectivePlan(s.plan, s.trial_ends_at);
+  const panelChips: QuickChip[] = [];
+  if (canOrders && hasOrders) panelChips.push("todayOrders");
+  if (canProducts) panelChips.push("lowStock");
+  if (canCustomers) panelChips.push("debts");
+  if (canBookings && hasBookings) panelChips.push("tomorrowBookings");
+  if (canOrders && hasOrders) panelChips.push("abandonedCarts");
+  if (canCustomers) panelChips.push("inactiveCustomers");
+  if (canOrders) panelChips.push("weekSales");
+
   return (
     <div className="py-8 sm:py-10">
       <Container className="max-w-5xl">
@@ -1027,6 +1049,18 @@ export default async function StoreOsHomePage({
             <ChevronPrev className="h-4 w-4" />
             {dict.merchant.products.back}
           </Link>
+
+          <QuickPanel
+            storeId={storeId}
+            lang={lang}
+            locked={!hasPlan(panelPlan, "pro")}
+            chips={panelChips}
+            business={isBusiness(panelPlan)}
+            t={dict.quickPanel}
+            waT={dict.waActions}
+            orderStatus={labelMap(dict, "order")}
+            bookingStatus={labelMap(dict, "booking")}
+          />
 
           {/* ===== The phone's first screenful =====
               A merchant on a phone gets the decision before the decoration:
@@ -1181,6 +1215,8 @@ export default async function StoreOsHomePage({
               </div>
             ))}
           </div>
+
+          {canOrders && <MatjarBroughtCard storeId={storeId} lang={lang} />}
 
           {/* The share card hands over a QR and a short link meant for a
               shopfront or a receipt. Until the store is approved both resolve

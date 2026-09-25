@@ -4,6 +4,10 @@ import {
   productJsonLd,
   offeringJsonLd,
   jsonLdScript,
+  aggregateRating,
+  schemaTypeForSector,
+  jobPostingJsonLd,
+  listingJsonLd,
 } from "@/lib/jsonld";
 
 describe("storeJsonLd", () => {
@@ -161,5 +165,150 @@ describe("productJsonLd brand", () => {
       brand: "X",
     }) as { brand?: unknown };
     expect(d.brand).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Prelaunch phase 5 (§32 / §18): ratings only from real reviews, the store's
+// schema type from its sector, no fabricated prices, JobPosting deadlines, and
+// Sunday Market listings.
+// ---------------------------------------------------------------------------
+describe("aggregateRating — never without real reviews", () => {
+  it("emits for a real average over at least one review", () => {
+    expect(aggregateRating(4.66, 3)).toEqual({
+      "@type": "AggregateRating",
+      ratingValue: 4.7,
+      reviewCount: 3,
+      bestRating: 5,
+      worstRating: 1,
+    });
+  });
+
+  it.each([
+    [null, 3],
+    [4.5, null],
+    [4.5, 0],
+    [0, 4],
+    [5.5, 2],
+    [Number.NaN, 2],
+    [4, 1.5],
+    [4, -1],
+  ])("omits rating=%s count=%s", (rating, count) => {
+    expect(aggregateRating(rating as number | null, count as number | null)).toBeUndefined();
+  });
+
+  it("no builder emits aggregateRating when the review count is 0", () => {
+    const zero = { rating: 5, reviewCount: 0 };
+    expect(storeJsonLd({ name: "S", url: "u", ...zero }).aggregateRating).toBeUndefined();
+    expect(productJsonLd({ name: "P", url: "u", price: 3, ...zero }).aggregateRating).toBeUndefined();
+    for (const noun of ["product", "service", "dish"] as const) {
+      expect(
+        offeringJsonLd({ noun, name: "O", url: "u", price: 3, ...zero }).aggregateRating,
+      ).toBeUndefined();
+    }
+  });
+
+  it("a rating is never labelled as verified anywhere in the output", () => {
+    const d = JSON.stringify(
+      storeJsonLd({ name: "S", url: "u", rating: 4.2, reviewCount: 9 }),
+    );
+    expect(d).not.toMatch(/verif/i);
+  });
+});
+
+describe("storeJsonLd sector type", () => {
+  it.each([
+    ["food", "FoodEstablishment"],
+    ["healthcare", "MedicalBusiness"],
+    ["pharmacy", "Pharmacy"],
+    ["retail", "Store"],
+    ["beauty", "HealthAndBeautyBusiness"],
+    ["automotive", "AutomotiveBusiness"],
+    ["contractors", "HomeAndConstructionBusiness"],
+    ["services", "LocalBusiness"],
+    ["not-a-sector", "LocalBusiness"],
+  ])("%s → %s", (sector, type) => {
+    expect(schemaTypeForSector(sector)).toBe(type);
+    expect(storeJsonLd({ name: "S", url: "u", sector })["@type"]).toBe(type);
+  });
+
+  it("stays LocalBusiness when no sector is passed (the pre-existing output)", () => {
+    expect(storeJsonLd({ name: "S", url: "u" })["@type"]).toBe("LocalBusiness");
+  });
+});
+
+describe("productJsonLd never invents a price", () => {
+  it("omits the Offer for a zero / missing price", () => {
+    expect(productJsonLd({ name: "P", url: "u", price: 0 }).offers).toBeUndefined();
+    expect(productJsonLd({ name: "P", url: "u", price: Number.NaN }).offers).toBeUndefined();
+    expect(
+      offeringJsonLd({ noun: "product", name: "P", url: "u", price: null }).offers,
+    ).toBeUndefined();
+  });
+});
+
+describe("jobPostingJsonLd deadline", () => {
+  const base = {
+    title: "Cashier",
+    description: "Front desk",
+    datePosted: "2026-09-01",
+    companyName: "Shop",
+    url: "u",
+  };
+
+  it("turns a date deadline into end-of-day Beirut", () => {
+    const d = jobPostingJsonLd({ ...base, validThrough: "2026-10-15" });
+    expect(d.validThrough).toBe("2026-10-15T23:59:59+03:00");
+  });
+
+  it("omits validThrough when the poster set none (never invented)", () => {
+    expect(jobPostingJsonLd(base).validThrough).toBeUndefined();
+    expect(jobPostingJsonLd({ ...base, validThrough: "not a date" }).validThrough).toBeUndefined();
+  });
+
+  it("links the hiring store when given", () => {
+    const d = jobPostingJsonLd({ ...base, companyUrl: "https://x/ar/shop", companyLogo: "https://x/l.png" }) as {
+      hiringOrganization: Record<string, string>;
+    };
+    expect(d.hiringOrganization.sameAs).toBe("https://x/ar/shop");
+    expect(d.hiringOrganization.logo).toBe("https://x/l.png");
+  });
+});
+
+describe("listingJsonLd (Sunday Market)", () => {
+  const base = { name: "Bike", url: "u", price: 120 };
+
+  it("an active priced listing is an InStock Product offer", () => {
+    const d = listingJsonLd({ ...base, status: "active" }) as {
+      "@type": string;
+      offers: { availability: string; price: number; seller?: unknown };
+    };
+    expect(d["@type"]).toBe("Product");
+    expect(d.offers.availability).toBe("https://schema.org/InStock");
+    expect(d.offers.seller).toBeUndefined();
+  });
+
+  it("a sold listing is SoldOut; a merchant listing names the store", () => {
+    const d = listingJsonLd({ ...base, status: "sold", storeName: "Shop" }) as {
+      offers: { availability: string; seller: { name: string } };
+    };
+    expect(d.offers.availability).toBe("https://schema.org/SoldOut");
+    expect(d.offers.seller.name).toBe("Shop");
+  });
+
+  it.each(["pending", "draft", "rejected", "expired"])(
+    "emits nothing for a %s listing",
+    (status) => {
+      expect(listingJsonLd({ ...base, status })).toBeNull();
+    },
+  );
+
+  it("emits nothing without a real price", () => {
+    expect(listingJsonLd({ ...base, status: "active", price: null })).toBeNull();
+    expect(listingJsonLd({ ...base, status: "active", price: 0 })).toBeNull();
+  });
+
+  it("never carries a rating (listings have no reviews)", () => {
+    expect(listingJsonLd({ ...base, status: "active" })).not.toHaveProperty("aggregateRating");
   });
 });

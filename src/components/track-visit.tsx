@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { track } from "@/lib/analytics";
+import { oncePerSession, touchStore } from "@/lib/attribution-client";
 
 const VID_KEY = "matjar-vid";
 
@@ -40,6 +42,21 @@ export function TrackVisit({
   useEffect(() => {
     // Skip automated agents so bot hits don't distort the numbers.
     if (typeof navigator !== "undefined" && navigator.webdriver) return;
+
+    // Source attribution (first/last touch per store, 30 days) and the §34
+    // view events ride on the same mount — every storefront and product page
+    // already renders this, so nothing else had to be edited to get them.
+    // Both are de-duplicated on their own terms and never throw.
+    touchStore(storeId);
+    if (path === "product" && productId) {
+      oncePerSession(`matjar-evt-offering-${productId}`, () =>
+        track("offering_viewed", { storeId, offeringId: productId, sourceSurface: "product" }),
+      );
+    } else if (path === "store") {
+      oncePerSession(`matjar-evt-business-${storeId}`, () =>
+        track("business_viewed", { storeId, sourceSurface: "store" }),
+      );
+    }
 
     const seenKey = `matjar-seen-${path}-${productId ?? storeId}`;
     try {

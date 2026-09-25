@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SearchX, Package, ShoppingBag, Store as StoreIcon } from "lucide-react";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
+import { localeAlternates } from "@/lib/site";
 import { searchAll } from "@/lib/data/search";
 import { getDiscoveryCoverage } from "@/lib/data/discovery";
 import { getUsdLbpRate } from "@/lib/data/settings";
@@ -43,7 +44,13 @@ export async function generateMetadata({
   const { lang } = await params;
   if (!isLocale(lang)) return {};
   const dict = await getDictionary(lang);
-  return { title: dict.search.title };
+  // Every query is a new URL: robots.ts disallows /search, and the tag says
+  // the same thing to any crawler that arrives by a link anyway.
+  return {
+    title: dict.search.title,
+    alternates: localeAlternates(lang, "/search"),
+    robots: { index: false, follow: true },
+  };
 }
 
 /**

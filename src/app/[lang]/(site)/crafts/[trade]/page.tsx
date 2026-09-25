@@ -15,9 +15,12 @@ import {
   countActiveProviders,
   getAreasByRegion,
   getTrade,
+  getTradeCounts,
   getTradeGroups,
   type AreaRef,
 } from "@/lib/data/crafts";
+import { localeAlternates } from "@/lib/site";
+import { supplyRobots } from "@/lib/professional";
 
 type Params = Promise<{ lang: string; trade: string }>;
 type Search = Promise<{ area?: string; q?: string; sort?: string }>;
@@ -27,21 +30,39 @@ const ALL = "all";
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Params;
+  searchParams: Search;
 }): Promise<Metadata> {
   const { lang, trade } = await params;
   if (!isLocale(lang)) return {};
   const dict = await getDictionary(lang);
-  if (trade === ALL) return { title: dict.crafts.title };
+  // The free-text catch-all is a search results view, never a landing page.
+  if (trade === ALL) {
+    return { title: dict.crafts.title, robots: supplyRobots({ supply: 0, filtered: true }) };
+  }
 
-  const t = await getTrade(trade);
+  const [t, counts, sp] = await Promise.all([getTrade(trade), getTradeCounts(), searchParams]);
   if (!t) return {};
   const name = lang === "ar" ? t.name_ar : t.name_en;
+  // The zero-supply rule (lib/professional.ts → supplyRobots). A trade page
+  // with no active provider is the same empty state 47 times over, so it is
+  // `noindex, follow` until trade_provider_counts says someone is listed — the
+  // page still renders, still links to the request flow and the sibling
+  // trades, and still sits in the /crafts taxonomy. Any area / q / sort
+  // permutation is noindex regardless: the canonical below points at the bare
+  // trade URL. The sitemap applies the same rule (SEO track, sitemap.ts).
+  const robots = supplyRobots({
+    supply: counts[t.slug] ?? 0,
+    filtered: Boolean(sp.area || sp.q || (sp.sort && sp.sort !== "rating")),
+  });
   // A real title for a real page: "كهربائي في لبنان — متجر".
   return {
     title: dict.crafts.metaTitle.replace("{trade}", name),
     description: dict.crafts.metaDesc.replace("{trade}", name),
+    alternates: localeAlternates(lang, `/crafts/${t.slug}`),
+    robots,
   };
 }
 

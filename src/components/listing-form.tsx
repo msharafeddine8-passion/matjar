@@ -223,7 +223,11 @@ export function ListingForm({
         <Field label={t.price} htmlFor="price">
           <Input id="price" value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="0" />
         </Field>
-        <Field label={t.category} htmlFor="category">
+        {/* Required to submit for review (a draft may still be saved without
+            one): 7 of the first 12 listings had no category, which hides them
+            from every category filter and from the price-outlier check the
+            moderation queue runs per category. */}
+        <Field label={t.category} htmlFor="category" required>
           <Select id="category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             <option value="">{t.selectCategory}</option>
             {categories.map((c) => (
@@ -266,7 +270,7 @@ export function ListingForm({
         <Button
           type="button"
           variant="primary"
-          disabled={!title.trim()}
+          disabled={!title.trim() || !categoryId}
           loading={busy}
           leftIcon={<Send className="h-4 w-4" />}
           onClick={() => submit("pending")}

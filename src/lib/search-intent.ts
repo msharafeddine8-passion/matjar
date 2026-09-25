@@ -588,7 +588,7 @@ export const LEXICON: Concept[] = [
     meaning: { section: "jobs" },
   },
   // ── crafts trades (slugs from public.trades) ─────────────────────────────
-  trade("electrician", "electrician", ["كهربجي", "كهربائي", "كهربجية", "electrician"]),
+  trade("electrician", "electrician", ["كهربجي", "كهربائي", "كهربجية", "كهربا", "كهرباء", "فيوز", "electrician"]),
   trade("plumber", "plumber", ["سنكري", "سباك", "مواسرجي", "تسريب مي", "plumber"]),
   trade("carpenter", "carpenter", ["نجار", "نجارة", "carpenter"]),
   trade("painter", "painter", ["دهان", "دهين", "بويا", "painter"]),

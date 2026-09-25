@@ -30,6 +30,10 @@ import {
   type Fulfillment,
   type StoreCheckout,
 } from "@/lib/checkout";
+import {
+  CheckoutGiftCard,
+  redeemGiftCardForOrder,
+} from "@/components/gift-cards/checkout-gift-card";
 
 // THE checkout form. One per platform, not one per page.
 //
@@ -59,6 +63,9 @@ export type PlacedOrder = {
    *  success screen, and by the time it renders the cart it came from is
    *  already empty. Names and counts only: the amount of record is `total`. */
   lines: readonly { id: string; name: string; quantity: number }[];
+  /** What happened to a gift card applied at checkout (0310) — paid how much,
+   *  or why it could not be applied. Absent when no card was entered. */
+  giftCardNote?: string;
 };
 
 // min-h-11 is the 44px thumb minimum. These measured 42px at 390 — two pixels
@@ -174,6 +181,9 @@ export function CheckoutForm({
   const [couponInput, setCouponInput] = useState("");
   const [couponMsg, setCouponMsg] = useState<string | null>(null);
   const [couponBusy, setCouponBusy] = useState(false);
+  // A gift card is checked before the order and spent right after it exists
+  // (components/gift-cards/checkout-gift-card.tsx).
+  const [giftCode, setGiftCode] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   // The line the server said was short, so the customer can drop just that one
@@ -401,6 +411,11 @@ export function CheckoutForm({
     });
 
     const { data: orderId, error } = await supabase.rpc(rpc, params);
+    // Spend the gift card only once the order exists; never throws.
+    const giftCardNote =
+      !error && orderId && giftCode
+        ? await redeemGiftCardForOrder({ orderId: orderId as string, code: giftCode, dict })
+        : undefined;
     setPlacing(false);
     // `!orderId` matters as much as `error`. Both RPCs return the new order's
     // uuid, but their idempotency branch re-selects the existing row and
@@ -421,6 +436,7 @@ export function CheckoutForm({
         name: l.name,
         quantity: l.quantity,
       })),
+      giftCardNote,
     });
   }
 
@@ -512,6 +528,16 @@ export function CheckoutForm({
           )}
         </div>
       </details>
+
+      {store.acceptsGiftCards && (
+        <CheckoutGiftCard
+          dict={dict}
+          lang={lang}
+          storeId={store.storeId}
+          code={giftCode}
+          onCode={setGiftCode}
+        />
+      )}
 
       {/* Loyalty redemption (store opt-in + this customer holds points here) */}
       {redeemable && (

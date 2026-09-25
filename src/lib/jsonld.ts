@@ -4,6 +4,67 @@
 
 type Nullable<T> = T | null | undefined;
 
+/** schema.org AggregateRating, or `undefined` when there is nothing real to
+ *  aggregate.
+ *
+ *  THE RULE (§18/§32): a rating is emitted only from reviews that exist — a
+ *  count of at least one real review row and an average inside the 1..5 scale
+ *  those rows were written on. No count, a zero count, a NaN, or an average
+ *  outside the scale all mean "say nothing"; a fabricated or defaulted rating
+ *  in structured data is a Google manual-action risk and a lie to the buyer.
+ *
+ *  It never claims the reviews were purchase-verified: AggregateRating has no
+ *  such field, and nothing here adds one. Which rows count as "verified" is
+ *  decided by the database (see audit/prelaunch-v2/09_TRUST.md). */
+export function aggregateRating(
+  rating: Nullable<number>,
+  reviewCount: Nullable<number>,
+): Record<string, unknown> | undefined {
+  if (rating == null || reviewCount == null) return undefined;
+  const r = Number(rating);
+  const n = Number(reviewCount);
+  if (!Number.isFinite(r) || !Number.isFinite(n)) return undefined;
+  if (!Number.isInteger(n) || n < 1) return undefined;
+  if (r < 1 || r > 5) return undefined;
+  return {
+    "@type": "AggregateRating",
+    ratingValue: Number(r.toFixed(1)),
+    reviewCount: n,
+    bestRating: 5,
+    worstRating: 1,
+  };
+}
+
+/** The most specific schema.org LocalBusiness subtype that is TRUE for every
+ *  store in a Matjar sector. Where a sector mixes kinds (a "services" store can
+ *  be a tailor or a laundry) it stays LocalBusiness rather than guess — a wrong
+ *  subtype is worse than a general one. Keyed by the sector slug
+ *  (`business_types.slug` / CategoryKey); unknown slugs fall back to
+ *  LocalBusiness. Pure, no imports, like everything else in this file. */
+const SECTOR_SCHEMA_TYPE: Record<string, string> = {
+  food: "FoodEstablishment",
+  retail: "Store",
+  healthcare: "MedicalBusiness",
+  pharmacy: "Pharmacy",
+  beauty: "HealthAndBeautyBusiness",
+  fitness: "SportsActivityLocation",
+  sportsCourts: "SportsActivityLocation",
+  automotive: "AutomotiveBusiness",
+  realEstate: "RealEstateAgent",
+  hospitality: "LodgingBusiness",
+  professional: "ProfessionalService",
+  contractors: "HomeAndConstructionBusiness",
+  education: "LocalBusiness",
+  events: "LocalBusiness",
+  petCare: "LocalBusiness",
+  farm: "LocalBusiness",
+  services: "LocalBusiness",
+};
+
+export function schemaTypeForSector(sector: Nullable<string>): string {
+  return (sector && SECTOR_SCHEMA_TYPE[sector]) || "LocalBusiness";
+}
+
 export function storeJsonLd(opts: {
   name: string;
   description?: Nullable<string>;
@@ -23,10 +84,14 @@ export function storeJsonLd(opts: {
     opens: string;
     closes: string;
   }[];
+  /** The store's sector slug (StoreView.category). Picks the LocalBusiness
+   *  subtype — Restaurant-family for food, MedicalBusiness for clinics, etc.
+   *  Omitted = plain LocalBusiness, which is what every store emitted before. */
+  sector?: Nullable<string>;
 }) {
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
+    "@type": schemaTypeForSector(opts.sector),
     name: opts.name,
     url: opts.url,
   };
@@ -57,14 +122,8 @@ export function storeJsonLd(opts: {
       closes: h.closes,
     }));
   }
-  if (opts.rating && opts.reviewCount) {
-    data.aggregateRating = {
-      "@type": "AggregateRating",
-      ratingValue: Number(opts.rating.toFixed(1)),
-      reviewCount: opts.reviewCount,
-      bestRating: 5,
-    };
-  }
+  const rating = aggregateRating(opts.rating, opts.reviewCount);
+  if (rating) data.aggregateRating = rating;
   return data;
 }
 
@@ -111,7 +170,12 @@ export function productJsonLd(opts: {
     "@type": "Product",
     name: opts.name,
     url: opts.url,
-    offers: {
+  };
+  // An Offer only for a real price. A good with no price used to be told to
+  // Google as `price: 0` — a free, in-stock item the store never offered. No
+  // Offer means no price snippet, which is true; a zero is not.
+  if (Number.isFinite(opts.price) && opts.price > 0) {
+    data.offers = {
       "@type": "Offer",
       price: opts.price,
       priceCurrency: "USD",
@@ -120,8 +184,8 @@ export function productJsonLd(opts: {
           ? "https://schema.org/OutOfStock"
           : "https://schema.org/InStock",
       url: opts.url,
-    },
-  };
+    };
+  }
   if (opts.description) data.description = opts.description;
   if (opts.image) data.image = opts.image;
   // The product's own brand when the merchant typed one (a shop reselling
@@ -130,14 +194,8 @@ export function productJsonLd(opts: {
   // g:brand (lib/google-feed.ts), so the two never disagree about one item.
   const brand = opts.brand?.trim() || opts.storeName;
   if (brand) data.brand = { "@type": "Brand", name: brand };
-  if (opts.rating && opts.reviewCount) {
-    data.aggregateRating = {
-      "@type": "AggregateRating",
-      ratingValue: Number(opts.rating.toFixed(1)),
-      reviewCount: opts.reviewCount,
-      bestRating: 5,
-    };
-  }
+  const rating = aggregateRating(opts.rating, opts.reviewCount);
+  if (rating) data.aggregateRating = rating;
   return data;
 }
 
@@ -194,14 +252,8 @@ export function offeringJsonLd(opts: {
       url: opts.url,
     };
   }
-  if (opts.rating && opts.reviewCount) {
-    data.aggregateRating = {
-      "@type": "AggregateRating",
-      ratingValue: Number(opts.rating.toFixed(1)),
-      reviewCount: opts.reviewCount,
-      bestRating: 5,
-    };
-  }
+  const rating = aggregateRating(opts.rating, opts.reviewCount);
+  if (rating) data.aggregateRating = rating;
   return data;
 }
 
@@ -228,6 +280,12 @@ export function jobPostingJsonLd(opts: {
   region?: Nullable<string>;
   /** Raw job_type value (full_time | part_time | contract | remote | internship). */
   jobType?: Nullable<string>;
+  /** `job_postings.apply_deadline` (a date). Google recommends validThrough;
+   *  omitted when the poster set no deadline — never invented. */
+  validThrough?: Nullable<string>;
+  /** Hiring store's public page + logo, when the posting belongs to a store. */
+  companyUrl?: Nullable<string>;
+  companyLogo?: Nullable<string>;
 }) {
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -238,6 +296,8 @@ export function jobPostingJsonLd(opts: {
     hiringOrganization: {
       "@type": "Organization",
       name: opts.companyName,
+      ...(opts.companyUrl ? { sameAs: opts.companyUrl } : {}),
+      ...(opts.companyLogo ? { logo: opts.companyLogo } : {}),
     },
     url: opts.url,
     // Country-level location (Lebanon); region fills in as the locality.
@@ -260,6 +320,69 @@ export function jobPostingJsonLd(opts: {
   } else if (opts.jobType && EMPLOYMENT_TYPES[opts.jobType]) {
     data.employmentType = EMPLOYMENT_TYPES[opts.jobType];
   }
+  const deadline = isoDateOrNull(opts.validThrough);
+  if (deadline) {
+    // A bare date means "applications close at the end of that day" in
+    // Lebanon. Beirut is UTC+2/+3; stating the end of day in +03:00 keeps the
+    // posting live for the whole local day in either season.
+    data.validThrough = /^\d{4}-\d{2}-\d{2}$/.test(deadline)
+      ? `${deadline}T23:59:59+03:00`
+      : deadline;
+  }
+  return data;
+}
+
+function isoDateOrNull(v: Nullable<string>): string | null {
+  if (!v) return null;
+  const s = String(v).trim();
+  if (!s || Number.isNaN(Date.parse(s))) return null;
+  return s;
+}
+
+/** Sunday Market listing (`/market/[id]`) → Product + Offer.
+ *
+ *  Emitted only for a listing a buyer can act on: status `active` with a real
+ *  price, or `sold` (SoldOut). Draft / pending / rejected / expired listings
+ *  get NOTHING — the page is noindexed for those, and an Offer for something
+ *  that cannot be bought is exactly the misleading snippet the moderation
+ *  work exists to prevent. No itemCondition: the form does not ask, so we do
+ *  not know whether it is new or used. No rating: listings have no reviews.
+ *  A merchant's listing names the store as seller; a private seller is never
+ *  named (their identity is not public on the page either). */
+export function listingJsonLd(opts: {
+  name: string;
+  description?: Nullable<string>;
+  image?: Nullable<string>;
+  url: string;
+  price: Nullable<number>;
+  status: string;
+  storeName?: Nullable<string>;
+}): Record<string, unknown> | null {
+  if (opts.status !== "active" && opts.status !== "sold") return null;
+  const price = opts.price == null ? NaN : Number(opts.price);
+  if (!Number.isFinite(price) || price <= 0) return null;
+  const offer: Record<string, unknown> = {
+    "@type": "Offer",
+    price,
+    priceCurrency: "USD",
+    availability:
+      opts.status === "sold"
+        ? "https://schema.org/SoldOut"
+        : "https://schema.org/InStock",
+    url: opts.url,
+  };
+  if (opts.storeName) {
+    offer.seller = { "@type": "Organization", name: opts.storeName };
+  }
+  const data: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: opts.name,
+    url: opts.url,
+    offers: offer,
+  };
+  if (opts.description) data.description = opts.description;
+  if (opts.image) data.image = opts.image;
   return data;
 }
 

@@ -23,6 +23,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { JobApplyForm } from "@/components/job-apply-form";
+import { ButtonLink } from "@/components/ui/button";
+import { requestNow } from "@/lib/now";
+import { beirutToday, formatDay, isJobOpen } from "@/lib/pro-market";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -37,15 +40,25 @@ export async function generateMetadata({
   const supabase = await createClient();
   const { data } = await supabase
     .from("job_postings")
-    .select("title, company_name, description")
+    .select("title, company_name, description, status, apply_deadline")
     .eq("id", id)
     .maybeSingle();
   if (!data) return {};
-  const j = data as { title: string; company_name: string; description: string };
+  const j = data as {
+    title: string;
+    company_name: string;
+    description: string;
+    status: string;
+    apply_deadline: string | null;
+  };
+  // A posting past its deadline (Beirut's today) is kept reachable for the
+  // people who applied, but it is no longer a page to send searchers to.
+  const open = isJobOpen(j, beirutToday(requestNow()));
   return {
     title: `${j.title} — ${j.company_name}`,
     description: j.description.slice(0, 160),
     alternates: localeAlternates(lang, `/jobs/${id}`),
+    ...(open ? {} : { robots: { index: false, follow: true } }),
   };
 }
 
@@ -106,11 +119,12 @@ export default async function JobDetailPage({
 
   const regionName =
     regions.find((r) => r.key === job.region)?.name[lang] ?? job.region;
-  // Deadline compared date-only so "today" is still open. toISOString is UTC —
-  // fine for a coarse day-granularity gate.
-  const deadlinePassed =
-    !!job.apply_deadline &&
-    job.apply_deadline < new Date().toISOString().slice(0, 10);
+  // Deadline compared date-only against BEIRUT's today, so the last day is
+  // open until Lebanese midnight — UTC would close it at 2 or 3 am.
+  const deadlinePassed = !isJobOpen(
+    { apply_deadline: job.apply_deadline },
+    beirutToday(requestNow()),
+  );
   const expLabel = job.experience_level
     ? (
         {
@@ -123,7 +137,9 @@ export default async function JobDetailPage({
 
   return (
     <div className="py-10">
-      {job.status === "active" && (
+      {/* Structured data only for a posting that still takes applications —
+          a JobPosting past its deadline is exactly what Google penalises. */}
+      {job.status === "active" && !deadlinePassed && (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -136,6 +152,7 @@ export default async function JobDetailPage({
                 url: `${SITE_URL}/${lang}/jobs/${id}`,
                 region: regionName,
                 jobType: job.job_type,
+                validThrough: job.apply_deadline,
               }),
             ),
           }}
@@ -144,7 +161,7 @@ export default async function JobDetailPage({
       <Container className="max-w-2xl">
         <Link
           href={`/${lang}/jobs`}
-          className="inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronPrev className="h-4 w-4" />
           {t.title}
@@ -191,7 +208,10 @@ export default async function JobDetailPage({
                 <CalendarClock className="h-4 w-4" />
                 {deadlinePassed
                   ? t.deadlinePassed
-                  : `${t.deadline}: ${job.apply_deadline}`}
+                  : dict.proMarket.jobsDeadline.replace(
+                      "{date}",
+                      formatDay(job.apply_deadline, lang),
+                    )}
               </span>
             )}
           </div>
@@ -271,8 +291,14 @@ export default async function JobDetailPage({
             )}
           </div>
         ) : deadlinePassed ? (
-          <div className="mt-6">
-            <EmptyState icon={CalendarClock} title={t.deadlinePassed} />
+          // Closed, and a way on: the board, not a dead end.
+          <div className="mt-6 rounded-2xl border border-border bg-surface p-5 text-center">
+            <CalendarClock aria-hidden className="mx-auto h-8 w-8 text-muted-foreground" />
+            <p className="mt-2 font-bold">{dict.proMarket.jobClosedTitle}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{dict.proMarket.jobClosedBody}</p>
+            <ButtonLink href={`/${lang}/jobs`} variant="secondary" className="mt-4">
+              {dict.proMarket.jobsShowAll}
+            </ButtonLink>
           </div>
         ) : (
           <div className="mt-6">

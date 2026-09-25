@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { FileSpreadsheet } from "lucide-react";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
@@ -61,6 +62,15 @@ export default async function LedgerPage({
           </span>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">{dict.ledger.subtitle}</p>
+        {/* Opening balances from a spreadsheet — the merchant's paper notebook
+            typed once into Excel, instead of line by line here. */}
+        <Link
+          href={`/${lang}/merchant/${storeId}/import#ledger`}
+          className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
+        >
+          <FileSpreadsheet className="h-4 w-4" aria-hidden />
+          {dict.importer.ledgerLink}
+        </Link>
 
         <div className="mt-6">
           <LedgerHome

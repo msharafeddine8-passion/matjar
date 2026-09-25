@@ -65,7 +65,7 @@ async function fetchStoreCheckout(
     .maybeSingle();
   if (!data) return null;
 
-  const [{ data: zoneRows }, { data: cfields }, { data: locs }] =
+  const [{ data: zoneRows }, { data: cfields }, { data: locs }, giftRes] =
     await Promise.all([
       supabase
         .from("store_delivery_zones")
@@ -91,6 +91,9 @@ async function fetchStoreCheckout(
         .eq("is_active", true)
         .order("is_primary", { ascending: false })
         .limit(FETCH_BOUNDS.storeLocations),
+      // 0310. Before it is applied the RPC does not exist, the call errors,
+      // and the checkout simply shows no gift-card field.
+      supabase.rpc("store_accepts_gift_cards", { p_store_id: storeId }),
     ]);
   // A dropped zone or a dropped required field would place an order the
   // merchant cannot fulfil, so a short read must not pass quietly.
@@ -168,6 +171,7 @@ async function fetchStoreCheckout(
       data.loyalty_points_per_unit != null
         ? Number(data.loyalty_points_per_unit)
         : 0,
+    acceptsGiftCards: !giftRes.error && giftRes.data === true,
     zones,
     checkoutFields,
     branches,

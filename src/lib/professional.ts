@@ -311,3 +311,61 @@ export function primaryCtaKey(kind: ProfessionalKind): "requestService" | "reque
 
 /** Locale-aware years-of-experience phrasing lives with the dictionary, not here. */
 export type ProfessionalCopyLocale = Locale;
+
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The zero-supply index rule (prelaunch phase 4).
+ *
+ * A directory page with nobody in it is thin content: 47 crafts trade pages
+ * that all say "no tradesman yet" are 47 near-duplicates to a search engine,
+ * and a filtered view (`?area=`, `?type=`, `?view=`) is a crawl trap of
+ * permutations. So a page is indexable only when it can answer with real
+ * supply AND it is the canonical, unfiltered view.
+ *
+ * `uniqueContent` is the escape hatch for a page whose value does not depend
+ * on supply — the /crafts landing carries the whole 47-trade taxonomy and the
+ * symptom index, which is worth ranking even at zero providers. Nothing sets
+ * it for a page that merely has a nice empty state.
+ *
+ * `follow` is always true: the links out of an empty page (the request flow,
+ * the sibling trades, the join page) are exactly what a crawler should find.
+ * The navigation stays; only the index entry goes.
+ */
+export type SupplyRobots = { index: boolean; follow: true };
+
+export function supplyRobots(opts: {
+  /** Real, browsable rows this exact view would show. Negative/NaN = 0. */
+  supply: number;
+  /** Any query parameter that narrows or re-sorts the canonical view. */
+  filtered?: boolean;
+  /** The page is worth indexing without supply (see above). */
+  uniqueContent?: boolean;
+}): SupplyRobots {
+  const supply = Number.isFinite(opts.supply) && opts.supply > 0 ? opts.supply : 0;
+  if (opts.filtered) return { index: false, follow: true };
+  return { index: supply > 0 || opts.uniqueContent === true, follow: true };
+}
+
+/**
+ * Split a list of services into "this same person's other services" and
+ * "someone else's", dropping the service being viewed.
+ *
+ * The gig page used to show "related services" straight out of browse_gigs by
+ * category — which, with one freelancer on the platform, is that same person's
+ * other two gigs dressed as two other sellers. The same person's work belongs
+ * under their name; "related" means other people.
+ */
+export function splitServicesByOwner<T extends { id: string; freelancer_id: string }>(
+  rows: T[],
+  ownerId: string,
+  currentId: string,
+): { same: T[]; others: T[] } {
+  const same: T[] = [];
+  const others: T[] = [];
+  for (const r of rows) {
+    if (r.id === currentId) continue;
+    (r.freelancer_id === ownerId ? same : others).push(r);
+  }
+  return { same, others };
+}

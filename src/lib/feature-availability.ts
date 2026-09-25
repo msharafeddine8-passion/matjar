@@ -262,6 +262,8 @@ export type FeatureId =
   | "commission"
   | "debtLedger"
   | "whatsappActions"
+  | "excelImport"
+  | "sourceAttribution"
   // Pro
   | "onboarding"
   | "staffAccounts"
@@ -276,6 +278,9 @@ export type FeatureId =
   | "courierDispatch"
   | "homeFeatured"
   | "googleFeed"
+  | "quickPanel"
+  | "loyaltyStamps"
+  | "giftCards"
   // Business
   | "branches"
   | "inventory"
@@ -320,7 +325,15 @@ export type FeatureEntry = {
  *  have no `pricing.features` label. Kept out of the lists the price surfaces
  *  render straight from `dict.pricing.features[id]`, so the compiler refuses a
  *  pricing row that would print `undefined`. */
-export type OwnCopyFeatureId = "googleFeed" | "debtLedger" | "whatsappActions";
+export type OwnCopyFeatureId =
+  | "googleFeed"
+  | "debtLedger"
+  | "whatsappActions"
+  | "excelImport"
+  | "quickPanel"
+  | "loyaltyStamps"
+  | "giftCards"
+  | "sourceAttribution";
 
 /** The features a price card, the /pricing table or the upgrade prompt may
  *  list — every one of them labelled under `pricing.features`. */
@@ -467,6 +480,35 @@ export const FEATURES: Record<FeatureId, FeatureEntry> = {
     copy: { label: "waActions.feature.label", description: "waActions.feature.desc" },
   },
 
+  // Spreadsheet import (.xlsx / .csv) of products, customers and ledger opening
+  // balances. Every plan: the file is parsed in the merchant's browser (no
+  // server work, no recurring cost). Customers and balances go through the
+  // caller's own RLS and record_customer_transaction (0307), neither of which
+  // has a plan check. Products go through import_products, whose Pro gate
+  // migration 0311 removes (the plan's product CAP still applies there);
+  // until 0311 is applied the screen asks import_rules() and keeps products on
+  // Pro, so it never offers what the database would refuse.
+  excelImport: {
+    state: "live",
+    plan: "free",
+    evidence:
+      "merchant/[storeId]/import + products/import — no plan guard for customers/ledger; import_products plan gate removed by migration 0311 (import_rules() probe)",
+    copy: { label: "importer.feature.label", description: "importer.feature.desc" },
+  },
+
+  // Customer source attribution: where each order / booking came from, new vs
+  // returning customers, and «متجر جابلك X زبون جديد» on the dashboard home.
+  // Every plan — it is how Matjar proves its value to the merchant, so gating
+  // it would defeat it. Reporting only (0% commission). Zero recurring cost:
+  // events and tags live in Matjar's own Postgres, no analytics SaaS.
+  sourceAttribution: {
+    state: "live",
+    plan: "free",
+    evidence:
+      "lib/attribution.ts + components/attribution (dashboard card, TagSource) + merchant/[storeId]/reports/matjar-summary; migration 0312 has no plan check",
+    copy: { label: "attribution.feature.label", description: "attribution.feature.desc" },
+  },
+
   // ── Pro ──────────────────────────────────────────────────────────────────
   onboarding: {
     state: "live",
@@ -557,6 +599,42 @@ export const FEATURES: Record<FeatureId, FeatureEntry> = {
     evidence:
       "app/feeds/[slug]/google.xml/route.ts — feedServes() → feedPlanAllowed(); merchant/[storeId]/google-feed gates on hasPlan(…,'pro')",
     copy: { label: "googleFeed.featureLabel", description: "googleFeed.featureDesc" },
+  },
+  // «المساعد الذكي» — one-tap questions on the dashboard home, each answered by
+  // a database query (no AI, no recurring cost). Pro and Business: the panel
+  // renders locked below Pro, and every server action re-checks the effective
+  // plan before running a query.
+  quickPanel: {
+    state: "live",
+    plan: "pro",
+    evidence:
+      "components/quick-panel + merchant/[storeId]/quick-panel-actions.ts — hasPlan(effectivePlan,'pro') in the page and in every action",
+    copy: { label: "quickPanel.feature.label", description: "quickPanel.feature.desc" },
+  },
+  // Loyalty stamp card (or phone-keyed points) — the customer is known by phone
+  // (wa_phone_key), online and at the POS, and keeps a tokenized card link.
+  // Zero recurring cost: the card is sent as a wa.me link from the merchant's
+  // own phone. Pro and Business: the screen shows ProGate below Pro, and 0310
+  // refuses configuring / adding members / adding stamps below Pro in the
+  // database (store_plan_is_pro); earned rewards stay redeemable after a
+  // downgrade.
+  loyaltyStamps: {
+    state: "live",
+    plan: "pro",
+    evidence:
+      "merchant/[storeId]/loyalty (hasPlan(effectivePlan,'pro') → ProGate) + /[lang]/loyalty/[token]; migration 0310 set_loyalty_program / loyalty_add_member / loyalty_adjust re-check the plan",
+    copy: { label: "loyaltyCards.feature.loyaltyLabel", description: "loyaltyCards.feature.loyaltyDesc" },
+  },
+  // Gift cards: a 12-character code in USD or LBP, spent online (checkout) and
+  // at the POS as tender. Pro and Business to ISSUE (issue_gift_card checks the
+  // plan in 0310); spending an issued card never checks the plan — it is money
+  // the customer already paid.
+  giftCards: {
+    state: "live",
+    plan: "pro",
+    evidence:
+      "merchant/[storeId]/gift-cards (hasPlan(effectivePlan,'pro') → ProGate) + checkout / POS redemption + /[lang]/gift/[token]; migration 0310 issue_gift_card re-checks the plan",
+    copy: { label: "loyaltyCards.feature.giftLabel", description: "loyaltyCards.feature.giftDesc" },
   },
 
   // ── Business ─────────────────────────────────────────────────────────────

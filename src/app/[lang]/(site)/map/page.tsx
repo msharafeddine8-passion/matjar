@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
+import { localeAlternates } from "@/lib/site";
 import { getStoresForListing } from "@/lib/data/stores";
 import { Container } from "@/components/ui/container";
 import { StoreMapClient } from "@/components/store-map-client";
@@ -16,7 +17,11 @@ export async function generateMetadata({
   const { lang } = await params;
   if (!isLocale(lang)) return {};
   const dict = await getDictionary(lang);
-  return { title: dict.map.title, description: dict.map.subtitle };
+  return {
+    title: dict.map.title,
+    description: dict.map.subtitle,
+    alternates: localeAlternates(lang, "/map"),
+  };
 }
 
 export default async function MapPage({

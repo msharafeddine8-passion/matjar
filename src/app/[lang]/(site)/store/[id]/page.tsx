@@ -9,12 +9,18 @@ import {
   sampleProducts,
 } from "@/lib/catalog";
 import {
-  resolveProfileOrder,
   resolveStoreModules,
   sectorHasTeam,
   sectorTeamMeta,
   type ProfileSectionKey,
 } from "@/lib/sectors";
+import {
+  resolveProfile,
+  reviewVerification,
+  type PrimaryAction,
+  type ProfileReview,
+} from "@/lib/profile-engine";
+import { resolveStoreTrust } from "@/lib/trust";
 import { createClient } from "@/lib/supabase/server";
 import {
   getPublicStoreView,
@@ -26,21 +32,21 @@ import {
   getStoreCheckoutContext,
   withLoyaltyBalance,
 } from "@/lib/data/checkout";
-import { localeAlternates, SITE_URL } from "@/lib/site";
+import { SITE_URL } from "@/lib/site";
+import { buildStoreMetadata, storeCanonicalPath } from "@/lib/seo-rules";
 import { accentStyle } from "@/lib/color";
 import { resolveTheme } from "@/lib/themes";
 import { storeJsonLd, jsonLdScript, toOpeningHours } from "@/lib/jsonld";
-import { parseHours } from "@/lib/hours";
+import { daySpan, isOpenNow, parseHours } from "@/lib/hours";
 import { getUsdLbpRate } from "@/lib/data/settings";
 import { formatUsd } from "@/lib/currency";
 import { waNumber } from "@/lib/phone";
 import { categoryIcons } from "@/components/category-icon";
 import { Container } from "@/components/ui/container";
-import {
-  StoreReviews,
-  type MyReview,
-  type Review,
-} from "@/components/store-reviews";
+import type { MyReview, Review } from "@/components/store-reviews";
+import { ProfileReviews } from "@/components/reviews/profile-reviews";
+import { StoreProfileSummary } from "@/components/store/store-profile-summary";
+import { PROFILE_MODULE_SLOTS } from "@/components/store/profile-module-registry";
 import {
   StoreVerifications,
   type StoreVerification,
@@ -93,6 +99,28 @@ import {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** A store review as the page reads it: the public row plus its date. */
+type StoreReviewRow = Review & { created_at: string | null };
+/** A product/service review of this store's catalogue — no account id. */
+type ItemReviewRow = {
+  id: string;
+  product_id: string;
+  rating: number;
+  comment: string | null;
+  verified: boolean | null;
+  created_at: string | null;
+  customer_name: string | null;
+};
+/** Newest product reviews read per id-chunk; the profile is not the product
+ *  page, and a long tail belongs there. */
+const ITEM_REVIEWS_MAX = 30;
+
+function chunk<T>(xs: T[], n: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < xs.length; i += n) out.push(xs.slice(i, i + n));
+  return out;
+}
+
 // React cache(): generateMetadata + the page both call loadStore(id) — dedupe
 // the load into one call per request. The public store view now comes from
 // src/lib/data/store-view.ts (cookie-less + cross-request cached); only the
@@ -141,28 +169,9 @@ export async function generateMetadata({
   const { lang, id } = await params;
   if (!isLocale(lang)) return {};
   const store = await loadStore(id, lang);
-  if (!store) return { title: "متجر | Matjar" };
-  const description =
-    store.description ||
-    (lang === "ar"
-      ? `${store.name} على متجر — اطلب أو تواصل مباشرةً.`
-      : `${store.name} on Matjar — order or contact directly.`);
-  const image = store.coverUrl || store.logoUrl || undefined;
-  return {
-    title: store.name,
-    description,
-    alternates: localeAlternates(lang, `/store/${id}`),
-    openGraph: {
-      title: store.name,
-      description,
-      images: image ? [image] : undefined,
-    },
-    twitter: {
-      card: image ? "summary_large_image" : "summary",
-      title: store.name,
-      description,
-    },
-  };
+  // Canonical = the vanity slug when the store has one (the sitemap has always
+  // listed that URL), noindex for demo-catalog stores — lib/seo-rules.ts.
+  return buildStoreMetadata({ lang, id, store });
 }
 
 export default async function StorePage({
@@ -193,7 +202,13 @@ export default async function StorePage({
 
   // Wave 1 — the independent public reads for a real store run in parallel
   // (reviews, verification badges, enabled modules) instead of a waterfall.
-  const [reviews, verifications, modRowsData] = realStore
+  // Product/service reviews for this store's own catalogue (Reviews 2.0). The
+  // anon grant on product_reviews (0287) covers exactly these columns; no
+  // account id is asked for. Chunked because the id list rides in the URL.
+  const catalogueIds = store.products
+    .map((p) => p.id)
+    .filter((x): x is string => !!x);
+  const [reviews, verifications, modRowsData, itemReviewRows] = realStore
     ? await Promise.all([
         supabase
           .from("reviews")
@@ -206,10 +221,12 @@ export default async function StorePage({
           // anyone who opened the page. The one thing it was used for — finding
           // the viewer's own review to prefill the form — is looked up by id in
           // wave 3 instead: one row, server-side, and only when signed in.
-          .select("id, customer_name, rating, comment, reply, reply_at")
+          // created_at is in the anon column grant (0287): Reviews 2.0 dates
+          // every review instead of listing them undated.
+          .select("id, customer_name, rating, comment, reply, reply_at, created_at")
           .eq("store_id", id)
           .order("created_at", { ascending: false })
-          .then((r) => (r.data ?? []) as Review[]),
+          .then((r) => (r.data ?? []) as StoreReviewRow[]),
         // Certificates & licenses (public, non-rejected). The "verified" badge
         // shows only if at least one document is admin-verified.
         supabase
@@ -233,11 +250,23 @@ export default async function StorePage({
             (r) =>
               (r.data ?? []) as { module_key: string; enabled: boolean }[],
           ),
+        Promise.all(
+          chunk(catalogueIds, 100).map((ids) =>
+            supabase
+              .from("product_reviews")
+              .select("id, product_id, rating, comment, verified, created_at, customer_name")
+              .in("product_id", ids)
+              .order("created_at", { ascending: false })
+              .limit(ITEM_REVIEWS_MAX)
+              .then((r) => (r.data ?? []) as ItemReviewRow[]),
+          ),
+        ).then((parts) => parts.flat()),
       ])
     : [
-        [] as Review[],
+        [] as StoreReviewRow[],
         [] as StoreVerification[],
         [] as { module_key: string; enabled: boolean }[],
+        [] as ItemReviewRow[],
       ];
   const hasVerified = verifications.some((v) => v.status === "verified");
 
@@ -388,7 +417,7 @@ export default async function StorePage({
 
   // Wave 3 — follow state + exchange rate + fulfilled count + the viewer's own
   // review (all independent, all per-user).
-  const [isFollowing, lbpRate, ordersFulfilled, myReview] = await Promise.all([
+  const [isFollowing, lbpRate, ordersFulfilled, myReview, hasCompletedPurchase] = await Promise.all([
     user && realStore
       ? supabase
           .from("follows")
@@ -419,6 +448,15 @@ export default async function StorePage({
           .maybeSingle()
           .then((r) => (r.data as MyReview | null) ?? null)
       : Promise.resolve(null),
+    // Whether THIS viewer may write a review: the same definer function the
+    // reviews insert policy runs (completed order or booking, 0143), asked
+    // about themselves only. Decides whether an empty reviews section is an
+    // action for them or a placeholder to skip. Signed out: never asked.
+    user && realStore
+      ? supabase
+          .rpc("has_store_purchase", { p_uid: user.id, p_store: id })
+          .then((r) => r.data === true)
+      : Promise.resolve(false),
   ]);
   const avg = reviews.length
     ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
@@ -544,6 +582,147 @@ export default async function StorePage({
           ? dict.store.listings
           : dict.store.products;
 
+  // ===== Business profile engine (src/lib/profile-engine.ts) =====
+  //
+  // Which modules render, in what order, what the page leads with, and the
+  // clinic's at-a-glance rows — decided once, as a pure function of the facts
+  // fetched above, instead of a hand-mirrored `present` map and a nested
+  // ternary in this file. A module with nothing real in it is omitted: no
+  // dashed «no products» box, no «no reviews yet» to a visitor who cannot
+  // write one, no summary row for a fact the merchant never recorded.
+  const services = store.products.filter((p) => p.itemKind === "service");
+  const goods = store.products.filter((p) => p.itemKind !== "service");
+  const storeOffering = resolveOffering({
+    category: store.category,
+    itemKind: experience.itemSurface === "appointment" ? "service" : "product",
+  });
+  const productById = new Map(
+    store.products
+      .filter((p) => p.id)
+      .map((p) => [p.id as string, p] as const),
+  );
+  // Reviews 2.0: the store's own reviews plus reviews of its catalogue, each
+  // labelled only with what its row can prove (reviewVerification).
+  const profileReviews: ProfileReview[] = [
+    ...reviews.map(
+      (r): ProfileReview => ({
+        id: r.id,
+        source: "store",
+        rating: r.rating,
+        comment: r.comment,
+        authorName: r.customer_name,
+        createdAt: r.created_at ?? null,
+        reply: r.reply,
+        replyAt: r.reply_at,
+        subject: null,
+        verification: reviewVerification({ source: "store" }),
+      }),
+    ),
+    ...itemReviewRows.flatMap((r): ProfileReview[] => {
+      const p = productById.get(r.product_id);
+      if (!p) return [];
+      return [
+        {
+          id: r.id,
+          source: "product",
+          rating: r.rating,
+          comment: r.comment,
+          authorName: r.customer_name,
+          createdAt: r.created_at,
+          reply: null,
+          replyAt: null,
+          subject: {
+            id: r.product_id,
+            name: lang === "en" ? p.nameEn || p.name : p.name,
+            kind: p.itemKind === "service" ? "service" : "product",
+          },
+          verification: reviewVerification({
+            source: "product",
+            verified: r.verified,
+          }),
+        },
+      ];
+    }),
+  ];
+  const viewerCanReview = !!user && (!!myReview || hasCompletedPurchase);
+  const LoyaltySlot = PROFILE_MODULE_SLOTS.loyalty;
+  // Only a number that survives waNumber() — see the sticky CTA below.
+  const contactWa = waNumber(store.whatsapp ?? store.phone ?? null);
+  const visitMinutes = (s: (typeof services)[number]): number | null => {
+    if (s.durationMinutes != null && s.durationMinutes > 0) return s.durationMinutes;
+    const n = Number(s.attributes?.duration ?? NaN);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const { profile, summaryRows } = resolveProfile(
+    store.category,
+    {
+      isReal: store.isReal,
+      enabledModules,
+      experience,
+      hasAnnouncement: !!store.announcement,
+      goods: goods.length,
+      services: services.length,
+      checkoutAvailable: checkout != null,
+      goodsTransact: storeOffering.transacts,
+      branches: branches.length,
+      mapPins: mapPins.length,
+      hasWeekHours: weekHours != null,
+      fulfilment: {
+        acceptsDelivery: store.acceptsDelivery ?? true,
+        acceptsPickup: store.acceptsPickup ?? true,
+        minOrder: store.minOrder ?? 0,
+        hasPrepTime: !!store.prepTime,
+        hasPaymentNote: !!store.paymentNote,
+        zones: zones.length,
+        couriers: couriers.length,
+      },
+      rentalVehicles,
+      ticketTypes,
+      resources: resources.length,
+      membershipPlans: membershipPlans.length,
+      classes: classes.length,
+      courses: courses.length,
+      portfolio: portfolio.length,
+      healthcare: {
+        hasSpecialties: !!store.specialties,
+        hasInsurance: !!store.insurance,
+        cancelHours: store.bookingCancelHours ?? 0,
+        pricedServices: services.filter((s) => s.price > 0).length,
+        timedServices: services.filter((s) => visitMinutes(s) != null).length,
+      },
+      doctors: doctors.length,
+      verifications: verifications.length,
+      reviews: { listed: profileReviews.length, viewerCanReview },
+      loyaltyRegistered: !!LoyaltySlot,
+      hasContactNumber: !!contactWa,
+    },
+    {
+      team: doctors.map((d) => ({ specialty: d.specialty })),
+      services: services.map((s) => ({
+        name: lang === "en" ? s.nameEn || s.name : s.name,
+        price: s.price,
+        minutes: visitMinutes(s),
+      })),
+      specialtiesText: store.specialties ?? null,
+      insurance: store.insurance ?? null,
+      openNow: isOpenNow(weekHours, renderedAt),
+      today: daySpan(weekHours, renderedAt),
+      area: store.area,
+      branches: branches.length,
+      // Admin-reviewed signals only; a paid plan never reaches this list.
+      signals: resolveStoreTrust({
+        commercialRegVerified: store.registered,
+        verifications,
+      }).map((s) => s.kind),
+      reviewCount: reviews.length,
+      rating: avg,
+      fulfilled: ordersFulfilled,
+      verifiedDocuments: verifications.filter((v) => v.status === "verified")
+        .length,
+    },
+  );
+  const present = profile.present;
+
   // Every public section, keyed — composition lives in the sector registry
   // (resolveProfileOrder) instead of in the shape of this JSX. A clinic can lead
   // with its doctors and a salon with its portfolio without either page forking;
@@ -584,6 +763,16 @@ export default async function StorePage({
         headerCount={headerCount}
         ordersFulfilled={ordersFulfilled}
         isFollowing={isFollowing}
+      />
+    ),
+
+    // WHO / WHAT / WHEN / WHERE / HOW MUCH / WHY TRUST, straight under the
+    // name — only the rows whose fact exists (resolveProfileSummary).
+    summary: summaryRows.length > 0 && (
+      <StoreProfileSummary
+        rows={summaryRows}
+        category={store.category}
+        dict={dict}
       />
     ),
 
@@ -770,102 +959,64 @@ export default async function StorePage({
       />
     ),
 
-    reviews: store.isReal && (
-      <StoreReviews
+    // A slot owned by the loyalty feature: nothing renders until a component
+    // is registered in store/profile-module-registry.ts.
+    loyalty: store.isReal && LoyaltySlot && (
+      <LoyaltySlot
         storeId={id}
         lang={lang}
         dict={dict}
-        reviews={reviews}
+        loyaltyRedemptionEnabled={store.loyaltyRedemptionEnabled ?? false}
+        loyaltyPointsPerUnit={store.loyaltyPointsPerUnit ?? null}
+        signedIn={!!user}
+      />
+    ),
+
+    reviews: store.isReal && (
+      <ProfileReviews
+        storeId={id}
+        lang={lang}
+        dict={dict}
+        reviews={profileReviews}
         currentUser={currentUser}
         myReview={myReview}
+        viewerCanReview={viewerCanReview}
       />
     ),
   };
 
   // ===== Which sections actually have something in them =====
   //
-  // `sections[key]` being truthy is NOT the same as the section having content:
-  // several of these components decide for themselves and return null (an empty
-  // doctor roster, a clinic that filled in no facts, a shop with no fulfilment
-  // terms recorded). The mobile tab rail below is derived from this map, so a
-  // wrong entry here is a chip that scrolls to nothing — the one failure the
-  // rail must not have. Each line mirrors the component's own null test.
-  const services = store.products.filter((p) => p.itemKind === "service");
-  const goods = store.products.filter((p) => p.itemKind !== "service");
-  // The list StoreProductsSection gates its own empty state on.
-  const catalogPrimary =
-    experience.itemSurface === "appointment" ? services : goods;
-  const catalogGoodsCart =
-    experience.itemSurface === "appointment" &&
-    experience.canOrderProducts &&
-    goods.length > 0;
-
-  const present: Partial<Record<ProfileSectionKey, boolean>> = {
-    branches: branches.length > 1,
-    // StoreFulfillment returns null when the merchant recorded no mode, no
-    // fact, no zone and no courier.
-    delivery:
-      store.isReal &&
-      enabledModules.has("orders") &&
-      ((store.acceptsDelivery ?? true) ||
-        (store.acceptsPickup ?? true) ||
-        (store.minOrder ?? 0) > 0 ||
-        !!store.prepTime ||
-        !!store.paymentNote ||
-        zones.length > 0 ||
-        couriers.length > 0),
-    location: mapPins.length > 0 && enabledModules.has("location"),
-    hours: weekHours != null,
-    serviceRequest: store.isReal && experience.showServiceRequest,
-    leadForm: store.isReal && experience.showLeadForm,
-    stay: store.isReal && experience.showStay,
-    // Same server-side count as tickets: no fleet, no tab.
-    rental: store.isReal && experience.showRental && rentalVehicles > 0,
-    // EventTickets loads its rows on the client and renders nothing when a
-    // store has none — hence the server-side count in wave 2.
-    tickets: store.isReal && experience.showTickets && ticketTypes > 0,
-    resources: resources.length > 0 && experience.allowResourceBooking,
-    memberships: membershipPlans.length > 0,
-    classes: classes.length > 0 && experience.allowResourceBooking,
-    reservations: store.isReal && enabledModules.has("reservations"),
-    courses: courses.length > 0,
-    portfolio: portfolio.length > 0,
-    catalog: store.isReal && (catalogPrimary.length > 0 || catalogGoodsCart),
-    healthcareInfo:
-      store.category === "healthcare" &&
-      (!!store.specialties ||
-        !!store.insurance ||
-        (store.bookingCancelHours ?? 0) > 0 ||
-        services.some((s) => s.price > 0) ||
-        services.some(
-          (s) =>
-            (s.durationMinutes ?? 0) > 0 ||
-            Number(s.attributes?.duration ?? NaN) > 0,
-        )),
-    doctors: doctors.length > 0,
-    verifications:
-      store.isReal && enabledModules.has("verifications") && verifications.length > 0,
-    // Always a real section on a live store: it carries the review form and its
-    // own empty state, which is a thing to do rather than an empty shell.
-    reviews: store.isReal,
-  };
-
+  // `present` is the engine's (resolveBusinessProfile), and it is the ONLY
+  // test: a section renders when its module is present, never merely because
+  // its JSX node is truthy. The mobile tab rail is derived from the same map,
+  // so a chip can never scroll to nothing.
+  //
   // announcement and hero are full-bleed — their backgrounds run to the viewport
   // edge, so they render outside <Container> as they always have. Both lead every
   // sector's order, so pulling them out of the mapped list changes nothing about
   // the sequence the customer sees; everything from `header` down is ordered.
-  const order = resolveProfileOrder(store.category);
-  const contained = order.filter(
+  const contained = profile.modules.filter(
     (key) => key !== "announcement" && key !== "hero",
   );
+  // The list StoreProductsSection gates its own content on.
+  // (catalogPrimaryCount in the engine is the count of exactly this list.)
+  const catalogPrimary =
+    experience.itemSurface === "appointment"
+      ? services
+      : experience.itemSurface === "order"
+        ? goods
+        : store.products;
 
   // ===== Mobile section tabs =====
-  // Derived, never written: the sector registry's own order, filtered by the
-  // map above. `header` is the page's identity block, not a destination, so it
-  // is the only contained key excluded by name.
-  const tabLabels = dict.store.tabs as unknown as Record<string, string>;
+  // Derived, never written: the engine's order, filtered to present modules.
+  // `header` and `summary` are the page's identity block, not destinations.
+  const tabLabels = {
+    ...(dict.store.tabs as unknown as Record<string, string>),
+    ...(dict.profile.tabs as unknown as Record<string, string>),
+  };
   const sectionTabs: StoreSectionTab[] = contained
-    .filter((key) => key !== "header" && present[key])
+    .filter((key) => key !== "header" && key !== "summary")
     .map((key) => ({
       key,
       // Both overrides exist for the same reason: a chip must say what the
@@ -875,7 +1026,11 @@ export default async function StorePage({
       // it does not read الفريق above a heading that says فريق الصالون.
       label:
         key === "catalog"
-          ? sectionTitle
+          ? // A booking store with no services yet shows only its goods cart,
+            // headed «منتجات للبيع» — the chip says the same.
+            store.isReal && catalogPrimary.length === 0
+            ? dict.store.productsForSale
+            : sectionTitle
           : key === "doctors"
             ? dict.os.team[sectorTeamMeta(store.category).labelKey]
             : tabLabels[key],
@@ -883,24 +1038,13 @@ export default async function StorePage({
     .filter((t) => !!t.label);
 
   // ===== Mobile sticky CTA =====
-  // The LABEL comes from the same resolver the offering page uses, so a clinic
-  // says احجز, a restaurant اطلب and a shop أضف إلى السلة — one vocabulary
-  // across both surfaces. It is rendered only where the page can actually
-  // transact: `resolveOffering().transacts` for the cart path, and for the
-  // booking path the equivalent test — that resolver reports `transacts: false`
-  // for an appointment because the OFFERING page cannot book and hands off to
-  // this one; here the booking engine IS the page, so what has to be true is
-  // that it rendered with something in it.
-  const storeOffering = resolveOffering({
-    category: store.category,
-    itemKind: experience.itemSurface === "appointment" ? "service" : "product",
-  });
-  const canTransactHere =
-    experience.itemSurface === "appointment"
-      ? experience.showBooking && services.length > 0
-      : experience.itemSurface === "order" &&
-        storeOffering.transacts &&
-        goods.length > 0;
+  // The ACTION is the engine's (`profile.primaryCta`): book where the booking
+  // engine has services in it; «اطلب الآن» on a restaurant only where an order
+  // can actually reach the kitchen (orders module on, order surface, items,
+  // a checkout); add-to-cart for other goods; otherwise scroll to the request
+  // or enquiry form; otherwise WhatsApp, when the number survives waNumber().
+  // No action at all when none of those is true — a bar that goes nowhere is
+  // worse than no bar.
   // A real "from" price or nothing — never a rounded-up guess.
   const cheapest = catalogPrimary
     .map((p) => p.discountPrice ?? p.price)
@@ -908,55 +1052,31 @@ export default async function StorePage({
     .sort((a, b) => a - b)[0];
   const note =
     cheapest != null ? `${dict.store.from} ${formatUsd(cheapest)}` : null;
-  // §19 names four sticky CTAs — أضف للسلة / احجز موعد / اطلب الآن / تواصل —
-  // and the fourth was the one no storefront ever got. A services profile
-  // (Passion Glow) leads with a request form, cannot run a cart or a calendar,
-  // and so fell out of `canTransactHere` entirely: it shipped with no sticky
-  // action at all, on the sector whose whole transaction IS getting in touch.
-  //
-  // It scrolls to the form, exactly as the other three scroll to their engine —
-  // never to a phone dialler, and only when the page actually rendered a form
-  // to scroll to. A store with neither an engine nor a form still gets no bar,
-  // because a bar that scrolls nowhere is worse than no bar.
-  // Only a number that survives waNumber() — see below.
-  const contactWa = waNumber(store.whatsapp ?? store.phone ?? null);
-  const contactTarget = present.serviceRequest
-    ? "sec-serviceRequest"
-    : present.leadForm
-      ? "sec-leadForm"
-      : null;
-  const stickyCta =
-    canTransactHere && present.catalog
-      ? {
-          targetId: "offerings",
-          label: dict.offering.cta[storeOffering.cta],
-          note,
-        }
-      : contactTarget
+  const ctaLabel: Record<PrimaryAction, string> = {
+    orderNow: dict.profile.cta.orderNow,
+    // The offering resolver's word for this sector's goods (أضف إلى السلة).
+    addToCart: dict.offering.cta[storeOffering.cta],
+    bookAppointment: dict.offering.cta.bookAppointment,
+    contactStore: dict.offering.cta.contactStore,
+  };
+  const primary = profile.primaryCta;
+  const stickyCta = !primary
+    ? null
+    : primary.outbound
+      ? contactWa
         ? {
-            targetId: contactTarget,
-            label: dict.offering.cta.contactStore,
-            // Only if the page really did list priced items — the same
-            // `cheapest`, which is a read of the catalogue, not an estimate.
-            note: present.catalog ? note : null,
+            href: `https://wa.me/${contactWa}`,
+            label: ctaLabel.contactStore,
+            note: null,
           }
-        : // Nothing to scroll to. Four of fifteen live storefronts are in this
-          // state — no catalogue, no engine, no form — and every one of them
-          // has a phone and a WhatsApp number sitting in the header. They had
-          // no persistent action at all, on the page where ringing the shop is
-          // the only transaction there is.
-          //
-          // `waNumber` returns null for a number that cannot actually be
-          // dialled, so a store with a malformed phone still gets no bar rather
-          // than a button that fails. No target id: this one never hides,
-          // because there is no on-page control for it to cover.
-          contactWa
-          ? {
-              href: `https://wa.me/${contactWa}`,
-              label: dict.offering.cta.contactStore,
-              note: null,
-            }
-          : null;
+        : null
+      : {
+          targetId: primary.targetId ?? undefined,
+          label: ctaLabel[primary.action],
+          // Only if the page really did list priced items — `cheapest` is a
+          // read of the catalogue, not an estimate.
+          note: present.catalog ? note : null,
+        };
 
   // ===== How payment works, above the catalogue =====
   //
@@ -964,7 +1084,7 @@ export default async function StorePage({
   // buyer looks before deciding — only inside the cart, after they had already
   // committed to opening it. It is now said once, immediately above the list of
   // things you can order, on exactly the stores that can take an order: the
-  // same `canTransactHere` test the sticky CTA uses, so a directory-only page
+  // same engine test the sticky CTA uses (`profile.transacts`), so a directory-only page
   // never promises a payment method for a transaction it cannot run.
   //
   // Wording follows the surface, not the sector name — a clinic pays at the
@@ -972,7 +1092,7 @@ export default async function StorePage({
   // engine already uses, so there is one vocabulary rather than a second one
   // invented for a banner.
   const paymentNote =
-    canTransactHere && present.catalog ? (
+    profile.transacts ? (
       <div className="mt-6 flex items-start gap-2.5 rounded-2xl border border-success/25 bg-success-soft px-4 py-3 text-success">
         <Wallet className="mt-0.5 h-4.5 w-4.5 shrink-0" />
         {experience.itemSurface === "appointment" ? (
@@ -1012,7 +1132,8 @@ export default async function StorePage({
                 name: store.name,
                 description: store.description,
                 image: store.logoUrl ?? store.coverUrl,
-                url: `${SITE_URL}/${lang}/store/${id}`,
+                url: `${SITE_URL}/${lang}${storeCanonicalPath(id, store.slug)}`,
+                sector: store.category,
                 telephone: store.whatsapp ?? store.phone,
                 area: store.area,
                 lat: branches[0]?.lat ?? null,
@@ -1035,12 +1156,12 @@ export default async function StorePage({
 
       <Container>
         {contained.map((key) => {
+          // `contained` holds only modules the engine found content for.
           const node = sections[key];
           if (!node) return null;
-          // Only sections the rail can actually reach get an anchor + a scroll
-          // margin; everything else renders exactly as it did, in a Fragment
-          // that adds no box and no margin of its own.
-          if (!present[key] || key === "header")
+          // The identity block (header + summary) is not a rail destination:
+          // no anchor, no scroll margin, no box of its own.
+          if (key === "header" || key === "summary")
             return <Fragment key={key}>{node}</Fragment>;
           return (
             <Fragment key={key}>
@@ -1084,7 +1205,8 @@ export default async function StorePage({
 
       {stickyCta && (
         <StoreStickyCta
-          targetId={stickyCta.targetId}
+          targetId={"targetId" in stickyCta ? stickyCta.targetId : undefined}
+          href={"href" in stickyCta ? stickyCta.href : undefined}
           label={stickyCta.label}
           note={stickyCta.note}
         />

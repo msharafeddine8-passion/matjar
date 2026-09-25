@@ -16,6 +16,14 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { formatUsd } from "@/lib/currency";
+import {
+  PosExtrasFields,
+  PosExtrasResult,
+  applyPosExtras,
+  type PosExtrasConfig,
+  type PosExtrasLine,
+  type PosExtrasValue,
+} from "@/components/loyalty/pos-extras";
 
 export type PosProduct = {
   id: string;
@@ -53,12 +61,15 @@ export function PosTerminal({
   products,
   customers,
   locations = [],
+  extras,
 }: {
   storeId: string;
   dict: Dictionary;
   products: PosProduct[];
   customers: PosCustomer[];
   locations?: PosLocation[];
+  /** Loyalty phone + gift-card code (0310). Omitted = the till as before. */
+  extras?: PosExtrasConfig;
 }) {
   const router = useRouter();
   const t = dict.os.pos;
@@ -70,6 +81,8 @@ export function PosTerminal({
   const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [extrasValue, setExtrasValue] = useState<PosExtrasValue>({ phone: "", giftCode: "" });
+  const [extrasResult, setExtrasResult] = useState<PosExtrasLine[]>([]);
 
   const q = query.trim().toLowerCase();
   const filtered = products.filter(
@@ -103,7 +116,8 @@ export function PosTerminal({
   async function charge() {
     if (!cart.length) return;
     setBusy(true);
-    const { error } = await createClient().rpc("pos_record_sale", {
+    setExtrasResult([]);
+    const { data: saleId, error } = await createClient().rpc("pos_record_sale", {
       p_store_id: storeId,
       p_items: cart.map((l) => ({ product_id: l.product.id, qty: l.qty })),
       p_discount: disc,
@@ -111,11 +125,18 @@ export function PosTerminal({
       p_note: null,
       p_location_id: locationId || null,
     });
+    // The sale is recorded; loyalty and a gift card are applied to it after.
+    const extrasLines =
+      !error && saleId && extras
+        ? await applyPosExtras({ saleId: saleId as string, value: extrasValue, config: extras, dict })
+        : [];
     setBusy(false);
     if (error) {
       notifyError(dict.auth.errorGeneric);
       return;
     }
+    setExtrasResult(extrasLines);
+    setExtrasValue({ phone: "", giftCode: "" });
     setCart([]);
     setDiscount("");
     setCustomerId("");
@@ -229,6 +250,7 @@ export function PosTerminal({
                 {t.success}
               </div>
             )}
+            {success && <PosExtrasResult lines={extrasResult} dict={dict} />}
 
             {cart.length === 0 ? (
               <p className="mt-4 rounded-xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
@@ -313,6 +335,15 @@ export function PosTerminal({
                         ))}
                       </select>
                     </label>
+                  )}
+                  {extras && (
+                    <PosExtrasFields
+                      config={extras}
+                      value={extrasValue}
+                      onChange={setExtrasValue}
+                      dict={dict}
+                      storeId={storeId}
+                    />
                   )}
                 </div>
 

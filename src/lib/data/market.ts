@@ -24,6 +24,9 @@ export type ListingCard = {
   isFeatured: boolean;
   status: string;
   createdAt: string;
+  /** The moderator's reason on a rejected listing (0313). Only ever filled
+   *  on the seller's own screen (getMyListings). */
+  moderationNote?: string | null;
 };
 
 export type ListingDetail = ListingCard & {
@@ -357,11 +360,39 @@ export async function getMyListings(
         .from("listings")
         .select(SELECT)
         .eq("seller_id", userId)
+        // A listing the seller (or a moderator) removed is gone from their
+        // screen. Since 0313 a seller's delete is a soft delete, so the row
+        // survives for the moderation record — not for this list.
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
         .range(from, to) as unknown as PromiseLike<{ data: Row[] | null }>,
     FETCH_BOUNDS.myListings,
     `listings (seller ${userId})`,
   );
-  return rows.map((r) => toCard(r, lang));
+  const cards = rows.map((r) => toCard(r, lang));
+
+  // Why a listing was rejected, in the moderator's words (0313). A separate,
+  // tolerant read: before 0313 is applied the column does not exist, the
+  // query errors, and the screen simply shows no reason.
+  const rejected = cards.filter((c) => c.status === "rejected").map((c) => c.id);
+  if (rejected.length) {
+    const { data: notes, error } = await supabase
+      .from("listings")
+      .select("id, moderation_note")
+      .in("id", rejected.slice(0, 200))
+      .limit(200);
+    if (!error && notes) {
+      const byId = new Map(
+        (notes as { id: string; moderation_note: string | null }[]).map((n) => [
+          n.id,
+          n.moderation_note,
+        ]),
+      );
+      for (const c of cards) {
+        if (byId.has(c.id)) c.moderationNote = byId.get(c.id) ?? null;
+      }
+    }
+  }
+  return cards;
 }

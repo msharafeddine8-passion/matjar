@@ -82,8 +82,16 @@ export function StoreProductsSection({
   const services = store.products.filter((p) => p.itemKind === "service");
   const goods = store.products.filter((p) => p.itemKind !== "service");
   // On an appointment surface the primary list is the services; the goods get
-  // their own cart section below.
-  const primary = surface === "appointment" ? services : goods;
+  // their own cart section below. The browse-only catalogue surface lists every
+  // row (it renders `store.products`), so its emptiness is judged on every row
+  // too — counting only goods there put «no products» above a trade's list of
+  // services. Same rule as catalogPrimaryCount() in lib/profile-engine.ts.
+  const primary =
+    surface === "appointment"
+      ? services
+      : surface === "order"
+        ? goods
+        : store.products;
   // A checkout the page could not assemble (a store anon may not read) is a
   // store nobody may order from — the browse-only catalogue is then the correct
   // surface, not a cart that would fail at the RPC.
@@ -92,6 +100,12 @@ export function StoreProductsSection({
     canOrderProducts &&
     goods.length > 0 &&
     checkout != null;
+  // A booking store with no services yet but goods on sale (a salon selling
+  // perfume, live today): the goods cart below IS the section. Drawing «no
+  // services» above it was a placeholder over real content — the heading and
+  // the empty box are skipped, the cart keeps its own heading.
+  const primaryEmptyButGoods =
+    store.isReal && primary.length === 0 && showGoodsSection;
 
   // What THIS sector's bundle promises that its storefront cannot deliver yet,
   // from the availability registry — empty for any sector that is not held in
@@ -113,12 +127,14 @@ export function StoreProductsSection({
       {/* Below lg the site header and the store's section-tab rail are both
           sticky, so the scroll margin must clear BOTH or a jump to this anchor
           lands the heading underneath them. */}
-      <h2
-        id="offerings"
-        className="mb-4 mt-10 scroll-mt-[calc(var(--m-header-h)+var(--m-sectiontabs-h)+env(safe-area-inset-top))] text-xl font-bold lg:scroll-mt-20"
-      >
-        {sectionTitle}
-      </h2>
+      {!primaryEmptyButGoods && (
+        <h2
+          id="offerings"
+          className="mb-4 mt-10 scroll-mt-[calc(var(--m-header-h)+var(--m-sectiontabs-h)+env(safe-area-inset-top))] text-xl font-bold lg:scroll-mt-20"
+        >
+          {sectionTitle}
+        </h2>
+      )}
       {store.isReal ? (
         primary.length ? (
           surface === "appointment" ? (
@@ -284,7 +300,7 @@ export function StoreProductsSection({
               </div>
             </>
           )
-        ) : (
+        ) : primaryEmptyButGoods ? null : (
           <div className="rounded-2xl border border-dashed border-border py-10 sm:py-14 text-center text-muted-foreground">
             {surface === "appointment"
               ? dict.store.noServices

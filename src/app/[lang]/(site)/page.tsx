@@ -27,7 +27,31 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await params;
   if (!isLocale(lang)) return {};
-  return { alternates: localeAlternates(lang, "") };
+  // The layout default is one bilingual string for both locales; /en was
+  // served an Arabic-first title and a half-Arabic description. `absolute`
+  // keeps the template from appending the brand a second time.
+  const title =
+    lang === "ar"
+      ? "متجر — كل متاجر لبنان وخدماته بمكان واحد"
+      : "Matjar — every shop and service in Lebanon, in one place";
+  const description =
+    lang === "ar"
+      ? "اكتشف المتاجر والمطاعم والعيادات والخدمات في منطقتك، اطلب أو احجز أو تواصل مباشرةً عبر واتساب."
+      : "Discover shops, restaurants, clinics and services near you in Lebanon — order, book or message them directly on WhatsApp.";
+  return {
+    title: { absolute: title },
+    description,
+    alternates: localeAlternates(lang, ""),
+    openGraph: {
+      type: "website",
+      siteName: "متجر · Matjar",
+      title,
+      description,
+      locale: lang === "ar" ? "ar_LB" : "en_US",
+      alternateLocale: lang === "ar" ? ["en_US"] : ["ar_LB"],
+    },
+    twitter: { card: "summary_large_image", title, description },
+  };
 }
 
 export default async function Home({
