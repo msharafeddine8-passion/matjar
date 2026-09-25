@@ -211,3 +211,11 @@ SECURITY DEFINER convention check — 303 migrations replayed in order; 207 defi
   - public.bump_coupon_use/0 [public-only] — (pre-existing, not from 0307)
 PASS — no NEW violation. Every live SECURITY DEFINER function outside the baseline says who may execute it and pins search_path = ''.
 ```
+
+
+## Applied to production (2026-09-25)
+
+- 0307 run first inside an uncommitted transaction against production: **62 of 62 checks passed** (owner, staff with and without the customers permission, another store's owner, anon; per-currency balances, FIFO overdue date, statement token read/revoke, no phone/attachment/staff id on the statement, storage isolation). A follow-up read confirmed nothing persisted. Then applied with apply_migration.
+- 0308 (Google feed columns + guard) run the same way: **10 of 10 checks passed** (owner blocked without policies, trial counts as Pro, a free store cannot pass by claiming plan=pro in the same update, non-owner touches 0 rows). Applied.
+- Supabase security advisor after both: no finding names any new object.
+- Still not done: the ledger and feed screens have not been opened in a browser as a signed-in merchant.
