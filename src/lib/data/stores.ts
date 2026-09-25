@@ -18,7 +18,12 @@ import {
   type QualityLevel,
 } from "@/lib/data-quality";
 import { FETCH_BOUNDS, fetchAllByIds, warnIfTruncated } from "./bounds";
-import { escapeForOr } from "./discovery";
+import { cardRollups, escapeForOr } from "./discovery";
+import {
+  storeRowCardSource,
+  type CardStore,
+  type SectorCardSource,
+} from "@/lib/card-facts";
 
 /** Demo/sample catalog rows use short ids; only these reach a uuid column. */
 const UUID_RE =
@@ -29,13 +34,22 @@ const UUID_RE =
  *  list — every loader below drops them — so a consumer of these lists only
  *  ever sees `ok` or `incomplete`; the type keeps the third value so the
  *  same shape can describe a store fetched by id. */
-export type ListedStore = Store & { quality: QualityLevel };
+export type ListedStore = Store & {
+  quality: QualityLevel;
+  /** Structured hours exist, so `isOpen` is a fact rather than the default. */
+  hoursKnown: boolean;
+  /** The sector-aware card's inputs (lib/card-facts.ts): the row's own
+   *  columns always; the batched catalogue/zone rollups where the loader
+   *  attached them. */
+  facts: SectorCardSource;
+};
 
 /** The columns every listing query selects. `description`, `phone`,
  *  `whatsapp` and `service_area` ride along only so the quality gate can
- *  read them; the card renders none of them. */
+ *  read them; the card renders none of them. The fulfilment / insurance
+ *  columns feed the card's facts line. */
 const LISTING_SELECT =
-  "id, name, area, region, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, description, phone, whatsapp, service_area, business_types(slug)";
+  "id, name, area, region, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, description, phone, whatsapp, service_area, accepts_delivery, accepts_pickup, min_order, prep_time, insurance, business_types(slug)";
 
 // Maps a database store row into the shape the StoreCard expects.
 function rowToStore(row: {
@@ -60,10 +74,17 @@ function rowToStore(row: {
   business_types: { slug: string } | null;
   rating_avg: number | null;
   rating_count: number | null;
+  accepts_delivery?: boolean | null;
+  accepts_pickup?: boolean | null;
+  min_order?: number | string | null;
+  prep_time?: string | null;
+  insurance?: string | null;
 }): ListedStore {
   // Real open/closed from structured hours; stores without configured hours
-  // default to open (never scare customers away over missing data).
-  const open = isOpenNow(parseHours(row.hours), new Date());
+  // default to open (never scare customers away over missing data) — and
+  // `hoursKnown` is false, so no card claims "open" on their behalf.
+  const hours = parseHours(row.hours);
+  const open = isOpenNow(hours, new Date());
   // Denormalized rating columns, kept current by the reviews trigger (migration
   // 0091). rating stays undefined at 0 reviews so the card hides the rating
   // block; reviews carries the raw count.
@@ -97,6 +118,8 @@ function rowToStore(row: {
     region: (row.region as RegionKey) ?? undefined,
     category,
     quality: level,
+    hoursKnown: hours != null,
+    facts: storeRowCardSource(row),
     isOpen: open ?? true,
     plan: row.plan ?? "free",
     verified: row.is_verified ?? false,
@@ -153,10 +176,11 @@ const fetchActiveStores = unstable_cache(
     // otherwise — the pages re-sort for "near me"/rating when the user asks).
     list.sort((a, b) => Number(b.featured ?? false) - Number(a.featured ?? false));
 
-    await attachLocations(list);
+    await Promise.all([attachLocations(list), attachCardRollups(list)]);
     return list;
   },
-  ["active-stores-listing"],
+  // v2: entries now carry hoursKnown + facts; an older cached entry has neither.
+  ["active-stores-listing-v2"],
   { revalidate: 60, tags: ["stores"] },
 );
 
@@ -204,8 +228,16 @@ async function attachLocations(list: Store[]): Promise<void> {
   });
 }
 
+// Merges the batched card rollups (catalogue, services and prices, delivery
+// zones — lib/data/discovery.ts cardRollups) into each store's row facts.
+// Cached platform-wide rollups looked up by id: no query per card.
+async function attachCardRollups(list: ListedStore[]): Promise<void> {
+  const rollups = await cardRollups(list.map((s) => s.id));
+  for (const s of list) s.facts = { ...s.facts, ...rollups[s.id] };
+}
+
 // Marks which stores the current user has saved (followed).
-async function markFavorites(list: Store[]): Promise<Store[]> {
+async function markFavorites<T extends Store>(list: T[]): Promise<T[]> {
   const ids = await followedAmong(list.map((s) => s.id));
   if (ids) list.forEach((s) => (s.favorited = ids.has(s.id)));
   return list;
@@ -264,7 +296,7 @@ export async function followedAmong(
 
 // Real active stores, optionally padded with demo samples so listings aren't
 // empty before the platform fills up.
-export async function getStoresForListing(): Promise<Store[]> {
+export async function getStoresForListing(): Promise<CardStore[]> {
   // fetchActiveStores is cached (shared across requests), and markFavorites
   // mutates `favorited` per user — so shallow-clone first to never write a
   // viewer's favourites onto the shared cached objects. (Demo stores are
@@ -272,7 +304,7 @@ export async function getStoresForListing(): Promise<Store[]> {
   const real = (await fetchActiveStores()).map((s) => ({ ...s }));
   if (!SHOW_DEMO_STORES) return markFavorites(real);
   const realIds = new Set(real.map((s) => s.id));
-  return markFavorites([
+  return markFavorites<CardStore>([
     ...real,
     ...demoStores.filter((s) => !realIds.has(s.id)).map((s) => ({ ...s })),
   ]);
@@ -292,29 +324,125 @@ export async function getStoresForListing(): Promise<Store[]> {
 // the buyer's words would be parsed as syntax, and %/_ are ilike wildcards — a
 // search for "50%" must not match every store. Two copies of that rule is how
 // the two paths drifted apart in the first place.
+//
+// Search v2 (P1-SEARCH-01): `plan` is what lib/search-intent.ts understood of
+// the query. Without it the function behaves as before (one ILIKE of the whole
+// term, now also over `specialties`). With it, up to three bounded reads run
+// in parallel — the text match over every understood word and its stems, the
+// stores of the understood sector(s) whether or not their text says the word
+// («مطاعم» → the restaurant that never writes «مطعم»), and the clinics whose
+// doctors carry the understood specialty — and rankStores() merges, filters by
+// the understood region and orders them. The quality gate is unchanged: every
+// row still goes through rowToStore + listable, so a blocked store never ranks.
+// The pure half is imported lazily so this file's module graph is untouched.
 export async function searchStores(
   q: string,
   region?: string,
+  plan?: import("@/lib/search-intent").StoreSearchPlan,
 ): Promise<Store[]> {
   const term = q.trim();
   if (!term) return [];
   const supabase = await createClient();
-  let query = supabase
+  const si = await import("@/lib/search-intent");
+  const p = plan ?? si.planStoreSearch(si.parseSearchIntent(term));
+  const explicitRegion = region && region !== "all" ? region : null;
+  // One window for every read. The platform has a few dozen stores; the bound
+  // is what keeps a broad sector pull from becoming an unbounded select.
+  const SEARCH_WINDOW = 60;
+  const SELECT = `${LISTING_SELECT}, specialties`;
+  type Row = Parameters<typeof rowToStore>[0] & { specialties?: string | null };
+
+  const orClause = si.storeTextOrClause(p);
+  const doctorClause = si.doctorSpecialtyOrClause(p);
+
+  let textQuery = supabase
     .from("stores")
-    .select(LISTING_SELECT)
+    .select(SELECT)
     .eq("status", "active")
     .is("deleted_at", null)
     .or(
-      `name.ilike.%${escapeForOr(term)}%,description.ilike.%${escapeForOr(term)}%,area.ilike.%${escapeForOr(term)}%`,
+      orClause ||
+        `name.ilike.%${escapeForOr(term)}%,description.ilike.%${escapeForOr(term)}%,area.ilike.%${escapeForOr(term)}%`,
     );
-  if (region && region !== "all") query = query.eq("region", region);
-  const { data } = await query.limit(24);
-  const list = listable(
-    ((data ?? []) as unknown as Parameters<typeof rowToStore>[0][]).map(
-      rowToStore,
-    ),
+  if (explicitRegion) textQuery = textQuery.eq("region", explicitRegion);
+
+  let sectorQuery = supabase
+    .from("stores")
+    .select(SELECT.replace("business_types(slug)", "business_types!inner(slug)"))
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .in("business_types.slug", p.sectors);
+  if (explicitRegion) sectorQuery = sectorQuery.eq("region", explicitRegion);
+
+  const regionQuery = supabase
+    .from("stores")
+    .select(SELECT)
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .eq("region", explicitRegion ?? p.region ?? "");
+
+  const [text, sector, place, doctors] = await Promise.all([
+    textQuery.limit(SEARCH_WINDOW),
+    p.sectors.length ? sectorQuery.limit(SEARCH_WINDOW) : null,
+    p.pullRegion && (explicitRegion ?? p.region)
+      ? regionQuery.limit(SEARCH_WINDOW)
+      : null,
+    doctorClause
+      ? supabase.from("doctors").select("store_id").or(doctorClause).limit(100)
+      : null,
+  ]);
+
+  // Clinics named by a doctor's specialty but not already in hand.
+  const doctorIds = new Set(
+    ((doctors?.data ?? []) as { store_id: string }[]).map((d) => d.store_id),
   );
-  return markFavorites(list);
+  const rows = new Map<string, Row>();
+  for (const r of [
+    ...((text.data ?? []) as unknown as Row[]),
+    ...((sector?.data ?? []) as unknown as Row[]),
+    ...((place?.data ?? []) as unknown as Row[]),
+  ]) {
+    rows.set(r.id, r);
+  }
+  const missing = [...doctorIds].filter((id) => !rows.has(id) && UUID_RE.test(id));
+  if (missing.length) {
+    let idQuery = supabase
+      .from("stores")
+      .select(SELECT)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .in("id", missing);
+    if (explicitRegion) idQuery = idQuery.eq("region", explicitRegion);
+    const { data } = await idQuery.limit(missing.length);
+    for (const r of (data ?? []) as unknown as Row[]) rows.set(r.id, r);
+  }
+
+  const listed = listable([...rows.values()].map(rowToStore));
+  const byId = new Map([...rows.values()].map((r) => [r.id, r]));
+  const ranked = si.rankStores(
+    listed.map((s) => {
+      const r = byId.get(s.id)!;
+      return {
+        store: s,
+        id: s.id,
+        name: r.name,
+        description: r.description ?? null,
+        area: r.area,
+        specialties: r.specialties ?? null,
+        region: r.region,
+        sector: s.category,
+        rating: s.rating,
+        reviews: s.reviews,
+      };
+    }),
+    p,
+    doctorIds,
+  );
+  // Same batched facts the explore grid gets, so a store reads the same on a
+  // search card as it does everywhere else.
+  const top = ranked.slice(0, 24).map((x) => x.store);
+  await attachCardRollups(top);
+  return markFavorites(top);
 }
 
 // Homepage "featured" strip = PAYING stores only: a paid plan, or a store an
@@ -327,7 +455,7 @@ export async function searchStores(
 // from the placement its Pro competitor received. /pricing has always sold this
 // as included on both tiers (feature-availability.ts `homeFeatured`), so the
 // query was the thing that was wrong.
-export async function getFeaturedStores(limit = 4): Promise<Store[]> {
+export async function getFeaturedStores(limit = 4): Promise<CardStore[]> {
   const supabase = await createClient();
   const nowIso = new Date().toISOString();
   const { data } = await supabase
@@ -344,9 +472,10 @@ export async function getFeaturedStores(limit = 4): Promise<Store[]> {
   );
   // Featured (paid placement) floats above plain Pro.
   real.sort((a, b) => Number(b.featured ?? false) - Number(a.featured ?? false));
+  await attachCardRollups(real);
   if (!SHOW_DEMO_STORES) return markFavorites(real.slice(0, limit));
   const realIds = new Set(real.map((s) => s.id));
-  return markFavorites(
+  return markFavorites<CardStore>(
     [...real, ...featuredStores.filter((s) => !realIds.has(s.id))].slice(
       0,
       limit,

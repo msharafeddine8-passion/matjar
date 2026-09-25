@@ -5062,6 +5062,217 @@
       "kind_mismatch": "The item type doesn't fit the store's sector"
     }
   },
+  "sectorCards": {
+    "counts": {
+      "products": {
+        "zero": "{n} products",
+        "one": "1 product",
+        "two": "{n} products",
+        "few": "{n} products",
+        "many": "{n} products",
+        "other": "{n} products"
+      },
+      "services": {
+        "zero": "{n} services",
+        "one": "1 service",
+        "two": "{n} services",
+        "few": "{n} services",
+        "many": "{n} services",
+        "other": "{n} services"
+      },
+      "menu": {
+        "zero": "{n} menu items",
+        "one": "1 menu item",
+        "two": "{n} menu items",
+        "few": "{n} menu items",
+        "many": "{n} menu items",
+        "other": "{n} menu items"
+      },
+      "listings": {
+        "zero": "{n} listings",
+        "one": "1 listing",
+        "two": "{n} listings",
+        "few": "{n} listings",
+        "many": "{n} listings",
+        "other": "{n} listings"
+      },
+      "classes": {
+        "zero": "{n} classes",
+        "one": "1 class",
+        "two": "{n} classes",
+        "few": "{n} classes",
+        "many": "{n} classes",
+        "other": "{n} classes"
+      },
+      "courses": {
+        "zero": "{n} courses",
+        "one": "1 course",
+        "two": "{n} courses",
+        "few": "{n} courses",
+        "many": "{n} courses",
+        "other": "{n} courses"
+      },
+      "units": {
+        "zero": "{n} rooms",
+        "one": "1 room",
+        "two": "{n} rooms",
+        "few": "{n} rooms",
+        "many": "{n} rooms",
+        "other": "{n} rooms"
+      },
+      "tickets": {
+        "zero": "{n} ticket types",
+        "one": "1 ticket type",
+        "two": "{n} ticket types",
+        "few": "{n} ticket types",
+        "many": "{n} ticket types",
+        "other": "{n} ticket types"
+      },
+      "vehicles": {
+        "zero": "{n} vehicles",
+        "one": "1 vehicle",
+        "two": "{n} vehicles",
+        "few": "{n} vehicles",
+        "many": "{n} vehicles",
+        "other": "{n} vehicles"
+      },
+      "reviews": {
+        "zero": "{n} reviews",
+        "one": "1 review",
+        "two": "{n} reviews",
+        "few": "{n} reviews",
+        "many": "{n} reviews",
+        "other": "{n} reviews"
+      }
+    },
+    "delivery": "Delivery",
+    "pickup": "Pickup",
+    "deliveryFee": "Delivery {fee}",
+    "deliveryFeeRange": "Delivery {range}",
+    "deliveryFree": "Free delivery",
+    "eta": "{range} min",
+    "etaSingle": "About {n} min",
+    "minOrder": "Min. order {amount}",
+    "prepTime": "Prep: {text}",
+    "startsFrom": "From",
+    "insurance": "Insurance: {text}",
+    "factsLabel": "Store details",
+    "services": {
+      "zero": "{n} services",
+      "one": "1 service",
+      "two": "{n} services",
+      "few": "{n} services",
+      "many": "{n} services",
+      "other": "{n} services"
+    },
+    "filters": {
+      "delivers": "Delivers",
+      "pickup": "Pickup",
+      "hasPricedServices": "Prices listed"
+    }
+  },
+  "demand": {
+    "prompt": "Didn't find what you wanted? Tell us and we'll try to bring it here",
+    "title": "Tell us what you were looking for",
+    "queryLabel": "What were you looking for?",
+    "regionLabel": "Where?",
+    "regionAny": "All of Lebanon",
+    "areaLabel": "Town or area",
+    "areaPlaceholder": "e.g. Mina, Jounieh…",
+    "optional": "(optional)",
+    "contactLabel": "How can we tell you?",
+    "contactHint": "Optional — used only to tell you if we find it",
+    "contactKindLabel": "Contact method",
+    "kinds": {
+      "whatsapp": "WhatsApp",
+      "phone": "Call",
+      "email": "Email"
+    },
+    "contactPlaceholderPhone": "e.g. 03 123 456",
+    "contactPlaceholderEmail": "name@example.com",
+    "noteLabel": "Anything to add?",
+    "notePlaceholder": "Brand, size, the price that suits you…",
+    "submit": "Send",
+    "cancel": "Close",
+    "successTitle": "Got it, thank you",
+    "successBody": "Your request helps us see what is missing and where, so we can bring in shops that sell it.",
+    "errors": {
+      "query_too_short": "Type at least two characters about what you need",
+      "query_too_long": "That is long — keep it under 120 characters",
+      "area_too_long": "Area name is long — keep it under 60 characters",
+      "note_too_long": "Note is long — keep it under 300 characters",
+      "invalid_contact": "That number or email doesn't look right. You can leave it empty",
+      "rate_limited": "We've had several requests from you just now, thanks for the enthusiasm! Try again in a little while",
+      "failed": "Couldn't send. Please try again"
+    },
+    "nav": "Unmet demand",
+    "admin": {
+      "title": "Unmet demand",
+      "subtitle": "What people searched for and didn't find, and who asked to hear back. This is the list of shops to bring in.",
+      "range30": "Last 30 days",
+      "range90": "Last 90 days",
+      "unmetTitle": "Most wanted, not found",
+      "colTerm": "Search",
+      "colSection": "Section",
+      "colRegion": "Region",
+      "colSearches": "Zero-result searches",
+      "colRequests": "Requests",
+      "colReachable": "Reachable",
+      "colLastSeen": "Last seen",
+      "recentTitle": "Recent requests",
+      "colContact": "Contact",
+      "colNote": "Note",
+      "colStatus": "Status",
+      "colDate": "Date",
+      "noContact": "No contact",
+      "signedIn": "Signed-in user",
+      "statuses": {
+        "new": "New",
+        "contacted": "Contacted",
+        "fulfilled": "Fulfilled",
+        "dismissed": "Dismissed"
+      },
+      "statusFor": "Request status",
+      "emptySummary": "No zero-result searches in this period.",
+      "emptyRecent": "No requests yet.",
+      "privacyNote": "Contact details are cleared automatically after 180 days. Use them only to tell the requester we found what they asked for.",
+      "statRequests": "Requests",
+      "statReachable": "Reachable",
+      "statUnmet": "Zero-result searches",
+      "sections": {
+        "search": "Site search",
+        "stores": "Stores",
+        "products": "Products",
+        "freelance": "Freelance",
+        "jobs": "Jobs",
+        "market": "Sunday Market",
+        "wholesale": "Wholesale"
+      }
+    }
+  },
+  "searchIntent": {
+    "understood": "Looks like you're after:",
+    "goTo": "Go straight to:",
+    "inPlace": "{what} in {where}",
+    "allStores": "All stores",
+    "rent": "For rent",
+    "sale": "For sale",
+    "specialties": {
+      "ophthalmology": "Eyes",
+      "dentistry": "Dentistry",
+      "dermatology": "Dermatology",
+      "gynecology": "Gynaecology",
+      "pediatrics": "Paediatrics",
+      "cardiology": "Cardiology",
+      "orthopedics": "Orthopaedics",
+      "ent": "ENT",
+      "urology": "Urology",
+      "psychology": "Psychology",
+      "pulmonology": "Chest & lungs",
+      "radiology": "X-ray & ultrasound",
+      "laboratory": "Lab tests"
+    }
+  },
   "features": {
     "status": {
       "available": "Available",

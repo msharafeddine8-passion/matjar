@@ -3,7 +3,10 @@ import { categoryKeys, categoryGroup, type CategoryKey } from "@/lib/catalog";
 import {
   DEFAULT_QUERY,
   EMPTY_COVERAGE,
+  EMPTY_SECTOR_COUNTS,
   activeFilterCount,
+  scopedCounts,
+  type SectorCounts,
   catalogNoun,
   clearedQuery,
   discoveryHref,
@@ -52,6 +55,11 @@ const LIVE: DiscoveryCoverage = {
   withSpecialties: 0,
   withProviders: 0,
   withSections: 3,
+  // Every store still carries the column defaults (delivery AND pickup on);
+  // the two clinics are the stores with a priced service.
+  withDelivery: 13,
+  withPickup: 13,
+  withPricedServices: 2,
 };
 
 /** A marketplace that has filled out — used to prove the suppressions above are
@@ -71,6 +79,9 @@ const GROWN: DiscoveryCoverage = {
   withSpecialties: 70,
   withProviders: 55,
   withSections: 120,
+  withDelivery: 200,
+  withPickup: 150,
+  withPricedServices: 90,
 };
 
 describe("a filter is only offered when the data can back it", () => {
@@ -153,14 +164,17 @@ describe("facets need a real choice, not a label", () => {
 describe("resolveFilters — intent intersected with live data", () => {
   it("renders exactly the filters Matjar can honour today", () => {
     // The whole point, stated as a single expectation: at this inventory the
-    // buyer is offered group, sector, open-now, offers, catalogue and rated —
-    // and nothing else. Region, verified and registered are suppressed.
+    // buyer is offered group, sector, open-now, offers, catalogue, priced
+    // services and rated — and nothing else. Region, verified and registered
+    // are suppressed as empty; delivery and pickup as universal (every store
+    // still has both switched on, so neither narrows anything).
     expect(resolveFilters(null, LIVE)).toEqual([
       "group",
       "sector",
       "openNow",
       "hasOffers",
       "hasCatalog",
+      "hasPricedServices",
       "rated",
     ]);
   });
@@ -364,6 +378,9 @@ describe("URL state — a filtered view has to be an address", () => {
     rated: false,
     verified: false,
     registered: false,
+    delivers: false,
+    pickup: false,
+    hasPricedServices: false,
     sort: "topRated",
     page: 3,
   };
@@ -498,5 +515,151 @@ describe("result headings are read off the results", () => {
     expect(groupBySector(rows).reduce((n, g) => n + g.items.length, 0)).toBe(
       rows.length,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 2 — data-backed fulfilment and price filters
+// ---------------------------------------------------------------------------
+
+/** Production on 2026-09-24, per sector: 17 active stores, every one still on
+ *  the delivery/pickup column defaults, three with a priced service (the two
+ *  clinics and one services store). Counted off the live database. */
+const sc = (p: Partial<SectorCounts>): SectorCounts => ({
+  ...EMPTY_SECTOR_COUNTS,
+  ...p,
+});
+const PROD: DiscoveryCoverage = {
+  ...EMPTY_COVERAGE,
+  total: 17,
+  bySector: { retail: 9, healthcare: 2, services: 3, food: 1, beauty: 1, professional: 1 },
+  byGroup: { shopping: 9, health: 3, services: 4, food: 1 },
+  byRegion: { north: 16 },
+  withHours: 14,
+  withCatalog: 11,
+  withOffers: 1,
+  rated: 2,
+  withDescription: 17,
+  withSections: 3,
+  withDelivery: 17,
+  withPickup: 17,
+  withPricedServices: 3,
+  bySectorCounts: {
+    retail: sc({ total: 9, withHours: 8, withCatalog: 6, withOffers: 1, rated: 1, withDelivery: 9, withPickup: 9 }),
+    healthcare: sc({ total: 2, withHours: 2, withCatalog: 2, rated: 1, withDelivery: 2, withPickup: 2, withPricedServices: 2 }),
+    services: sc({ total: 3, withHours: 2, withCatalog: 1, withDelivery: 3, withPickup: 3, withPricedServices: 1 }),
+    food: sc({ total: 1, withHours: 1, withCatalog: 1, withDelivery: 1, withPickup: 1 }),
+    beauty: sc({ total: 1, withHours: 1, withCatalog: 1, withDelivery: 1, withPickup: 1 }),
+    professional: sc({ total: 1, withDelivery: 1, withPickup: 1 }),
+  },
+};
+
+describe("delivery and pickup filters stand on the store's own switches", () => {
+  it("are hidden while every store still has both on — they would narrow nothing", () => {
+    expect(filterAvailability("delivers", PROD)).toBe("universal");
+    expect(filterAvailability("pickup", PROD)).toBe("universal");
+    expect(resolveFilters(null, PROD)).not.toContain("delivers");
+    expect(resolveFilters(["food"], PROD)).not.toContain("pickup");
+  });
+
+  it("appear the moment one store switches one off", () => {
+    const one = {
+      ...PROD,
+      withPickup: 16,
+      bySectorCounts: {
+        ...PROD.bySectorCounts,
+        retail: sc({ ...PROD.bySectorCounts!.retail, withPickup: 8 }),
+      },
+    };
+    expect(filterAvailability("pickup", one)).toBe("offer");
+    expect(resolveFilters(null, one)).toContain("pickup");
+    expect(resolveFilters(["retail"], one)).toContain("pickup");
+    // …but not on a sector whose own stores all still offer it.
+    expect(resolveFilters(["food"], one)).not.toContain("pickup");
+  });
+
+  it("are empty, not offered, when nobody does it", () => {
+    expect(filterAvailability("delivers", { ...PROD, withDelivery: 0 })).toBe("empty");
+  });
+
+  it("are only ever asked for by sectors that sell goods", () => {
+    for (const s of ["retail", "farm", "pharmacy", "food"] as CategoryKey[]) {
+      expect(sectorDiscovery[s].filters).toContain("delivers");
+      expect(sectorDiscovery[s].filters).toContain("pickup");
+    }
+    for (const s of ["healthcare", "services", "beauty", "realEstate"] as CategoryKey[]) {
+      expect(sectorDiscovery[s].filters).not.toContain("delivers");
+      expect(sectorDiscovery[s].filters).not.toContain("pickup");
+    }
+  });
+});
+
+describe("the priced-services filter", () => {
+  it("is offered marketplace-wide: 3 of 17 stores publish a service price", () => {
+    expect(filterAvailability("hasPricedServices", PROD)).toBe("offer");
+    expect(resolveFilters(null, PROD)).toContain("hasPricedServices");
+  });
+
+  it("is judged against the pinned sector's own stores, not the marketplace", () => {
+    // Both clinics are priced: on the clinic page the chip would return the
+    // same two stores — a reload, not a filter.
+    expect(filterAvailability("hasPricedServices", PROD, ["healthcare"])).toBe("universal");
+    expect(resolveFilters(["healthcare"], PROD)).not.toContain("hasPricedServices");
+    // One of three services stores is priced: a real narrowing.
+    expect(resolveFilters(["services"], PROD)).toContain("hasPricedServices");
+    // The beauty store sells perfume, no services: the chip could only empty
+    // the page.
+    expect(filterAvailability("hasPricedServices", PROD, ["beauty"])).toBe("empty");
+    expect(resolveFilters(["beauty"], PROD)).not.toContain("hasPricedServices");
+  });
+
+  it("is never asked for by goods or listing sectors", () => {
+    for (const s of ["retail", "food", "farm", "pharmacy", "realEstate", "automotive"] as CategoryKey[])
+      expect(sectorDiscovery[s].filters).not.toContain("hasPricedServices");
+  });
+});
+
+describe("scoped counts", () => {
+  it("fall back to the marketplace census without a per-sector breakdown", () => {
+    expect(scopedCounts(["retail"], LIVE)).toBe(LIVE);
+    expect(scopedCounts(null, PROD)).toBe(PROD);
+  });
+
+  it("sum only the sectors in scope", () => {
+    const s = scopedCounts(["healthcare", "services"], PROD);
+    expect(s.total).toBe(5);
+    expect(s.withPricedServices).toBe(3);
+    expect(s.withHours).toBe(4);
+    // Facets are untouched — they are read from the marketplace-wide maps.
+    expect(s.bySector).toBe(PROD.bySector);
+  });
+
+  it("scope an existing filter too: offers on retail is 1 of 9, still a partition", () => {
+    expect(filterAvailability("hasOffers", PROD, ["retail"])).toBe("offer");
+    expect(filterAvailability("hasOffers", PROD, ["food"])).toBe("empty");
+  });
+});
+
+describe("the new filters in the URL", () => {
+  it("parse from their short spellings", () => {
+    const q = parseDiscoveryQuery({ delivery: "1", pickup: "true", priced: "1" });
+    expect(q.delivers).toBe(true);
+    expect(q.pickup).toBe(true);
+    expect(q.hasPricedServices).toBe(true);
+    expect(parseDiscoveryQuery({ delivery: "yes" }).delivers).toBe(false);
+  });
+
+  it("round-trip and count as filters", () => {
+    const q = { ...DEFAULT_QUERY, delivers: true, hasPricedServices: true };
+    expect(discoveryParams(q).toString()).toBe("delivery=1&priced=1");
+    expect(parseDiscoveryQuery(Object.fromEntries(discoveryParams(q)))).toEqual(q);
+    expect(activeFilterCount(q)).toBe(2);
+    expect(isDefaultQuery(q)).toBe(false);
+  });
+
+  it("are cleared with everything else", () => {
+    const cleared = clearedQuery({ ...DEFAULT_QUERY, pickup: true, hasPricedServices: true });
+    expect(cleared.pickup).toBe(false);
+    expect(cleared.hasPricedServices).toBe(false);
   });
 });

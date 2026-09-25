@@ -50,7 +50,13 @@ export function ExploreClient({
   lang: Locale;
   dict: Pick<
     Dictionary,
-    "explore" | "catalog" | "featured" | "discovery" | "trust" | "offering"
+    | "explore"
+    | "catalog"
+    | "featured"
+    | "discovery"
+    | "trust"
+    | "offering"
+    | "sectorCards"
   >;
   stores: DiscoveryStore[];
   lbpRate: number;
@@ -258,6 +264,7 @@ export function ExploreClient({
             dict={dict}
             facts={s.facts}
             factsDict={dict.discovery}
+            cardDict={dict.sectorCards}
           />
         ))}
       </div>

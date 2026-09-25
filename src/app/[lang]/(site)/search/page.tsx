@@ -8,10 +8,18 @@ import { searchAll } from "@/lib/data/search";
 import { getDiscoveryCoverage } from "@/lib/data/discovery";
 import { getUsdLbpRate } from "@/lib/data/settings";
 import { groupBySector, sectorOptions } from "@/lib/discovery";
+import { regions } from "@/lib/catalog";
+import {
+  AREA_BY_SLUG,
+  TRADES,
+  hasIntent,
+  intentLinks,
+  type SearchIntent,
+} from "@/lib/search-intent";
 import { categoryIcons } from "@/components/category-icon";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ChevronPrev } from "@/components/ui/directional-icon";
+import { ChevronNext, ChevronPrev } from "@/components/ui/directional-icon";
 import { StoreCard } from "@/components/store-card";
 import { ProductMiniCard } from "@/components/product-mini-card";
 import { MarketListingCard } from "@/components/market-listing-card";
@@ -25,6 +33,7 @@ import { SectorShortcuts } from "@/components/search/sector-shortcuts";
 import { KindHeading } from "@/components/search/kind-heading";
 import { MapResultsLink } from "@/components/search/map-results-link";
 import { searchHref } from "@/components/search/recent";
+import { DemandCapture } from "@/components/search/demand-capture";
 
 export async function generateMetadata({
   params,
@@ -90,6 +99,7 @@ export default async function SearchPage({
   const listings = results?.listings ?? [];
   const total = stores.length + products.length + listings.length;
   const storeGroups = groupBySector(stores);
+  const intent = results?.intent ?? null;
 
   // The only results that can become a pin. `searchStores` selects lat/lng and
   // most rows come back null — 7 of the 15 live stores have ever been placed —
@@ -228,17 +238,44 @@ export default async function SearchPage({
           <p className="text-sm text-muted-foreground lg:mt-3">{t.prompt}</p>
         )}
 
+        {/* What the words were understood to mean, and the filtered views
+            that answer it directly (P1-SEARCH-01). Drawn with or without
+            results: «سوق الاحد» is best answered by the market itself. */}
+        {intent && hasIntent(intent) && (
+          <IntentLine
+            intent={intent}
+            lang={l}
+            dict={dict}
+            sectorHasStores={(s) =>
+              coverage ? (coverage.bySector[s] ?? 0) > 0 : true
+            }
+          />
+        )}
+
         {/* No `action` on purpose. The way out of a search that found nothing
             is the two blocks below — the buyer's own recent terms, and the
             sectors that really have stores — and a third button repeating that
             offer would be the only 40px target on this screen. */}
         {q && total === 0 && (
-          <EmptyState
-            className="mt-6"
-            icon={SearchX}
-            title={t.empty}
-            description={t.emptyHint}
-          />
+          <>
+            <EmptyState
+              className="mt-6"
+              icon={SearchX}
+              title={t.empty}
+              description={t.emptyHint}
+            />
+            {/* A search that found nothing is still worth something: the
+                buyer can tell us what they wanted (lib/demand.ts). */}
+            <div className="mt-4">
+              <DemandCapture
+                lang={l}
+                q={q}
+                section={intent?.sector ?? "search"}
+                region={sp.region ?? intent?.region ?? null}
+                dict={{ demand: dict.demand }}
+              />
+            </div>
+          </>
         )}
 
         {total > 0 && (
@@ -289,6 +326,8 @@ export default async function SearchPage({
                               store={store}
                               lang={l}
                               dict={dict}
+                              factsDict={dict.discovery}
+                              cardDict={dict.sectorCards}
                             />
                           ))}
                         </div>
@@ -388,6 +427,103 @@ export default async function SearchPage({
           </div>
         )}
       </Container>
+    </div>
+  );
+}
+
+type Dict = Awaited<ReturnType<typeof getDictionary>>;
+
+/** The name of the place the intent resolved: the area when one was named
+ *  («طرابلس»), else the region («الشمال»). */
+function placeName(intent: SearchIntent, lang: Locale): string | null {
+  const area = intent.area ? AREA_BY_SLUG.get(intent.area) : undefined;
+  if (area) return area[lang];
+  const region = regions.find((r) => r.key === intent.region);
+  return region ? region.name[lang] : null;
+}
+
+const tradeName = (slug: string | undefined, lang: Locale) =>
+  TRADES.find((tr) => tr.slug === slug)?.[lang] ?? null;
+
+/**
+ * «فهمنا إنك عم تدوّر على: صحة وعيادات · عيون · طرابلس» and, under it, one
+ * link per view that answers it (lib/search-intent.ts intentLinks: the real
+ * /explore params, a crafts trade page, a section root). Every label is read
+ * from data the platform already has — catalog names, the trades and areas
+ * seed, section titles — so the line cannot name a thing that does not exist.
+ */
+function IntentLine({
+  intent,
+  lang,
+  dict,
+  sectorHasStores,
+}: {
+  intent: SearchIntent;
+  lang: Locale;
+  dict: Dict;
+  sectorHasStores: (s: NonNullable<SearchIntent["sector"]>) => boolean;
+}) {
+  const t = dict.searchIntent;
+  const place = placeName(intent, lang);
+  const trade = tradeName(intent.trade, lang);
+  const sectionTitle = (s: NonNullable<SearchIntent["section"]>) =>
+    ({
+      market: dict.market.title,
+      crafts: dict.crafts.title,
+      freelance: dict.freelance.title,
+      jobs: dict.jobs.title,
+    })[s];
+
+  const parts = [
+    intent.sector && !intent.trade ? dict.catalog[intent.sector].name : null,
+    !intent.sector && intent.group ? dict.groups[intent.group].name : null,
+    intent.specialty ? t.specialties[intent.specialty] : null,
+    trade,
+    intent.section ? sectionTitle(intent.section) : null,
+    intent.deal ? t[intent.deal] : null,
+    place,
+  ].filter((x): x is string => !!x);
+
+  const links = intentLinks(intent, lang, sectorHasStores);
+  const label = (link: (typeof links)[number]): string => {
+    if (link.kind === "section") {
+      return link.section === "crafts" && trade
+        ? `${trade} · ${sectionTitle("crafts")}`
+        : sectionTitle(link.section);
+    }
+    const what = link.sector
+      ? dict.catalog[link.sector].name
+      : link.group
+        ? dict.groups[link.group].name
+        : t.allStores;
+    // The link filters by REGION (discovery has no area filter), so the chip
+    // names the region — «الشمال», not «طرابلس» — and promises only that.
+    const regionName = regions.find((r) => r.key === link.region)?.name[lang];
+    return regionName
+      ? t.inPlace.replace("{what}", what).replace("{where}", regionName)
+      : what;
+  };
+
+  return (
+    <div className="mt-4 rounded-2xl border border-border bg-surface-muted/60 p-3 sm:p-4">
+      <p className="text-sm text-muted-foreground">
+        {t.understood}{" "}
+        <span className="font-bold text-foreground">{parts.join(" · ")}</span>
+      </p>
+      {links.length > 0 && (
+        <nav aria-label={t.goTo} className="mt-2.5 flex flex-wrap gap-2">
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="inline-flex h-11 items-center gap-1 rounded-full border border-primary/30 bg-surface px-4 text-sm font-bold text-primary transition-colors hover:border-primary lg:h-9"
+            >
+              {label(link)}
+              <ChevronNext aria-hidden className="h-4 w-4" />
+            </Link>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }

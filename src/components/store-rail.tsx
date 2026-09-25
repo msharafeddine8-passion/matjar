@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
-import type { Store } from "@/lib/catalog";
+import type { CardStore } from "@/lib/card-facts";
 import { Container } from "@/components/ui/container";
 import { StoreCard } from "@/components/store-card";
 import { Tilt } from "@/components/home/tilt";
@@ -21,7 +21,9 @@ export function StoreRail({
   emptyText,
   className = "",
 }: {
-  stores: Store[];
+  /** Loader-attached `facts` / `hoursKnown` (lib/data/stores.ts) reach the
+   *  card as they are; a store without them renders the plain card. */
+  stores: CardStore[];
   lang: Locale;
   dict: Dictionary;
   title: string;
@@ -69,7 +71,13 @@ export function StoreRail({
               {/* V5: on a hover device the card tilts toward the pointer with a
                   glare. On a phone Tilt is an inert div — see tilt.tsx. */}
               <Tilt>
-                <StoreCard store={store} lang={lang} dict={dict} />
+                <StoreCard
+                  store={store}
+                  lang={lang}
+                  dict={dict}
+                  factsDict={dict.discovery}
+                  cardDict={dict.sectorCards}
+                />
               </Tilt>
             </div>
           ))}

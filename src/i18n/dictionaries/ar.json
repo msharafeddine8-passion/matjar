@@ -5062,6 +5062,217 @@
       "kind_mismatch": "نوع العرض ما بيناسب قطاع المتجر"
     }
   },
+  "sectorCards": {
+    "counts": {
+      "products": {
+        "zero": "{n} منتج",
+        "one": "منتج واحد",
+        "two": "منتجين",
+        "few": "{n} منتجات",
+        "many": "{n} منتج",
+        "other": "{n} منتج"
+      },
+      "services": {
+        "zero": "{n} خدمة",
+        "one": "خدمة وحدة",
+        "two": "خدمتين",
+        "few": "{n} خدمات",
+        "many": "{n} خدمة",
+        "other": "{n} خدمة"
+      },
+      "menu": {
+        "zero": "{n} صحن",
+        "one": "صحن واحد",
+        "two": "صحنين",
+        "few": "{n} صحون",
+        "many": "{n} صحن",
+        "other": "{n} صحن"
+      },
+      "listings": {
+        "zero": "{n} عرض",
+        "one": "عرض واحد",
+        "two": "عرضين",
+        "few": "{n} عروض",
+        "many": "{n} عرض",
+        "other": "{n} عرض"
+      },
+      "classes": {
+        "zero": "{n} حصة",
+        "one": "حصة وحدة",
+        "two": "حصتين",
+        "few": "{n} حصص",
+        "many": "{n} حصة",
+        "other": "{n} حصة"
+      },
+      "courses": {
+        "zero": "{n} دورة",
+        "one": "دورة وحدة",
+        "two": "دورتين",
+        "few": "{n} دورات",
+        "many": "{n} دورة",
+        "other": "{n} دورة"
+      },
+      "units": {
+        "zero": "{n} غرفة",
+        "one": "غرفة وحدة",
+        "two": "غرفتين",
+        "few": "{n} غرف",
+        "many": "{n} غرفة",
+        "other": "{n} غرفة"
+      },
+      "tickets": {
+        "zero": "{n} نوع تذكرة",
+        "one": "نوع تذكرة واحد",
+        "two": "نوعين تذاكر",
+        "few": "{n} أنواع تذاكر",
+        "many": "{n} نوع تذكرة",
+        "other": "{n} نوع تذكرة"
+      },
+      "vehicles": {
+        "zero": "{n} سيّارة",
+        "one": "سيّارة وحدة",
+        "two": "سيّارتين",
+        "few": "{n} سيّارات",
+        "many": "{n} سيّارة",
+        "other": "{n} سيّارة"
+      },
+      "reviews": {
+        "zero": "{n} تقييم",
+        "one": "تقييم واحد",
+        "two": "تقييمين",
+        "few": "{n} تقييمات",
+        "many": "{n} تقييم",
+        "other": "{n} تقييم"
+      }
+    },
+    "delivery": "توصيل",
+    "pickup": "استلام من المحل",
+    "deliveryFee": "توصيل {fee}",
+    "deliveryFeeRange": "توصيل {range}",
+    "deliveryFree": "توصيل مجاني",
+    "eta": "{range} دقيقة",
+    "etaSingle": "حوالي {n} دقيقة",
+    "minOrder": "حد أدنى {amount}",
+    "prepTime": "تحضير: {text}",
+    "startsFrom": "يبدأ من",
+    "insurance": "تأمين: {text}",
+    "factsLabel": "تفاصيل المحل",
+    "services": {
+      "zero": "{n} خدمة",
+      "one": "خدمة وحدة",
+      "two": "خدمتين",
+      "few": "{n} خدمات",
+      "many": "{n} خدمة",
+      "other": "{n} خدمة"
+    },
+    "filters": {
+      "delivers": "بيوصّل",
+      "pickup": "استلام من المحل",
+      "hasPricedServices": "أسعار معلنة"
+    }
+  },
+  "demand": {
+    "prompt": "ما لقيت يلي بدّك ياه؟ خبّرنا ومنحاول نجيبلك ياه",
+    "title": "خبّرنا شو كنت عم تدوّر",
+    "queryLabel": "شو كنت عم تدوّر؟",
+    "regionLabel": "وين؟",
+    "regionAny": "كل لبنان",
+    "areaLabel": "المنطقة أو الضيعة",
+    "areaPlaceholder": "مثلًا: الميناء، جونية…",
+    "optional": "(اختياري)",
+    "contactLabel": "كيف منخبرك؟",
+    "contactHint": "اختياري — منستعملو بس لنخبرك إذا لقينا",
+    "contactKindLabel": "طريقة التواصل",
+    "kinds": {
+      "whatsapp": "واتساب",
+      "phone": "اتصال",
+      "email": "إيميل"
+    },
+    "contactPlaceholderPhone": "مثلًا 03 123 456",
+    "contactPlaceholderEmail": "name@example.com",
+    "noteLabel": "في شي بدّك تزيدو؟",
+    "notePlaceholder": "الماركة، القياس، السعر يلي بيناسبك…",
+    "submit": "ابعت",
+    "cancel": "سكّر",
+    "successTitle": "وصلتنا، شكرًا",
+    "successBody": "طلبك بيساعدنا نعرف شو ناقص ووين، لنجيب محلات بتبيعو.",
+    "errors": {
+      "query_too_short": "اكتب حرفين عالأقل عن يلي بدّك ياه",
+      "query_too_long": "النص طويل — خلّيه أقل من 120 حرف",
+      "area_too_long": "اسم المنطقة طويل — خلّيه أقل من 60 حرف",
+      "note_too_long": "الملاحظة طويلة — خلّيها أقل من 300 حرف",
+      "invalid_contact": "الرقم أو الإيميل مش مزبوط. فيك تتركو فاضي",
+      "rate_limited": "وصلنا منك كذا طلب هلق، شكرًا عالحماس! جرّب كمان شوي",
+      "failed": "ما زبط الإرسال. جرّب مرة تانية"
+    },
+    "nav": "الطلب الناقص",
+    "admin": {
+      "title": "الطلب يلي ما لقيناه",
+      "subtitle": "شو دوّر عليه الناس وما لقوه، ومين طلب نخبّرو. هيدي لائحة المحلات يلي لازم نجيبها.",
+      "range30": "آخر 30 يوم",
+      "range90": "آخر 90 يوم",
+      "unmetTitle": "أكتر شي ناقص",
+      "colTerm": "البحث",
+      "colSection": "القسم",
+      "colRegion": "المنطقة",
+      "colSearches": "بحث بلا نتيجة",
+      "colRequests": "طلبات",
+      "colReachable": "فينا نتواصل",
+      "colLastSeen": "آخر مرة",
+      "recentTitle": "آخر الطلبات",
+      "colContact": "التواصل",
+      "colNote": "ملاحظة",
+      "colStatus": "الحالة",
+      "colDate": "التاريخ",
+      "noContact": "بلا تواصل",
+      "signedIn": "مستخدم مسجّل",
+      "statuses": {
+        "new": "جديد",
+        "contacted": "تواصلنا",
+        "fulfilled": "تأمّن",
+        "dismissed": "مهمَل"
+      },
+      "statusFor": "حالة الطلب",
+      "emptySummary": "ما في بحث بلا نتيجة بهالفترة.",
+      "emptyRecent": "ما وصل أي طلب لهلق.",
+      "privacyNote": "معلومات التواصل بتنمسح تلقائيًا بعد 180 يوم. ما تستعملها إلا لتخبر صاحب الطلب إنو لقينا يلي طلبو.",
+      "statRequests": "طلبات",
+      "statReachable": "فينا نتواصل معهم",
+      "statUnmet": "بحث بلا نتيجة",
+      "sections": {
+        "search": "البحث العام",
+        "stores": "المحلات",
+        "products": "المنتجات",
+        "freelance": "الفريلانس",
+        "jobs": "الوظايف",
+        "market": "سوق الأحد",
+        "wholesale": "الجملة"
+      }
+    }
+  },
+  "searchIntent": {
+    "understood": "فهمنا إنك عم تدوّر على:",
+    "goTo": "روح مباشرة على:",
+    "inPlace": "{what} في {where}",
+    "allStores": "كل المحلات",
+    "rent": "للإيجار",
+    "sale": "للبيع",
+    "specialties": {
+      "ophthalmology": "عيون",
+      "dentistry": "أسنان",
+      "dermatology": "جلد",
+      "gynecology": "نسائية وتوليد",
+      "pediatrics": "أطفال",
+      "cardiology": "قلب",
+      "orthopedics": "عظام",
+      "ent": "أنف وأذن وحنجرة",
+      "urology": "مسالك بولية",
+      "psychology": "طب نفسي",
+      "pulmonology": "صدر وتنفّس",
+      "radiology": "أشعة وإيكو",
+      "laboratory": "مختبر وتحاليل"
+    }
+  },
   "features": {
     "status": {
       "available": "متاح",

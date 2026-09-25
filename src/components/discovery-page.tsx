@@ -104,6 +104,7 @@ export async function DiscoveryPage({
           "sort",
           "explore",
           "common",
+          "sectorCards",
         ])}
         base={base}
         query={query}
@@ -151,6 +152,7 @@ export async function DiscoveryPage({
                 "discovery",
                 "trust",
                 "offering",
+                "sectorCards",
               ])}
               stores={result.stores}
               lbpRate={lbpRate}

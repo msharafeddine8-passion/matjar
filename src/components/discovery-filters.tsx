@@ -27,16 +27,30 @@ export type DiscoveryFacets = {
   regions: FacetOption<RegionKey>[];
 };
 
-type Dict = Pick<Dictionary, "discovery" | "catalog" | "groups" | "sort" | "explore" | "common">;
+type Dict = Pick<
+  Dictionary,
+  "discovery" | "catalog" | "groups" | "sort" | "explore" | "common" | "sectorCards"
+>;
 
 const BOOLEAN_KEYS: BooleanFilterKey[] = [
   "openNow",
+  "delivers",
+  "pickup",
   "hasOffers",
   "hasCatalog",
+  "hasPricedServices",
   "rated",
   "verified",
   "registered",
 ];
+
+/** The newer filters' labels live in the sectorCards namespace; the original
+ *  six keep theirs in discovery. One lookup so the chip code needs neither. */
+function booleanLabel(dict: Dict, key: BooleanFilterKey): string {
+  if (key === "delivers" || key === "pickup" || key === "hasPricedServices")
+    return dict.sectorCards.filters[key];
+  return dict.discovery[key];
+}
 
 function chipClass(active: boolean) {
   return active
@@ -134,7 +148,7 @@ export function DiscoveryFilters({
 
   const booleanChips = BOOLEAN_KEYS.filter(has).map((key) => ({
     key,
-    label: dict.discovery[key],
+    label: booleanLabel(dict, key),
     href: href({ [key]: !query[key] } as Partial<DiscoveryQuery>),
     on: query[key],
   }));

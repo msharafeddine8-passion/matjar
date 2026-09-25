@@ -27,3 +27,4 @@ Production was NOT deployed by this program. Merging the branch is the owner's d
 ## Phase log
 
 - Phase 1 (P0 consistency): done. Every P0 row is fixed, including the two live-DB changes the owner approved on 2026-09-24 (migrations 0304, 0305). See `01_P0_CONSISTENCY.md`.
+- Phase 2 (discovery): done — search V2, sector-aware cards and filters, zero-result demand capture (migration 0306). See `02_DISCOVERY.md`.

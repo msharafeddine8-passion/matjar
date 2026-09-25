@@ -17,10 +17,12 @@ import { sanitizeDisplayName, validateStorePublic } from "@/lib/data-quality";
 import {
   DISCOVERY_PAGE_SIZE,
   EMPTY_COVERAGE,
+  EMPTY_SECTOR_COUNTS,
   type DiscoveryCoverage,
   type DiscoveryQuery,
-  type StoreFactSource,
+  type SectorCounts,
 } from "@/lib/discovery";
+import { storeRowCardSource, type SectorCardSource } from "@/lib/card-facts";
 
 // Server-side discovery: the query string IS the query.
 //
@@ -31,7 +33,13 @@ import {
 // rank. This module is the /market pattern applied to stores: read the URL,
 // query the database, render the answer.
 
-export type DiscoveryStore = Store & { facts: StoreFactSource };
+/** `hoursKnown` says whether `isOpen` is a fact (published hours read on the
+ *  Beirut clock) or the platform's open-by-default for a store with none. The
+ *  card only draws an open/closed badge for the former. */
+export type DiscoveryStore = Store & {
+  facts: SectorCardSource;
+  hoursKnown: boolean;
+};
 
 export type DiscoveryResult = {
   stores: DiscoveryStore[];
@@ -42,9 +50,10 @@ export type DiscoveryResult = {
 };
 
 // phone / whatsapp / service_area are selected for the data quality gate
-// only (lib/data-quality.ts); the card renders none of them.
+// only (lib/data-quality.ts); the card renders none of them. The fulfilment
+// and insurance columns feed the sector-aware facts line (lib/card-facts.ts).
 const STORE_SELECT =
-  "id, name, description, area, region, phone, whatsapp, service_area, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, created_at, business_types!inner(slug)";
+  "id, name, description, area, region, phone, whatsapp, service_area, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, created_at, accepts_delivery, accepts_pickup, min_order, prep_time, insurance, business_types!inner(slug)";
 
 type StoreRow = {
   id: string;
@@ -68,6 +77,11 @@ type StoreRow = {
   rating_avg: number | null;
   rating_count: number | null;
   created_at: string;
+  accepts_delivery?: boolean | null;
+  accepts_pickup?: boolean | null;
+  min_order?: number | string | null;
+  prep_time?: string | null;
+  insurance?: string | null;
   business_types: { slug: string } | null;
 };
 
@@ -95,19 +109,25 @@ function isListable(row: StoreRow): boolean {
   );
 }
 
-function rowToStore(row: StoreRow): Store {
+function rowToStore(
+  row: StoreRow,
+): Store & { hoursKnown: boolean; rowFacts: SectorCardSource } {
   const ratingAvg = row.rating_avg != null ? Number(row.rating_avg) : 0;
   // Render-only: the stored name keeps its stray whitespace, the card does not.
   const name = sanitizeDisplayName(row.name);
+  const hours = parseHours(row.hours);
   return {
+    hoursKnown: hours != null,
+    rowFacts: storeRowCardSource(row),
     id: row.id,
     name: { ar: name, en: name },
     area: { ar: row.area ?? "", en: row.area ?? "" },
     region: (row.region as RegionKey) ?? undefined,
     category: toCategoryKey(row.business_types?.slug, `store ${row.id}`),
     // A store that has not configured hours is never shown as closed — missing
-    // data must not send a customer away.
-    isOpen: isOpenNow(parseHours(row.hours), new Date()) ?? true,
+    // data must not send a customer away. `hoursKnown` above is what stops the
+    // card from also CLAIMING it is open.
+    isOpen: isOpenNow(hours, new Date()) ?? true,
     // Pass the tier through as-is: collapsing anything-but-pro to "free" made
     // Business stores (the top tier) render as unsubscribed on every card.
     plan: row.plan ?? "free",
@@ -133,6 +153,21 @@ type CatalogFact = {
   catalogCount: number;
   hasOffers: boolean;
   sectionCount: number;
+  /** Active item_kind = 'service' rows. */
+  serviceCount: number;
+  /** Lowest listed price (> 0) among those services; null when none is priced. */
+  serviceMinPrice: number | null;
+  /** Lowest listed price (> 0) over every active row; null when none is. */
+  itemMinPrice: number | null;
+};
+
+/** The LISTED price, not the discount: an offer can end between the card and
+ *  the item page, and a list-price floor can only understate how cheap a
+ *  store is — never promise a price the buyer then cannot find. */
+const minPositive = (cur: number | null, v: unknown): number | null => {
+  const n = v == null ? NaN : Number(v);
+  if (!Number.isFinite(n) || n <= 0) return cur;
+  return cur == null || n < cur ? n : cur;
 };
 
 /** Per-store catalogue counts, in two small queries rather than one per card.
@@ -144,7 +179,7 @@ const fetchCatalogFacts = unstable_cache(
     const [{ data: products }, { data: sections }] = await Promise.all([
       supabase
         .from("products")
-        .select("store_id, in_offers, discount_price")
+        .select("store_id, in_offers, discount_price, price, item_kind")
         .eq("status", "active")
         .is("deleted_at", null)
         .limit(FETCH_BOUNDS.allProducts),
@@ -161,22 +196,38 @@ const fetchCatalogFacts = unstable_cache(
     warnIfTruncated(sections, FETCH_BOUNDS.allStoreSections, "store_sections (discovery catalog facts)");
     const out: Record<string, CatalogFact> = {};
     const get = (id: string) =>
-      (out[id] ??= { catalogCount: 0, hasOffers: false, sectionCount: 0 });
+      (out[id] ??= {
+        catalogCount: 0,
+        hasOffers: false,
+        sectionCount: 0,
+        serviceCount: 0,
+        serviceMinPrice: null,
+        itemMinPrice: null,
+      });
     for (const p of (products ?? []) as {
       store_id: string;
       in_offers: boolean | null;
       discount_price: number | null;
+      price: number | string | null;
+      item_kind: string | null;
     }[]) {
       const f = get(p.store_id);
       f.catalogCount += 1;
       if (p.in_offers === true || p.discount_price != null) f.hasOffers = true;
+      f.itemMinPrice = minPositive(f.itemMinPrice, p.price);
+      if (p.item_kind === "service") {
+        f.serviceCount += 1;
+        f.serviceMinPrice = minPositive(f.serviceMinPrice, p.price);
+      }
     }
     for (const s of (sections ?? []) as { store_id: string }[]) {
       get(s.store_id).sectionCount += 1;
     }
     return out;
   },
-  ["discovery-catalog-facts"],
+  // Key bumped with the shape: an entry cached before the service/price
+  // rollups existed would otherwise be served for a minute without them.
+  ["discovery-catalog-facts-v2"],
   { revalidate: 60, tags: ["stores"] },
 );
 
@@ -208,6 +259,97 @@ const fetchProviderCounts = unstable_cache(
   { revalidate: 60, tags: ["stores"] },
 );
 
+type ZoneFact = {
+  feeMin: number;
+  feeMax: number;
+  etaMin: number | null;
+  etaMax: number | null;
+};
+
+// Platform-wide: zones are a handful of rows per delivering store.
+const ALL_ZONES_LIMIT = 5000;
+
+/** Active delivery zones per store, rolled up to a fee range and an ETA range.
+ *  They are the only real source of "how much / how long" on a card: a store
+ *  with no zone has neither, and the card says neither. */
+const fetchZoneFacts = unstable_cache(
+  async (): Promise<Record<string, ZoneFact>> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("store_delivery_zones")
+      .select("store_id, fee, eta_min_minutes, eta_max_minutes")
+      .eq("active", true)
+      .limit(ALL_ZONES_LIMIT);
+    warnIfTruncated(data, ALL_ZONES_LIMIT, "store_delivery_zones (discovery zone facts)");
+    const out: Record<string, ZoneFact> = {};
+    const pos = (v: unknown) => {
+      const n = v == null ? NaN : Number(v);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+    for (const z of (data ?? []) as {
+      store_id: string;
+      fee: number | string | null;
+      eta_min_minutes: number | null;
+      eta_max_minutes: number | null;
+    }[]) {
+      const fee = Math.max(0, Number(z.fee ?? 0) || 0);
+      const lo = pos(z.eta_min_minutes);
+      const hi = pos(z.eta_max_minutes);
+      const f = out[z.store_id];
+      if (!f) {
+        out[z.store_id] = { feeMin: fee, feeMax: fee, etaMin: lo, etaMax: hi };
+        continue;
+      }
+      f.feeMin = Math.min(f.feeMin, fee);
+      f.feeMax = Math.max(f.feeMax, fee);
+      if (lo != null) f.etaMin = f.etaMin == null ? lo : Math.min(f.etaMin, lo);
+      if (hi != null) f.etaMax = f.etaMax == null ? hi : Math.max(f.etaMax, hi);
+    }
+    return out;
+  },
+  ["discovery-zone-facts"],
+  { revalidate: 60, tags: ["stores"] },
+);
+
+/**
+ * The batched, per-store half of a card's facts — catalogue, services and
+ * prices, practitioners, delivery zones — for any list of stores.
+ *
+ * Three cached platform-wide rollups (one query each, shared by every page and
+ * every visitor for a minute), then a lookup per id: never a query per card.
+ * The row-level half (delivery/pickup switches, minimum, prep time, insurance)
+ * comes off the stores row itself; callers merge the two.
+ */
+export async function cardRollups(
+  ids: readonly string[],
+): Promise<Record<string, SectorCardSource>> {
+  if (!ids.length) return {};
+  const [facts, providers, zones] = await Promise.all([
+    fetchCatalogFacts(),
+    fetchProviderCounts(),
+    fetchZoneFacts(),
+  ]);
+  const out: Record<string, SectorCardSource> = {};
+  for (const id of ids) {
+    const f = facts[id];
+    const z = zones[id];
+    out[id] = {
+      catalogCount: f?.catalogCount ?? 0,
+      hasOffers: f?.hasOffers ?? false,
+      sectionCount: f?.sectionCount ?? 0,
+      providerCount: providers[id] ?? 0,
+      serviceCount: f?.serviceCount ?? 0,
+      serviceMinPrice: f?.serviceMinPrice ?? null,
+      itemMinPrice: f?.itemMinPrice ?? null,
+      deliveryFeeMin: z?.feeMin ?? null,
+      deliveryFeeMax: z?.feeMax ?? null,
+      deliveryEtaMin: z?.etaMin ?? null,
+      deliveryEtaMax: z?.etaMax ?? null,
+    };
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Coverage
 // ---------------------------------------------------------------------------
@@ -232,7 +374,7 @@ export const getDiscoveryCoverage = unstable_cache(
     const { data } = await supabase
       .from("stores")
       .select(
-        "id, description, region, hours, is_verified, commercial_reg_verified, rating_count, specialties, business_types!inner(slug)",
+        "id, description, region, hours, is_verified, commercial_reg_verified, rating_count, specialties, accepts_delivery, accepts_pickup, business_types!inner(slug)",
       )
       .eq("status", "active")
       .is("deleted_at", null)
@@ -247,6 +389,8 @@ export const getDiscoveryCoverage = unstable_cache(
       commercial_reg_verified: boolean | null;
       rating_count: number | null;
       specialties: string | null;
+      accepts_delivery: boolean | null;
+      accepts_pickup: boolean | null;
       business_types: { slug: string } | null;
     }[];
     if (!rows.length) return EMPTY_COVERAGE;
@@ -261,8 +405,10 @@ export const getDiscoveryCoverage = unstable_cache(
       bySector: {},
       byGroup: {},
       byRegion: {},
+      bySectorCounts: {},
       total: rows.length,
     };
+    const by = c.bySectorCounts as Partial<Record<string, SectorCounts>>;
     const bump = <K extends string>(
       map: Partial<Record<K, number>>,
       key: K | undefined | null,
@@ -283,21 +429,37 @@ export const getDiscoveryCoverage = unstable_cache(
       bump(c.bySector, sector);
       bump(c.byGroup, categoryGroup[sector]);
       bump(c.byRegion, r.region as RegionKey | null);
-      if (parseHours(r.hours)) c.withHours += 1;
       if (filled(r.description)) c.withDescription += 1;
       if (filled(r.specialties)) c.withSpecialties += 1;
-      if ((r.rating_count ?? 0) > 0) c.rated += 1;
-      if (r.is_verified) c.verified += 1;
-      if (r.commercial_reg_verified) c.registered += 1;
       const f = facts[r.id];
-      if ((f?.catalogCount ?? 0) > 0) c.withCatalog += 1;
-      if (f?.hasOffers) c.withOffers += 1;
       if ((f?.sectionCount ?? 0) > 0) c.withSections += 1;
       if ((providers[r.id] ?? 0) > 0) c.withProviders += 1;
+
+      // The boolean-filter counts, marketplace-wide AND per sector, from one
+      // list of predicates so the two censuses can never disagree.
+      const sc = (by[sector] ??= { ...EMPTY_SECTOR_COUNTS });
+      const flags: [keyof SectorCounts, boolean][] = [
+        ["total", true],
+        ["withHours", parseHours(r.hours) != null],
+        ["rated", (r.rating_count ?? 0) > 0],
+        ["verified", r.is_verified === true],
+        ["registered", r.commercial_reg_verified === true],
+        ["withCatalog", (f?.catalogCount ?? 0) > 0],
+        ["withOffers", f?.hasOffers === true],
+        ["withDelivery", r.accepts_delivery === true],
+        ["withPickup", r.accepts_pickup === true],
+        ["withPricedServices", f?.serviceMinPrice != null],
+      ];
+      for (const [k, on] of flags) {
+        if (!on) continue;
+        sc[k] += 1;
+        if (k !== "total") c[k] += 1;
+      }
     }
     return c;
   },
-  ["discovery-coverage"],
+  // v2: the shape gained delivery / pickup / priced counts and bySectorCounts.
+  ["discovery-coverage-v2"],
   { revalidate: 60, tags: ["stores"] },
 );
 
@@ -326,10 +488,7 @@ export async function getDiscoveryResults(
   q: DiscoveryQuery,
 ): Promise<DiscoveryResult> {
   const supabase = await createClient();
-  const [facts, providers] = await Promise.all([
-    fetchCatalogFacts(),
-    fetchProviderCounts(),
-  ]);
+  const facts = await fetchCatalogFacts();
 
   let query = supabase
     .from("stores")
@@ -344,13 +503,23 @@ export async function getDiscoveryResults(
   }
   if (q.region) query = query.eq("region", q.region);
   if (q.rated) query = query.gt("rating_count", 0);
+  // The two fulfilment switches are plain columns: the store row IS the answer.
+  if (q.delivers) query = query.eq("accepts_delivery", true);
+  if (q.pickup) query = query.eq("accepts_pickup", true);
 
   // Catalogue-backed filters resolve to an id set first, so they stay in SQL
-  // instead of becoming another post-filter that pagination has to apologise for.
-  if (q.hasCatalog || q.hasOffers) {
+  // instead of becoming another post-filter that pagination has to apologise
+  // for. Several at once intersect: every chosen predicate must hold. (This
+  // used to read `hasOffers ? offers : catalog`, which silently dropped the
+  // catalogue condition when both were on — harmless only because an offer
+  // implies a catalogue row.)
+  if (q.hasCatalog || q.hasOffers || q.hasPricedServices) {
     const ids = Object.entries(facts)
-      .filter(([, f]) =>
-        q.hasOffers ? f.hasOffers : f.catalogCount > 0,
+      .filter(
+        ([, f]) =>
+          (!q.hasCatalog || f.catalogCount > 0) &&
+          (!q.hasOffers || f.hasOffers) &&
+          (!q.hasPricedServices || f.serviceMinPrice != null),
       )
       .map(([id]) => id);
     if (!ids.length) return empty(q.page);
@@ -377,7 +546,9 @@ export async function getDiscoveryResults(
     .filter(isListable)
     .map(rowToStore);
 
-  if (q.openNow) list = list.filter((s) => s.isOpen);
+  // "Open now" is a claim about the clock, so it needs published hours: a
+  // store with none is not listed here (its card shows no badge either).
+  if (q.openNow) list = list.filter((s) => s.isOpen && s.hoursKnown);
 
   // Paid placement floats to the top of the default order only; asking for
   // "newest" or "top rated" and getting an advert first is a bait and switch.
@@ -393,14 +564,11 @@ export async function getDiscoveryResults(
     page * DISCOVERY_PAGE_SIZE,
   );
 
-  const withFacts: DiscoveryStore[] = slice.map((s) => ({
+  // Row facts (the stores columns) + the batched rollups, for this page only.
+  const rollups = await cardRollups(slice.map((s) => s.id));
+  const withFacts: DiscoveryStore[] = slice.map(({ rowFacts, ...s }) => ({
     ...s,
-    facts: {
-      catalogCount: facts[s.id]?.catalogCount ?? 0,
-      hasOffers: facts[s.id]?.hasOffers ?? false,
-      sectionCount: facts[s.id]?.sectionCount ?? 0,
-      providerCount: providers[s.id] ?? 0,
-    },
+    facts: { ...rowFacts, ...rollups[s.id] },
   }));
 
   await Promise.all([

@@ -10,20 +10,16 @@ const MAX = 8;
 
 // "مفتوح هلق" — the stores a customer can act on right now.
 //
-// The rail is not a new query and not a new definition of "open". It reuses the
-// listing every discovery surface already reads, and `Store.isOpen` as that
-// listing computed it: `isOpenNow(parseHours(hours), now) ?? true` — hours are
-// configured and the clock is inside them, OR the merchant has published no
-// hours at all, in which case this platform's standing rule (lib/hours.ts) is
-// to treat the store as open rather than turn a customer away over a field
-// nobody filled in.
+// The rail is not a new query. It reuses the listing every discovery surface
+// already reads and keeps only stores that PUBLISHED hours and whose clock is
+// inside them: `isOpen && hoursKnown`.
 //
-// That rule is inherited on purpose, not accepted by accident. The green
-// «مفتوح» badge on every card in this rail is computed from the same boolean,
-// and so is /explore's own "open now" filter — which is exactly where the
-// "see all" link goes. A stricter definition here would put stores in the rail
-// whose badge said one thing and the heading above them another, and would
-// drop stores that /explore?open=1 then lists. One definition, three surfaces.
+// A store with no hours still counts as open where that protects the customer
+// (it is never shown as closed, and can still be ordered from), but "open now"
+// is a claim about the clock, and a heading must not make it for a store whose
+// own card shows no «مفتوح» badge (store-card.tsx gates the badge on
+// hoursKnown). /explore?open=1, where "see all" goes, uses the same rule
+// (lib/data/discovery.ts), so the rail, its badges and the filter still agree.
 //
 // The heading says "open now" and nothing else. It does NOT say "near you":
 // nothing on this page knows where the customer is, only a minority of live
@@ -37,7 +33,7 @@ export async function OpenNowRail({
   dict: Dictionary;
 }) {
   const open = (await getStoresForListing())
-    .filter((s) => s.isOpen)
+    .filter((s) => s.isOpen && s.hoursKnown)
     .slice(0, MAX);
 
   // Nothing open at this hour is a real answer, and an empty state that says so

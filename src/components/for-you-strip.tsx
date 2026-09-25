@@ -4,11 +4,8 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
-import {
-  toCategoryKey,
-  type RegionKey,
-  type Store,
-} from "@/lib/catalog";
+import { toCategoryKey, type RegionKey } from "@/lib/catalog";
+import type { CardStore } from "@/lib/card-facts";
 import { isOpenNow, parseHours } from "@/lib/hours";
 import type { StorePlan } from "@/lib/plan-tiers";
 import { Container } from "@/components/ui/container";
@@ -37,10 +34,15 @@ type RecommendedRow = {
 
 // Maps an RPC row into the Store shape StoreCard consumes. Mirrors rowToStore in
 // src/lib/data/stores.ts so the card looks identical to every other strip.
-function rowToStore(row: RecommendedRow): Store {
+function rowToStore(row: RecommendedRow): CardStore {
   const ratingAvg = row.rating_avg != null ? Number(row.rating_avg) : 0;
-  const open = isOpenNow(parseHours(row.hours), new Date());
+  const hours = parseHours(row.hours);
+  const open = isOpenNow(hours, new Date());
   return {
+    // Same rule as the server loaders: no published hours, no open/closed
+    // badge. The RPC returns no fulfilment or catalogue columns, so this strip
+    // shows the plain card rather than a facts line it would have to guess.
+    hoursKnown: hours != null,
     id: row.id,
     name: { ar: row.name, en: row.name },
     area: { ar: row.area ?? "", en: row.area ?? "" },
@@ -75,7 +77,7 @@ export function ForYouStrip({
   lang: Locale;
   dict: Pick<Dictionary, "home" | "catalog" | "explore" | "featured" | "trust">;
 }) {
-  const [stores, setStores] = useState<Store[] | null>(null);
+  const [stores, setStores] = useState<CardStore[] | null>(null);
 
   useEffect(() => {
     let active = true;
