@@ -179,3 +179,8 @@ en json ok
 ```
 
 The one lint warning (`waNum` in the bookings page) was already there at HEAD. It is not from this change.
+
+
+## Applied to production (2026-09-25)
+
+Rolled-back run first: **47 of 47 checks passed**; a follow-up read confirmed nothing persisted. Applied with apply_migration after the owner said «تصرف». Checkout phone capture left as is (the checkout and privacy page promise capture at the confirm tap).
