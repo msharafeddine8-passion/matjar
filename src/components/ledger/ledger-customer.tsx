@@ -16,11 +16,24 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { waLink } from "@/lib/phone";
+import {
+  DEFAULT_WA_TEMPLATES,
+  WA_AND,
+  waActionHref,
+  type WaLocale,
+} from "@/lib/wa-templates";
+import {
+  formatSince,
+  logWaAction,
+  touchNow,
+  useMinuteNow,
+  useWaLocale,
+} from "@/components/wa-actions/wa-client";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
+  LEDGER_CURRENCIES,
   balancesByCurrency,
-  buildReminderMessage,
   formatLedgerAmount,
   nonZeroBalances,
   statementUrl,
@@ -32,6 +45,7 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import { LedgerEntryForm, type EntryKind } from "./ledger-entry-form";
 
 type T = Dictionary["ledger"];
+type WaT = Dictionary["waActions"];
 
 const noopSubscribe = () => () => {};
 
@@ -51,6 +65,9 @@ export function LedgerCustomer({
   entries,
   token: initialToken,
   today,
+  reminderBodies,
+  reminderLastSent = null,
+  waT,
 }: {
   storeId: string;
   storeName: string;
@@ -60,6 +77,13 @@ export function LedgerCustomer({
   entries: LedgerEntry[];
   token: { id: string; token: string } | null;
   today: string;
+  /** The store's debt_reminder wording per message language (0309) — the
+   *  merchant's override or the default, which is the text this screen
+   *  always sent. Omitted → the default. */
+  reminderBodies?: Record<WaLocale, string>;
+  /** Latest reminder tap for this customer (wa_action_log), if any. */
+  reminderLastSent?: string | null;
+  waT: WaT;
 }) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -89,6 +113,11 @@ export function LedgerCustomer({
   const rows = useMemo(() => withRunningBalance(entries).reverse(), [entries]);
   const link = token && origin ? statementUrl(origin, lang, token.token) : null;
   const canWhatsApp = waLink(customer.phone) !== null;
+  // The message language: the merchant's WhatsApp-language choice, which
+  // defaults to the dashboard language — exactly what this button used before.
+  const waLocale = useWaLocale(lang);
+  const now = useMinuteNow();
+  const [remindedAt, setRemindedAt] = useState<string | null>(reminderLastSent);
 
   function open(kind: EntryKind) {
     setLastKind(kind);
@@ -125,20 +154,36 @@ export function LedgerCustomer({
       win?.close();
       return;
     }
-    const message = buildReminderMessage({
-      template: { body: t.reminderTemplate, and: t.and },
-      customerName: customer.name,
-      storeName,
-      balances,
-      link: statementUrl(window.location.origin, lang, tok.token),
-      lang,
+    // Only what is actually OWED, each currency separately, never converted —
+    // the same rule buildReminderMessage in lib/ledger.ts applies.
+    const owed = LEDGER_CURRENCIES.filter((c) => balances[c] > 0).map((c) =>
+      formatLedgerAmount(balances[c], c, waLocale),
+    );
+    const built = waActionHref(customer.phone, {
+      body: reminderBodies?.[waLocale] ?? DEFAULT_WA_TEMPLATES.debt_reminder[waLocale],
+      fallbackBody: DEFAULT_WA_TEMPLATES.debt_reminder[waLocale],
+      values: {
+        customer_name: customer.name,
+        store_name: storeName,
+        balance: owed.length > 0 ? owed.join(WA_AND[waLocale]) : formatLedgerAmount(0, "USD", waLocale),
+        link: statementUrl(window.location.origin, waLocale, tok.token),
+      },
+      locale: waLocale,
     });
-    const href = waLink(customer.phone, message);
-    if (!href) {
+    if (!built) {
       win?.close();
       return;
     }
-    openIn(win, href);
+    openIn(win, built.href);
+    // Fire and forget: the log can never hold up WhatsApp.
+    logWaAction({
+      storeId,
+      key: "debt_reminder",
+      targetType: "ledger_customer",
+      targetId: customer.id,
+    });
+    setRemindedAt(new Date().toISOString());
+    touchNow();
   }
 
   async function createLink() {
@@ -346,6 +391,10 @@ export function LedgerCustomer({
           <p className="mt-1.5 text-center text-xs text-muted-foreground">{t.remindNoPhone}</p>
         ) : !owes ? (
           <p className="mt-1.5 text-center text-xs text-muted-foreground">{t.remindNothing}</p>
+        ) : remindedAt && formatSince(remindedAt, now, waT.ago, lang) ? (
+          <p className="mt-1.5 text-center text-xs text-muted-foreground">
+            {waT.lastSent.split("{when}").join(formatSince(remindedAt, now, waT.ago, lang) ?? "")}
+          </p>
         ) : null}
       </div>
 

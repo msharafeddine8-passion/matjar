@@ -261,6 +261,7 @@ export type FeatureId =
   | "support"
   | "commission"
   | "debtLedger"
+  | "whatsappActions"
   // Pro
   | "onboarding"
   | "staffAccounts"
@@ -319,7 +320,7 @@ export type FeatureEntry = {
  *  have no `pricing.features` label. Kept out of the lists the price surfaces
  *  render straight from `dict.pricing.features[id]`, so the compiler refuses a
  *  pricing row that would print `undefined`. */
-export type OwnCopyFeatureId = "googleFeed" | "debtLedger";
+export type OwnCopyFeatureId = "googleFeed" | "debtLedger" | "whatsappActions";
 
 /** The features a price card, the /pricing table or the upgrade prompt may
  *  list — every one of them labelled under `pricing.features`. */
@@ -449,6 +450,21 @@ export const FEATURES: Record<FeatureId, FeatureEntry> = {
     evidence:
       "merchant/[storeId]/ledger — no plan guard; staff need the `customers` permission; migrations 0211 + 0307",
     copy: { label: "ledger.feature.label", description: "ledger.feature.desc" },
+  },
+
+  // One-tap WhatsApp actions for the merchant: confirm an order, send a status
+  // update, ask for a review, chase an abandoned cart, confirm or remind a
+  // booking, remind a debt — each a pre-filled wa.me link the merchant sends
+  // from their own phone. Zero recurring cost: no WhatsApp Business API, no
+  // SMS. On every plan: no screen or button carries a plan guard, and 0309 has
+  // no plan check. Staff need the permission of the area (orders / bookings /
+  // customers); message wording is editable by the owner.
+  whatsappActions: {
+    state: "live",
+    plan: "free",
+    evidence:
+      "lib/wa-templates.ts + components/wa-actions — orders list, bookings, ledger, merchant/[storeId]/abandoned-carts, settings/whatsapp; migration 0309",
+    copy: { label: "waActions.feature.label", description: "waActions.feature.desc" },
   },
 
   // ── Pro ──────────────────────────────────────────────────────────────────

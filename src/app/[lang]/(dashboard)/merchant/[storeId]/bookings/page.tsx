@@ -15,6 +15,14 @@ import {
   type CalendarBooking,
 } from "@/components/bookings-calendar";
 import { NextStepEmpty } from "@/components/os-dashboard/next-step-empty";
+import { BookingWaActions } from "@/components/wa-actions/booking-wa-actions";
+import { WaLocaleToggle } from "@/components/wa-actions/wa-action-button";
+import { todayInBeirut } from "@/lib/ledger";
+import {
+  bodiesOf,
+  loadLastSent,
+  loadWaTemplates,
+} from "@/lib/wa-actions-server";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -85,6 +93,18 @@ export default async function StoreBookingsPage({
   for (const r of (emailRows ?? []) as { customer_id: string; email: string }[]) {
     if (r.customer_id && r.email) emailByCustomer.set(r.customer_id, r.email);
   }
+  // WhatsApp confirmation / reminder buttons (every plan, 0309). Defensive
+  // reads: before 0309 the default wording is used and nothing is logged.
+  const [waTemplates, waLastSent] = await Promise.all([
+    loadWaTemplates(supabase, storeId),
+    loadLastSent(supabase, storeId, "booking", bookings.map((b) => b.id)),
+  ]);
+  const waBookingTemplates = {
+    booking_confirmation: bodiesOf(waTemplates.templates, "booking_confirmation"),
+    booking_reminder: bodiesOf(waTemplates.templates, "booking_reminder"),
+  };
+  const today = todayInBeirut();
+
   // Pending = new/unhandled requests that still need the merchant's reply.
   const pendingCount = bookings.filter((b) => b.status === "pending").length;
 
@@ -123,6 +143,12 @@ export default async function StoreBookingsPage({
         {pendingCount > 0 && (
           <div className="mt-3 rounded-2xl border border-primary/30 bg-primary-soft px-4 py-3 text-sm font-semibold text-primary">
             {dict.booking.newBookingsCount.replace("{count}", String(pendingCount))}
+          </div>
+        )}
+
+        {bookings.length > 0 && (
+          <div className="mt-3">
+            <WaLocaleToggle uiLang={lang} labels={dict.waActions} />
           </div>
         )}
 
@@ -233,6 +259,25 @@ export default async function StoreBookingsPage({
                     />
                   </div>
                 )}
+                <BookingWaActions
+                  uiLang={lang}
+                  storeId={storeId}
+                  storeName={(store as { name: string }).name}
+                  today={today}
+                  templates={waBookingTemplates}
+                  lastSent={waLastSent}
+                  t={dict.waActions}
+                  booking={{
+                    id: b.id,
+                    status: b.status,
+                    phone: b.phone,
+                    customerName: b.customer_name,
+                    hasAccount: !!b.customer_id,
+                    service: b.service_name,
+                    date: b.requested_date,
+                    time: b.requested_time,
+                  }}
+                />
                 {/* A first visit is a longer slot and a file to open, so it
                     belongs on the row rather than one click deeper. */}
                 {b.patient_status === "new" && (

@@ -167,6 +167,16 @@ export default async function StoreSettingsPage({
             {dict.googleFeed.settingsLinkHint}
           </span>
         </Link>
+        {/* The wording of the WhatsApp action buttons (every plan). */}
+        <Link
+          href={`/${lang}/merchant/${storeId}/settings/whatsapp`}
+          className="mt-3 block rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-primary/40"
+        >
+          <span className="block font-bold">{dict.waActions.editor.settingsLink}</span>
+          <span className="mt-1 block text-sm text-muted-foreground">
+            {dict.waActions.editor.settingsLinkHint}
+          </span>
+        </Link>
         <div className="mt-6">
           <DeliveryZonesManager storeId={storeId} dict={dict} initial={zones} />
         </div>

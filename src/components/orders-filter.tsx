@@ -17,6 +17,10 @@ import {
   type DeliveryRequest,
 } from "@/components/order-dispatch";
 import { CardList, CardRow } from "@/components/ui/card";
+import {
+  OrderWaActions,
+  type OrderWaTemplates,
+} from "@/components/wa-actions/order-wa-actions";
 
 type OrderItem = {
   name: string;
@@ -51,6 +55,18 @@ export type OrderCard = {
   scheduled_for: string | null;
   /** Live courier dispatch for this order, if one was requested. */
   delivery: DeliveryRequest | null;
+  /** Placed from a customer account — decides the WhatsApp link target. */
+  customer_id?: string | null;
+  /** The delivery zone, whose ETA (if it states one) feeds «تأكيد الطلب». */
+  delivery_zone_id?: string | null;
+};
+
+/** Everything the WhatsApp buttons on each card share. */
+export type OrdersWaContext = {
+  rate: number;
+  templates: OrderWaTemplates;
+  lastSent: Record<string, string>;
+  zoneEta: Record<string, { min: number | null; max: number | null }>;
 };
 
 // Mirrors the order_status enum, minus the implicit "all" tab rendered first.
@@ -80,6 +96,7 @@ export function OrdersFilter({
   team,
   couriers,
   canDispatch,
+  wa,
 }: {
   orders: OrderCard[];
   dict: Dictionary;
@@ -89,6 +106,7 @@ export function OrdersFilter({
   team: { id: string; name: string }[];
   couriers: DispatchCourier[];
   canDispatch: boolean;
+  wa?: OrdersWaContext;
 }) {
   const [status, setStatus] = useState<string>("all");
   const [query, setQuery] = useState("");
@@ -268,6 +286,38 @@ export function OrdersFilter({
                       </p>
                     ))}
                 </div>
+                {wa && (
+                  <OrderWaActions
+                    uiLang={lang}
+                    storeId={storeId}
+                    storeName={storeName}
+                    rate={wa.rate}
+                    templates={wa.templates}
+                    lastSent={wa.lastSent}
+                    t={dict.waActions}
+                    order={{
+                      id: order.id,
+                      status: order.status,
+                      phone: order.phone,
+                      customerName: order.customer_name,
+                      hasAccount: !!order.customer_id,
+                      total: Number(order.total ?? 0),
+                      items: order.order_items.map((it) => ({
+                        name: it.name,
+                        quantity: Number(it.quantity),
+                      })),
+                      scheduledFor: order.scheduled_for,
+                      etaMinMinutes:
+                        order.fulfillment === "delivery" && order.delivery_zone_id
+                          ? (wa.zoneEta[order.delivery_zone_id]?.min ?? null)
+                          : null,
+                      etaMaxMinutes:
+                        order.fulfillment === "delivery" && order.delivery_zone_id
+                          ? (wa.zoneEta[order.delivery_zone_id]?.max ?? null)
+                          : null,
+                    }}
+                  />
+                )}
                 {/* The card above is the DECISION layer: who, what, how
                     much, what state. Everything below is the WORK layer —
                     payments, courier, notes, assignment — needed on the one

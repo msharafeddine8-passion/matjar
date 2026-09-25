@@ -5483,6 +5483,121 @@
       "poweredBy": "Credit book by Matjar"
     }
   },
+  "waActions": {
+    "feature": {
+      "label": "WhatsApp buttons",
+      "desc": "Confirm orders, send status updates, ask for reviews, remind about carts, bookings and debts — one tap, from your own phone, free."
+    },
+    "keys": {
+      "order_confirmation": "Confirm order",
+      "order_status": "Status update",
+      "review_request": "Ask for a review",
+      "abandoned_cart": "Cart reminder",
+      "booking_confirmation": "Confirm booking",
+      "booking_reminder": "Day-before reminder",
+      "debt_reminder": "Debt reminder"
+    },
+    "keyHints": {
+      "order_confirmation": "Send when you accept an order: items, total, and delivery time when it is known.",
+      "order_status": "The order's current status with the tracking link.",
+      "review_request": "After delivery, a link to the review page.",
+      "abandoned_cart": "For a customer who tapped \"Confirm order\" but no order came through.",
+      "booking_confirmation": "Confirms the booking with service, date and time.",
+      "booking_reminder": "A reminder of the appointment, best the day before.",
+      "debt_reminder": "The amount on the account with a link to the statement."
+    },
+    "sectionTitle": "WhatsApp messages",
+    "lastSent": "Last sent: {when}",
+    "ago": {
+      "now": "just now",
+      "minutes": {
+        "one": "1 minute ago",
+        "two": "2 minutes ago",
+        "few": "{n} minutes ago",
+        "many": "{n} minutes ago"
+      },
+      "hours": {
+        "one": "1 hour ago",
+        "two": "2 hours ago",
+        "few": "{n} hours ago",
+        "many": "{n} hours ago"
+      },
+      "days": {
+        "one": "1 day ago",
+        "two": "2 days ago",
+        "few": "{n} days ago",
+        "many": "{n} days ago"
+      }
+    },
+    "noPhone": "This customer has no valid WhatsApp number.",
+    "reviewNeedsAccount": "Reviews need an account, and this was a guest order.",
+    "noLink": "There is no customer page for this order; the message goes without a link.",
+    "messageLang": "Message language",
+    "langAr": "عربي",
+    "langEn": "English",
+    "truncated": "The message was long, so it was shortened to open in WhatsApp.",
+    "carts": {
+      "title": "Abandoned carts",
+      "subtitle": "Customers who tapped \"Confirm order\" and no order arrived. A cart shows up after an hour and disappears after 14 days or as soon as the customer orders.",
+      "link": "Abandoned carts",
+      "linkHint": "Customers who did not finish ordering — remind them on WhatsApp.",
+      "empty": "No abandoned carts right now.",
+      "emptyHint": "When a customer taps \"Confirm order\" and the order does not arrive, it shows up here after an hour.",
+      "guest": "Customer",
+      "items": "{n} items",
+      "estimate": "About {total}",
+      "estimateNote": "at your current prices",
+      "unpriced": "{n} items no longer in the store",
+      "attempted": "Last attempt: {when}",
+      "coupon": "Discount code (optional)",
+      "noCoupon": "No code",
+      "privacy": "The customer is told: under the confirm button it says their number and cart go to the store so it can follow up, and the privacy policy says the same.",
+      "linkNote": "The link opens your store page: the cart is saved on the customer's device and cannot be restored by a link.",
+      "fallback": "This list is computed on your side until the database update is applied.",
+      "loadFailed": "Could not load the carts right now."
+    },
+    "editor": {
+      "title": "WhatsApp messages",
+      "subtitle": "The text that opens in WhatsApp when you tap a button. Change it once and it stays for every order.",
+      "settingsLink": "WhatsApp message texts",
+      "settingsLinkHint": "Edit the order confirmation, status, review, cart, booking and debt messages.",
+      "vars": "Variables",
+      "varsHint": "Tap to insert at the cursor. Put an optional variable on its own line: when it has no value the whole line is removed instead of arriving empty.",
+      "preview": "Preview",
+      "previewHint": "with sample data",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "reset": "Restore the original text",
+      "resetConfirm": "Restore the original text for this message?",
+      "resetDone": "Original text restored",
+      "custom": "Edited",
+      "default": "Original",
+      "unknownVar": "Unknown variable: {name} — its line will be removed.",
+      "unavailableVar": "Not available in this message: {name} — its line will be removed.",
+      "tooLong": "Too long for a WhatsApp link; it will be shortened.",
+      "chars": "{n} characters",
+      "empty": "The text cannot be empty.",
+      "tooLongBody": "The text is longer than 1,000 characters.",
+      "saveFailed": "Not saved. Please try again.",
+      "notReady": "Saving texts works once the database update is applied. Until then the buttons use the original text."
+    },
+    "vars": {
+      "customer_name": "Customer name",
+      "store_name": "Store name",
+      "order_number": "Order number",
+      "total": "Total",
+      "items": "Items",
+      "eta": "Delivery time",
+      "status": "Status",
+      "link": "Link",
+      "balance": "Amount owed",
+      "service": "Service",
+      "date": "Date",
+      "time": "Time",
+      "coupon": "Discount code"
+    }
+  },
   "features": {
     "status": {
       "available": "Available",

@@ -59,6 +59,17 @@ export function waNumber(raw: string | null | undefined): string | null {
   return LB + digits;
 }
 
+/**
+ * THE wa.me URL builder. Every WhatsApp link in the app — this file's waLink,
+ * the compatibility waLink in lib/whatsapp.ts and the action templates in
+ * lib/wa-templates.ts — ends here, so there is one place that decides what a
+ * click-to-chat link looks like. `digits` is already normalised (waNumber), or
+ * "" for WhatsApp's own "choose a chat" picker.
+ */
+export function waUrl(digits: string, text?: string): string {
+  return `https://wa.me/${digits}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
+}
+
 /** Full wa.me URL, or null when the number cannot be dialled. */
 export function waLink(
   raw: string | null | undefined,
@@ -66,7 +77,7 @@ export function waLink(
 ): string | null {
   const n = waNumber(raw);
   if (!n) return null;
-  return `https://wa.me/${n}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
+  return waUrl(n, text);
 }
 
 /** What is wrong with a number a person just typed, or null when nothing is. */

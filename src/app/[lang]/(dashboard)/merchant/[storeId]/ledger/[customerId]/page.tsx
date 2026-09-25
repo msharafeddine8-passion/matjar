@@ -8,6 +8,11 @@ import { Container } from "@/components/ui/container";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import { LedgerCustomer } from "@/components/ledger/ledger-customer";
 import { requireLedgerAccess, UUID_RE } from "../access";
+import {
+  bodiesOf,
+  loadLastSent,
+  loadWaTemplates,
+} from "@/lib/wa-actions-server";
 
 // One customer's page of the notebook: the running balance per currency, every
 // line, the two big «أعطيت» / «استلمت» buttons, the WhatsApp reminder and the
@@ -34,7 +39,7 @@ export default async function LedgerCustomerPage({
     .maybeSingle();
   if (!customer) notFound();
 
-  const [entriesRes, tokenRes] = await Promise.all([
+  const [entriesRes, tokenRes, waTemplates, waLastSent] = await Promise.all([
     supabase
       .from("customer_transactions")
       .select("id, kind, amount, currency, label, happened_on, created_at, attachment_path")
@@ -49,6 +54,10 @@ export default async function LedgerCustomerPage({
       .eq("customer_id", customerId)
       .is("revoked_at", null)
       .maybeSingle(),
+    // The reminder's wording (0309 overrides, else the default) and when it
+    // was last sent. Both defensive: before 0309 they fall back quietly.
+    loadWaTemplates(supabase, storeId),
+    loadLastSent(supabase, storeId, "ledger_customer", [customerId]),
   ]);
 
   const entries = ((entriesRes.data ?? []) as LedgerEntry[]).map((e) => ({
@@ -78,6 +87,9 @@ export default async function LedgerCustomerPage({
             entries={entries}
             token={(tokenRes.data as { id: string; token: string } | null) ?? null}
             today={todayInBeirut()}
+            reminderBodies={bodiesOf(waTemplates.templates, "debt_reminder")}
+            reminderLastSent={waLastSent[`${customerId}:debt_reminder`] ?? null}
+            waT={dict.waActions}
           />
         </div>
       </Container>
