@@ -28,3 +28,12 @@ Production was NOT deployed by this program. Merging the branch is the owner's d
 
 - Phase 1 (P0 consistency): done. Every P0 row is fixed, including the two live-DB changes the owner approved on 2026-09-24 (migrations 0304, 0305). See `01_P0_CONSISTENCY.md`.
 - Phase 2 (discovery): done — search V2, sector-aware cards and filters, zero-result demand capture (migration 0306). See `02_DISCOVERY.md`.
+- Phase 3 (business profile engine): done. See `03_BUSINESS_PROFILE_ENGINE.md`.
+- Phase 4 (crafts, freelance, jobs): done. See `05`, `06`, `07`.
+- Phase 5 (SEO, Sunday Market moderation, trust, privacy): done in code; 0313 applied, 0314 waits for the deploy. See `08`, `09`, `10`.
+- Phase 6 (activity and retention, analytics): done; 0315 pending. See `11_ANALYTICS.md`.
+- Phase 7 (final QA): build, lint, typecheck, 1389 unit tests, 21 browser tests incl. axe WCAG A/AA, 102 screenshots at 6 widths. See `12_ACCESSIBILITY.md`.
+
+Also on the same branch: the six zero-subscription features (debt ledger, WhatsApp actions, Google feed, loyalty and gift cards, source attribution, Excel import and quick panel). See `audit/zero-sub/`.
+
+Remaining: `16_REMAINING_GAPS.md`. Issues: `MATJAR_PRELAUNCH_ISSUES.csv` (151 rows, 0 open P0).
