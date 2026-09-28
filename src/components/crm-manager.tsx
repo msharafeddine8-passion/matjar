@@ -22,6 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { beirutYmd } from "@/lib/quick-panel";
 
 export type BookCustomer = {
   id: string;
@@ -266,7 +267,7 @@ export function CrmManager({
         : "border-border text-muted-foreground hover:border-primary/40"
     }`;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = beirutYmd(new Date());
   const dueFollowUps = book
     .filter((c) => c.follow_up_on != null && c.follow_up_on <= today)
     .sort((a, b) => (a.follow_up_on! < b.follow_up_on! ? -1 : 1));

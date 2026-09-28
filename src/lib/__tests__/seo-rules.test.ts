@@ -161,7 +161,9 @@ describe("robots.txt disallow list", () => {
 });
 
 describe("sitemap.ts follows the rules", () => {
-  const src = readFileSync(join(process.cwd(), "src/app/sitemap.ts"), "utf8");
+  // LF-normalised: a Windows checkout (core.autocrlf) has CRLF on disk, and
+  // the query-splitting regex below is written against "\n".
+  const src = readFileSync(join(process.cwd(), "src/app/sitemap.ts"), "utf8").replace(/\r\n/g, "\n");
 
   it("is cached, not per-request (vercel-cost-guard)", () => {
     expect(src).toMatch(/export const revalidate = \d+/);

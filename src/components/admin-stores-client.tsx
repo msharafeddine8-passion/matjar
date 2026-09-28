@@ -359,14 +359,22 @@ export function AdminStoresClient({
                     s.featuredUntil != null &&
                     new Date(s.featuredUntil) > new Date();
                   const menuActions: OverflowAction[] = [
-                    {
-                      label: s.isVerified ? t.unverify : t.verify,
-                      Icon: BadgeCheck,
-                      active: s.isVerified,
-                      disabled: busy === s.id,
-                      onClick: () =>
-                        patch(s.id, { is_verified: !s.isVerified }),
-                    },
+                    // The generic "verify" toggle is gone: stores.is_verified
+                    // records nothing (what was checked, by whom, against
+                    // what), lib/trust.ts ignores it, yet it still fed the
+                    // «موثّق» discovery filter. The badge is earned through
+                    // admin/verifications. Clearing a leftover flag stays.
+                    ...(s.isVerified
+                      ? [
+                          {
+                            label: t.unverify,
+                            Icon: BadgeCheck,
+                            active: true,
+                            disabled: busy === s.id,
+                            onClick: () => patch(s.id, { is_verified: false }),
+                          },
+                        ]
+                      : []),
                     {
                       label: featured
                         ? dict.admin.unfeature

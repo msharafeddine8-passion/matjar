@@ -23,6 +23,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { JobApplyForm } from "@/components/job-apply-form";
+import { dictSlice } from "@/lib/dict-slice";
 import { ButtonLink } from "@/components/ui/button";
 import { requestNow } from "@/lib/now";
 import { beirutToday, formatDay, isJobOpen } from "@/lib/pro-market";
@@ -305,7 +306,7 @@ export default async function JobDetailPage({
             <JobApplyForm
               jobId={job.id}
               lang={lang as Locale}
-              dict={dict}
+              dict={dictSlice(dict, ["jobs", "auth"])}
               applied={alreadyApplied}
             />
           </div>

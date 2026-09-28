@@ -22,6 +22,7 @@ import { notifyError, notifySuccess } from "@/lib/notify";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
+import { beirutYmd } from "@/lib/quick-panel";
 
 export type Employee = {
   id: string;
@@ -289,7 +290,7 @@ export function HrManager({
       .from("store_employees")
       .update({
         status: "ended",
-        ended_on: new Date().toISOString().slice(0, 10),
+        ended_on: beirutYmd(new Date()),
       })
       .eq("id", e.id);
     setBusy(null);

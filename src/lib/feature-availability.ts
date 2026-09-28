@@ -697,7 +697,10 @@ export const FEATURES: Record<FeatureId, FeatureEntry> = {
   verifiedBadge: {
     state: "beta",
     plan: "free",
-    evidence: "admin/stores is_verified toggle; zero stores verified in production",
+    // stores.is_verified is NOT the source (lib/trust.ts ignores it): the badge
+    // comes from store_verifications reviewed in admin/verifications and from
+    // commercial_reg_verified. Production 2026-09-28: 0 rows, 0 verified.
+    evidence: "store_verifications admin queue + commercial_reg_verified; zero stores verified in production",
   },
   onlinePayment: {
     state: "soon",

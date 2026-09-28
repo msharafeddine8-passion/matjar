@@ -16,6 +16,7 @@ import {
 import { sectorHasTeam, sectorTeamMeta } from "@/lib/sectors";
 import { toCategoryKey } from "@/lib/catalog";
 import { ChevronPrev } from "@/components/ui/directional-icon";
+import { beirutYmd } from "@/lib/quick-panel";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -95,7 +96,7 @@ export default async function StoreDoctorsPage({
   }[]).map((s) => ({ id: s.id, name: s.name, nameEn: s.name_en }));
 
   // Per-provider weekly hours + day-off blocks (booking engine v2).
-  const today = new Date().toISOString().slice(0, 10);
+  const today = beirutYmd(new Date());
   const [{ data: rulesData }, { data: exceptionsData }] = await Promise.all([
     supabase
       .from("provider_availability_rules")

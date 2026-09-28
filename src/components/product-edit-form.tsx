@@ -11,6 +11,7 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import type { CategoryKey } from "@/lib/catalog";
 import { attrEntryFields, attrLegacyFields } from "@/lib/attributes";
 import { sectorHasTeam } from "@/lib/sectors";
+import { beirutYmd } from "@/lib/quick-panel";
 import { ImageUpload } from "@/components/image-upload";
 import { fieldClass } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
@@ -232,7 +233,7 @@ export function ProductEditForm({
         gallery,
         stock: stockRaw === "" ? null : Number(stockRaw),
         section_id: sectionId || null,
-        deal_date: dealToday ? new Date().toISOString().slice(0, 10) : null,
+        deal_date: dealToday ? beirutYmd(new Date()) : null,
         flash_price: hasFlash ? Number(flashPriceRaw) : null,
         flash_start: hasFlash ? new Date(flashStartRaw).toISOString() : null,
         flash_end: hasFlash ? new Date(flashEndRaw).toISOString() : null,

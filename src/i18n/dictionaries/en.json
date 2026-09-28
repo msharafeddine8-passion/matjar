@@ -2213,7 +2213,7 @@
       "monthly": "Monthly",
       "yearly": "Yearly",
       "upgradeTitle": "Upgrade to Matjar Pro",
-      "upgradeBody": "A full store, unlimited orders, higher search visibility, a Pro badge and better support. Payment is manual for now — contact us to activate Pro after payment.",
+      "upgradeBody": "Up to {proProducts} products instead of {freeProducts}, a team of up to {proStaff} people including the owner, a place among the featured stores on the home page, a Pro badge, and the point of sale, loyalty cards and gift cards. Payment is manual for now — contact us to activate Pro after payment.",
       "viewPlans": "View plans & pricing",
       "requestUpgrade": "Request Pro upgrade",
       "requestPhone": "Your contact phone",
@@ -6037,6 +6037,9 @@
       "void": "Void card",
       "confirmVoid": "Voiding stops the card from ever being spent. Are you sure?",
       "voided": "Card voided",
+      "rotateLink": "New link",
+      "confirmRotate": "The old balance link will stop working, and you send the customer the new one. The code and balance stay the same. Continue?",
+      "rotated": "New link created; the old one no longer opens",
       "lockedList": "Your current plan can't issue new cards, but cards already issued can still be spent.",
       "errors": {
         "notFound": "That code doesn't exist at this store.",

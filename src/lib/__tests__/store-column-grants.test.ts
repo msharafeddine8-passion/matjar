@@ -30,10 +30,12 @@ const MIGRATION = readFileSync(
   join(ROOT, "supabase/migrations/0314_privacy_hardening.sql"),
   "utf8",
 );
+// LF-normalised: a Windows checkout (core.autocrlf) has CRLF on disk, and the
+// verbatim markers below end in "\n".
 const SQL_TEST = readFileSync(
   join(ROOT, "supabase/tests/0314_privacy_hardening.test.sql"),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 
 function grantList(sql: string, table: string, role: string): string[] {
   const re = new RegExp(

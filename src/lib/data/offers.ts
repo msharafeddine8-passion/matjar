@@ -1,6 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public-client";
+import { beirutYmd } from "@/lib/quick-panel";
 
 export type OfferProduct = {
   id: string;
@@ -59,7 +60,8 @@ export const getDailyDeal = unstable_cache(
       .eq("status", "active")
       .eq("is_available", true)
       .is("deleted_at", null)
-      .eq("deal_date", new Date().toISOString().slice(0, 10))
+      // Beirut's date: toISOString() is UTC, a day behind until 03:00 here.
+      .eq("deal_date", beirutYmd(new Date()))
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();

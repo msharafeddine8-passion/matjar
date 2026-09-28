@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { beirutYmd } from "@/lib/quick-panel";
 
 export type TaskRow = {
   id: string;
@@ -48,7 +49,7 @@ export function TasksManager({
 
   const open = tasks.filter((x) => x.status === "open");
   const done = tasks.filter((x) => x.status === "done");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = beirutYmd(new Date());
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
