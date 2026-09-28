@@ -5,6 +5,8 @@ import {
   profileBlocks,
   completeness,
   primaryCtaKey,
+  supplyRobots,
+  splitServicesByOwner,
   type ProfessionalProfile,
   type ProfessionalService,
 } from "@/lib/professional";
@@ -239,5 +241,59 @@ describe("primaryCtaKey — a trade is asked to come, a freelancer to quote", ()
     expect(primaryCtaKey("craft")).toBe("requestService");
     expect(primaryCtaKey("freelance")).toBe("requestQuote");
     expect(primaryCtaKey("craft")).not.toBe(primaryCtaKey("freelance"));
+  });
+});
+
+describe("supplyRobots — the zero-supply index rule", () => {
+  it("noindexes a trade page with nobody on it (production: all 47 today)", () => {
+    expect(supplyRobots({ supply: 0 })).toEqual({ index: false, follow: true });
+  });
+
+  it("indexes the canonical view once one real provider exists", () => {
+    expect(supplyRobots({ supply: 1 })).toEqual({ index: true, follow: true });
+  });
+
+  it("never indexes a filtered or re-sorted view, even with supply", () => {
+    expect(supplyRobots({ supply: 12, filtered: true })).toEqual({ index: false, follow: true });
+    expect(supplyRobots({ supply: 0, filtered: true, uniqueContent: true }).index).toBe(false);
+  });
+
+  it("lets a page with real content of its own rank at zero supply", () => {
+    // /crafts: the 47-trade taxonomy and the symptom index are the content.
+    expect(supplyRobots({ supply: 0, uniqueContent: true }).index).toBe(true);
+  });
+
+  it("always follows — the links out of an empty page are the useful part", () => {
+    for (const o of [{ supply: 0 }, { supply: 3, filtered: true }, { supply: NaN }, { supply: -4 }]) {
+      expect(supplyRobots(o).follow).toBe(true);
+    }
+    expect(supplyRobots({ supply: NaN }).index).toBe(false);
+    expect(supplyRobots({ supply: -4 }).index).toBe(false);
+  });
+});
+
+describe("splitServicesByOwner — one person is not three sellers", () => {
+  // Production: باشن holds all three gigs.
+  const owner = "8b6f9cdc-3100-4f4b-a2df-3cb3e7c1e80a";
+  const rows = [
+    { id: "g1", freelancer_id: owner },
+    { id: "g2", freelancer_id: owner },
+    { id: "g3", freelancer_id: owner },
+  ];
+
+  it("puts the same person's other services under their name, not under 'related'", () => {
+    const { same, others } = splitServicesByOwner(rows, owner, "g1");
+    expect(same.map((r) => r.id)).toEqual(["g2", "g3"]);
+    expect(others).toEqual([]);
+  });
+
+  it("keeps other people as related, and drops the service being viewed", () => {
+    const { same, others } = splitServicesByOwner(
+      [...rows, { id: "x1", freelancer_id: "someone-else" }],
+      owner,
+      "g2",
+    );
+    expect(same.map((r) => r.id)).toEqual(["g1", "g3"]);
+    expect(others.map((r) => r.id)).toEqual(["x1"]);
   });
 });

@@ -4,6 +4,10 @@ import { isDirectoryOnlySector } from "@/lib/store-experience";
 import { resolveStoreModules } from "@/lib/sectors";
 import {
   DEFAULT_OFFERING_SECTIONS,
+  OfferingNotAddableError,
+  assertAddableToCart,
+  isCartCta,
+  offeringPriceLabel,
   offeringSectionSlot,
   resolveOffering,
   type OfferingKind,
@@ -272,5 +276,141 @@ describe("offering CTA", () => {
         ]).toContain(resolveOffering({ category, itemKind }).cta);
       }
     }
+  });
+});
+
+// The facts every OTHER surface reads — cards, the store cart, the sticky
+// bar, JSON-LD. Each used to be re-derived by the surface from `stock != null`
+// or from the sector, which is how a service card grew a stock badge and a
+// restaurant's menu cards said "أضف للسلة" under a sticky bar that said "أضف
+// إلى الطلب". Pinned per variant so a surface cannot disagree with the page.
+describe("offering surface facts", () => {
+  const good = resolveOffering({ category: "retail", itemKind: "product" });
+  const svc = resolveOffering({ category: "healthcare", itemKind: "service" });
+  const dish = resolveOffering({ category: "food", itemKind: "product" });
+
+  it("shows stock, options, quantity and unit prices on a good only", () => {
+    expect(good.showsStock).toBe(true);
+    expect(good.showsOptions).toBe(true);
+    expect(good.showsQuantity).toBe(true);
+    expect(good.showsUnitPrice).toBe(true);
+    expect(good.showsDuration).toBe(false);
+    expect(good.cardBadge).toBeNull();
+    expect(good.addableToCart).toBe(true);
+  });
+
+  it("gives a service a duration and a badge, and nothing a shelf has", () => {
+    expect(svc.showsStock).toBe(false);
+    expect(svc.showsOptions).toBe(false);
+    expect(svc.showsQuantity).toBe(false);
+    expect(svc.showsUnitPrice).toBe(false);
+    expect(svc.showsDuration).toBe(true);
+    expect(svc.cardBadge).toBe("service");
+    expect(svc.addableToCart).toBe(false);
+  });
+
+  it("gives a dish its options and a basket but no stock badge", () => {
+    // A kitchen runs out; it does not carry inventory. The order is still
+    // blocked at 0 (the RPC refuses it), but no card says "باقي 3 قطع".
+    expect(dish.showsStock).toBe(false);
+    expect(dish.showsOptions).toBe(true);
+    expect(dish.showsQuantity).toBe(true);
+    expect(dish.showsUnitPrice).toBe(false);
+    expect(dish.showsDuration).toBe(false);
+    expect(dish.cardBadge).toBeNull();
+    expect(dish.addableToCart).toBe(true);
+    expect(dish.cta).toBe("addToOrder");
+  });
+
+  it("chooses the menu experience for every food row that is not a service", () => {
+    // Regardless of the declared kind: a restaurant's `digital` row (a gift
+    // voucher, say) is still ordered, not carted.
+    for (const itemKind of ["product", "digital"] as const) {
+      const o = resolveOffering({ category: "food", itemKind });
+      expect(o.variant).toBe("menuItem");
+      expect(o.cta).toBe("addToOrder");
+      expect(o.noun).toBe("dish");
+      expect(o.showsStock).toBe(false);
+    }
+    // …and a restaurant's service (a cooking class) is still an appointment.
+    expect(resolveOffering({ category: "food", itemKind: "service" }).variant).toBe(
+      "appointmentService",
+    );
+  });
+
+  it("never lets a service into a basket, whatever the sector", () => {
+    for (const category of categoryKeys) {
+      const o = resolveOffering({ category, itemKind: "service" });
+      expect(o.addableToCart, `${category} service addable`).toBe(false);
+      expect(o.showsQuantity, `${category} service quantity`).toBe(false);
+      expect(o.showsStock, `${category} service stock`).toBe(false);
+      expect(() => assertAddableToCart(o)).toThrow(OfferingNotAddableError);
+    }
+  });
+
+  it("lets exactly the cart CTAs into a basket, and only where the page transacts", () => {
+    for (const category of categoryKeys) {
+      for (const itemKind of KINDS) {
+        const o = resolveOffering({ category, itemKind });
+        expect(o.addableToCart).toBe(o.transacts && isCartCta(o.cta));
+        expect(o.showsQuantity).toBe(o.transacts);
+        if (o.addableToCart) expect(() => assertAddableToCart(o)).not.toThrow();
+        else expect(() => assertAddableToCart(o)).toThrow(/offering_not_addable/);
+      }
+    }
+    // Directory-only sectors are the other way a good is kept out of a cart.
+    for (const category of categoryKeys) {
+      if (!isDirectoryOnlySector(category)) continue;
+      expect(
+        resolveOffering({ category, itemKind: "product" }).addableToCart,
+      ).toBe(false);
+    }
+  });
+
+  it("names the refusal after the CTA it refused", () => {
+    try {
+      assertAddableToCart(svc);
+      expect.unreachable("a service must not be addable");
+    } catch (e) {
+      expect(e).toBeInstanceOf(OfferingNotAddableError);
+      expect((e as OfferingNotAddableError).cta).toBe("bookAppointment");
+    }
+  });
+});
+
+describe("offering price label", () => {
+  it("prints the number for anything priced", () => {
+    expect(offeringPriceLabel({ variant: "physicalProduct", price: 12 })).toBe(
+      "fixed",
+    );
+    expect(offeringPriceLabel({ variant: "appointmentService", price: 90 })).toBe(
+      "fixed",
+    );
+    expect(offeringPriceLabel({ variant: "menuItem", price: 4.5 })).toBe("fixed");
+  });
+
+  it("says 'after the consultation' only for an unpriced service", () => {
+    // The merchant entered no price: null, or the column's 0 default.
+    expect(
+      offeringPriceLabel({ variant: "appointmentService", price: null }),
+    ).toBe("onConsult");
+    expect(offeringPriceLabel({ variant: "appointmentService", price: 0 })).toBe(
+      "onConsult",
+    );
+    // A good at $0 is a data error, not a pricing model; it prints what the
+    // merchant typed rather than inventing a policy.
+    expect(offeringPriceLabel({ variant: "physicalProduct", price: 0 })).toBe(
+      "fixed",
+    );
+    expect(offeringPriceLabel({ variant: "menuItem", price: null })).toBe("fixed");
+  });
+
+  it("marks a floor only when there is a number to be a floor of", () => {
+    expect(
+      offeringPriceLabel({ variant: "physicalProduct", price: 10, isFloor: true }),
+    ).toBe("from");
+    expect(
+      offeringPriceLabel({ variant: "appointmentService", price: 0, isFloor: true }),
+    ).toBe("onConsult");
   });
 });

@@ -9,6 +9,11 @@ import type { ItemSurface } from "@/lib/store-experience";
 import { attributeSummary } from "@/lib/attributes";
 import { waLink } from "@/lib/whatsapp";
 import { parseHours } from "@/lib/hours";
+import {
+  featureCopy,
+  featureLabel,
+  sectorPendingCapabilities,
+} from "@/lib/feature-availability";
 import { StoreProducts } from "@/components/store-products";
 import type { CheckoutViewer, StoreCheckout } from "@/lib/checkout";
 import type { DoctorView } from "@/components/store/store-doctors";
@@ -77,8 +82,16 @@ export function StoreProductsSection({
   const services = store.products.filter((p) => p.itemKind === "service");
   const goods = store.products.filter((p) => p.itemKind !== "service");
   // On an appointment surface the primary list is the services; the goods get
-  // their own cart section below.
-  const primary = surface === "appointment" ? services : goods;
+  // their own cart section below. The browse-only catalogue surface lists every
+  // row (it renders `store.products`), so its emptiness is judged on every row
+  // too — counting only goods there put «no products» above a trade's list of
+  // services. Same rule as catalogPrimaryCount() in lib/profile-engine.ts.
+  const primary =
+    surface === "appointment"
+      ? services
+      : surface === "order"
+        ? goods
+        : store.products;
   // A checkout the page could not assemble (a store anon may not read) is a
   // store nobody may order from — the browse-only catalogue is then the correct
   // surface, not a cart that would fail at the RPC.
@@ -87,6 +100,25 @@ export function StoreProductsSection({
     canOrderProducts &&
     goods.length > 0 &&
     checkout != null;
+  // A booking store with no services yet but goods on sale (a salon selling
+  // perfume, live today): the goods cart below IS the section. Drawing «no
+  // services» above it was a placeholder over real content — the heading and
+  // the empty box are skipped, the cart keeps its own heading.
+  const primaryEmptyButGoods =
+    store.isReal && primary.length === 0 && showGoodsSection;
+
+  // What THIS sector's bundle promises that its storefront cannot deliver yet,
+  // from the availability registry — empty for any sector that is not held in
+  // directory-only mode, so the note below cannot render where nothing is
+  // pending. The label per item is the same string /pricing and the module
+  // manager print for it; the status word is the registry's one word.
+  const pending = directoryOnly ? sectorPendingCapabilities(store.category) : [];
+  const pendingNote =
+    pending.length > 0
+      ? dict.features.pendingNote
+          .replace("{items}", pending.map((c) => featureLabel(c, dict)).join(" · "))
+          .replace("{status}", featureCopy("coming_soon", dict))
+      : null;
 
   return (
     <>
@@ -95,12 +127,14 @@ export function StoreProductsSection({
       {/* Below lg the site header and the store's section-tab rail are both
           sticky, so the scroll margin must clear BOTH or a jump to this anchor
           lands the heading underneath them. */}
-      <h2
-        id="offerings"
-        className="mb-4 mt-10 scroll-mt-[calc(var(--m-header-h)+var(--m-sectiontabs-h)+env(safe-area-inset-top))] text-xl font-bold lg:scroll-mt-20"
-      >
-        {sectionTitle}
-      </h2>
+      {!primaryEmptyButGoods && (
+        <h2
+          id="offerings"
+          className="mb-4 mt-10 scroll-mt-[calc(var(--m-header-h)+var(--m-sectiontabs-h)+env(safe-area-inset-top))] text-xl font-bold lg:scroll-mt-20"
+        >
+          {sectionTitle}
+        </h2>
+      )}
       {store.isReal ? (
         primary.length ? (
           surface === "appointment" ? (
@@ -178,16 +212,28 @@ export function StoreProductsSection({
             />
           ) : (
             /* Catalog surface: browse-only listing + contact via the header.
-               Used by directory-only sectors (hotels/real-estate/cars/events)
-               whose real transaction engine is not built yet, and by service
-               sectors whose primary action is the request form above. No cart,
-               no wrong booking flow. */
+               Used by directory-only sectors (today: real estate — see
+               DIRECTORY_ONLY_SECTORS in store-experience.ts) whose transaction
+               engine is not switched on yet, and by service sectors whose
+               primary action is the request form above. No cart, no wrong
+               booking flow.
+
+               The note under it used to be one fixed sentence promising
+               "booking and direct purchase coming soon" to every directory-only
+               sector, whether or not that sector's bundle contains a cart at
+               all (real estate's does not). It now names exactly the
+               capabilities the availability registry reports as pending for
+               THIS sector, and prints the registry's word for their state —
+               so it cannot promise a flat in a shopping basket, and it stops
+               rendering the moment the sector leaves directory-only mode. */
             <>
-              {directoryOnly && (
+              {directoryOnly && (pendingNote || store.whatsapp) && (
                 <div className="mb-4 rounded-xl border border-border bg-surface-muted/50 px-4 py-3">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {dict.store.comingSoonNote}
-                  </p>
+                  {pendingNote && (
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {pendingNote}
+                    </p>
+                  )}
                   {store.whatsapp && (
                     <a
                       href={waLink(
@@ -254,7 +300,7 @@ export function StoreProductsSection({
               </div>
             </>
           )
-        ) : (
+        ) : primaryEmptyButGoods ? null : (
           <div className="rounded-2xl border border-dashed border-border py-10 sm:py-14 text-center text-muted-foreground">
             {surface === "appointment"
               ? dict.store.noServices

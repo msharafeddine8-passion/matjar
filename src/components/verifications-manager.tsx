@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { ImageUpload } from "@/components/image-upload";
+import { VERIFICATION_DOCS_BUCKET } from "@/lib/verification-docs";
 import { fieldClass as uiFieldClass, Select } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -23,6 +24,10 @@ export type Verification = {
   expires_on: string | null;
   /** Embedded from store_verification_docs — the merchant may see their own. */
   store_verification_docs: { doc_url: string } | null;
+  /** An openable URL for that document, resolved on the server: a short-lived
+   *  signed URL for a private `verification-docs` path (0314), or the legacy
+   *  public URL of a pre-0314 upload. Null when it could not be resolved. */
+  doc_view_url?: string | null;
   verify_url: string | null;
   status: string;
 };
@@ -208,17 +213,22 @@ export function VerificationsManager({
         </div>
       </div>
       <ImageUpload
-        folder={`verifications/${storeId}`}
+        // PRIVATE bucket (0314, P1-PRIV-02). The file most likely to be
+        // photographed here — a Lebanese commercial registration — carries the
+        // owner's full name, ID number and home address. It used to land in
+        // the public store-assets bucket, openable by anyone holding the URL.
+        // Now it is stored under "<storeId>/..." in verification-docs, which
+        // only the store's team and verification admins can read, through
+        // short-lived signed links. doc_url holds the path, not a URL.
+        privateBucket={VERIFICATION_DOCS_BUCKET}
+        // Lower-case: the 0314 CHECK compares the first segment with
+        // store_id::text, which Postgres always prints in lower case.
+        folder={storeId.toLowerCase()}
         value={draft.doc_url}
-        onChange={(url) => setDraft({ ...draft, doc_url: url })}
+        onChange={(path) => setDraft({ ...draft, doc_url: path })}
         label={t.doc}
-        // Public by design — StoreVerifications renders this as a thumbnail on
-        // the storefront, as evidence a shopper can look at. The merchant had
-        // no way to know that: the field said "Document image" and nothing
-        // else, while the file most likely to be photographed for it — a
-        // Lebanese commercial registration — usually carries the owner's full
-        // name, ID number and home address.
         hint={t.docHint}
+        dict={dict}
       />
       <div>
         <label className={labelClass} htmlFor="verif-url">{t.verifyUrl}</label>
@@ -271,12 +281,16 @@ export function VerificationsManager({
             key={v.id}
             className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3"
           >
-            {v.store_verification_docs?.doc_url ? (
+            {v.doc_view_url ? (
+              // A signed URL is already a one-off link to the original; it is
+              // not a public object the Supabase resizer can take, so it is
+              // drawn as-is.
               <Image
-                src={v.store_verification_docs.doc_url}
+                src={v.doc_view_url}
                 alt=""
                 width={56}
                 height={56}
+                unoptimized
                 className="h-14 w-14 shrink-0 rounded-xl object-cover"
                 sizes="56px"
               />

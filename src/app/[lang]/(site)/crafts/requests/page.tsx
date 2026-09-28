@@ -191,6 +191,9 @@ export default async function CraftRequestsPage({
             defaultName={defaultName}
             defaultPhone={defaultPhone}
             initial={{ problem, trade, area }}
+            // The zero-result demand form's own copy, with the crafts wording
+            // laid over the five lines that talk about shops.
+            demandDict={{ demand: { ...dict.demand, ...dict.proMarket.craftsDemand } }}
             labels={{
               stepProblem: t.flowStepProblem,
               stepWho: t.flowStepWho,
@@ -210,7 +213,9 @@ export default async function CraftRequestsPage({
               matchLead: t.flowMatchLead,
               choose: t.flowChoose,
               noMatchTitle: t.flowNoMatchTitle,
-              noMatchBody: t.flowNoMatchBody,
+              // Phase 4: the brief CAN now be left with the team (demand
+              // form below), so the line that said it could not is replaced.
+              noMatchBody: dict.proMarket.flowNoMatchBody,
               waCta: t.flowWaCta,
               waMessage: t.flowWaMessage,
               unknown: t.flowUnknown,
@@ -229,6 +234,8 @@ export default async function CraftRequestsPage({
               sentTitle: t.reqSentTitle,
               sentBody: t.reqSentBody,
               needProblem: t.askNeedProblem,
+              inferred: dict.proMarket.flowInferred,
+              inferredArea: dict.proMarket.flowInferredArea,
               error: dict.auth.errorGeneric,
               regions: t.regionNames as unknown as Record<string, string>,
               myRequests: t.myRequests,

@@ -17,8 +17,8 @@ import { parseHours, isOpenNow, daySpan } from "@/lib/hours";
 import { FollowButton } from "@/components/follow-button";
 import { ShareButton } from "@/components/share-button";
 import { MessageStoreButton } from "@/components/message-store-button";
-import { ProBadge } from "@/components/pro-badge";
-import { hasPlan } from "@/lib/plan-tiers";
+import { PaidPlanBadge, TrustBadges } from "@/components/trust-badges";
+import { resolvePaidStatus, resolveStoreTrust } from "@/lib/trust";
 import {
   QUICK_ACTION_BASE,
   QUICK_ACTION_LABEL,
@@ -63,6 +63,14 @@ export function StoreHeader({
     store.facebook && { href: store.facebook, label: dict.merchant.facebook },
     store.website && { href: store.website, label: dict.merchant.website },
   ].filter(Boolean) as { href: string; label: string }[];
+  // Trust and paid status resolved apart (lib/trust.ts). `hasVerified` is the
+  // page's `verifications.some(v => v.status === "verified")`; the header only
+  // has the boolean, so it is passed as such.
+  const trust = resolveStoreTrust({
+    commercialRegVerified: store.registered,
+    hasVerifiedDocument: hasVerified,
+  });
+  const paid = resolvePaidStatus(store.plan);
   return (
     <div className="relative z-10 -mt-6 rounded-2xl border border-border bg-surface p-5 shadow-md sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -93,19 +101,10 @@ export function StoreHeader({
                   hours. It said open at 3am, next to the real hours badge a few
                   lines below saying closed. One of them had to go, and it was
                   never going to be the one that reads the clock. */}
-              {hasPlan(store.plan, "pro") && <ProBadge />}
-              {store.registered && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-success-soft px-2.5 py-1 text-xs font-bold text-success">
-                  <BadgeCheck className="h-3.5 w-3.5" />
-                  {dict.featured.registered}
-                </span>
+              {paid.showsProMarker && (
+                <PaidPlanBadge dict={dict} lang={lang} />
               )}
-              {hasVerified && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-2.5 py-1 text-xs font-bold text-primary">
-                  <BadgeCheck className="h-3.5 w-3.5" />
-                  {dict.verifications.verifiedBadge}
-                </span>
-              )}
+              <TrustBadges signals={trust} dict={dict} lang={lang} />
             </div>
             <p className="mt-1 text-sm font-medium text-muted-foreground">{cat.name}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">

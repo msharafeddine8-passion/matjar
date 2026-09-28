@@ -10,6 +10,14 @@ import { Container } from "@/components/ui/container";
 // Sticky search that reveals itself in the header once the hero search has
 // scrolled out of view — so search is always one tap away as you go down the
 // page. Collapsed (max-h-0) until scrolled, so it adds no height at the top.
+//
+// Desktop only (`hidden lg:block`) — P1-MOBILE-01. Below `lg` the header
+// already carries a permanent search row (MobileSearch, `lg:hidden`), so once
+// a phone scrolled past 460px — which every store page does — this field
+// slid in under it and the header showed two identical search bars stacked,
+// eating ~70px more of the viewport and covering the store's section tabs,
+// which stick at --m-header-h. The phone keeps the one bar that is always
+// there; from `lg` up nothing changes.
 export function HeaderSearch({
   lang,
   dict,
@@ -31,7 +39,7 @@ export function HeaderSearch({
   return (
     <div
       aria-hidden={!show}
-      className={`overflow-hidden border-t transition-all duration-300 ease-out ${
+      className={`hidden overflow-hidden border-t transition-all duration-300 ease-out lg:block ${
         show ? "max-h-20 border-border/60 opacity-100" : "max-h-0 border-transparent opacity-0"
       }`}
     >

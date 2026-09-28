@@ -28,6 +28,8 @@ import { AdminMerchantStalls } from "@/components/admin-merchant-stalls";
 import { PushNotice } from "@/components/push-notice";
 import { AdminStoreActions } from "@/components/admin-store-actions";
 import { AdminReviewDelete } from "@/components/admin-review-delete";
+import { toCategoryKey } from "@/lib/catalog";
+import { validateStorePublic } from "@/lib/data-quality";
 
 type ReviewRow = {
   id: string;
@@ -41,7 +43,14 @@ type PendingStore = {
   id: string;
   name: string;
   area: string | null;
-  business_types: { name_ar: string; name_en: string } | null;
+  service_area: string | null;
+  region: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  description: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  business_types: { slug: string; name_ar: string; name_en: string } | null;
 };
 
 export default async function AdminOverviewPage({
@@ -58,11 +67,39 @@ export default async function AdminOverviewPage({
 
   const { data } = await supabase
     .from("stores")
-    .select("id, name, area, business_types(name_ar, name_en)")
+    .select(
+      // Everything after `area` is read by the publication gate only
+      // (lib/data-quality.ts): a store it holds as blocked cannot be approved.
+      "id, name, area, service_area, region, phone, whatsapp, description, logo_url, cover_url, business_types(slug, name_ar, name_en)",
+    )
     .eq("status", "pending")
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
   const pending = (data ?? []) as unknown as PendingStore[];
+  // No catalogue count here: a store in review has usually not added one yet,
+  // and "no offerings" is the merchant's checklist item, not a reason to hold
+  // approval. The rule is skipped when the count is unknown.
+  const qualityOf = (store: PendingStore) => {
+    const r = validateStorePublic(
+      {
+        name: store.name,
+        category: store.business_types?.slug ?? null,
+        area: store.area,
+        service_area: store.service_area,
+        region: store.region,
+        phone: store.phone,
+        whatsapp: store.whatsapp,
+        description: store.description,
+        logo_url: store.logo_url,
+        cover_url: store.cover_url,
+      },
+      { sector: toCategoryKey(store.business_types?.slug, `store ${store.id}`) },
+    );
+    return {
+      level: r.level,
+      issues: r.issues.map((i) => dict.dataQuality.issues[i.code]),
+    };
+  };
 
   const [storesRes, usersRes, ordersRes] = await Promise.all([
     supabase
@@ -186,6 +223,8 @@ export default async function AdminOverviewPage({
                         errorLabel={dict.auth.errorGeneric}
                         cancelLabel={dict.common.cancel}
                         t={dict.admin.storesAdmin}
+                        quality={qualityOf(store)}
+                        dq={dict.dataQuality}
                       />
                     </CardBody>
                   </Card>

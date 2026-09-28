@@ -11,6 +11,7 @@ import { Container } from "@/components/ui/container";
 import { LeaderSubmit } from "@/components/hub/leader-submit";
 import { LeadersDirectory } from "@/components/hub/leaders-directory";
 import { LEADER_CARD_COLUMNS, type LeaderCard } from "@/lib/leaders";
+import { featureCopy } from "@/lib/feature-availability";
 
 export async function generateMetadata({
   params,
@@ -101,7 +102,6 @@ export default async function LeadersPage({
               countSuffix: l.countSuffix,
               noResults: l.noResults,
               clearFilters: l.clearFilters,
-              verified: l.verified,
               viewProfile: l.viewProfile,
               featuredBadge: l.featuredBadge,
             }}
@@ -118,8 +118,12 @@ export default async function LeadersPage({
                 <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent-foreground">
                   <Crown className="h-7 w-7" />
                 </span>
+                {/* The directory has no published profile yet — content
+                    supply, resolved by the query above. The word is the
+                    registry's canonical "coming soon", not a badge string of
+                    this page's own. */}
                 <span className="mt-4 inline-block rounded-full bg-accent-soft px-3 py-1 text-[11px] font-bold text-accent-foreground">
-                  {l.comingBadge}
+                  {featureCopy("coming_soon", dict)}
                 </span>
                 <h2 className="mt-3 text-2xl font-extrabold tracking-tight">
                   {l.emptyTitle}

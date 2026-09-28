@@ -28,6 +28,7 @@ import {
   Zap,
   FileText,
   Wrench,
+  SearchX,
 } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -60,6 +61,7 @@ const icons = {
   pages: FileText,
   audit: ScrollText,
   settings: Settings,
+  demand: SearchX,
 } as const;
 
 type NavKey = keyof typeof icons;
@@ -105,6 +107,7 @@ const GROUPS: { key: string; items: { key: NavKey; path: string }[] }[] = [
       { key: "reports", path: "/reports" },
       { key: "growth", path: "/growth" },
       { key: "deals", path: "/deals" },
+      { key: "demand", path: "/demand" },
     ],
   },
   {
@@ -131,13 +134,18 @@ export function AdminNav({
   const pathname = usePathname();
   const base = `/${lang}/admin`;
   const groups = dict.admin.navGroups as Record<string, string>;
+  // "demand" is a page of the growth section, not a section of its own: it is
+  // gated by growth (as its RLS is, 0306) and labelled from its own namespace.
+  const sectionOf = (k: NavKey) => (k === "demand" ? "growth" : k);
+  const labelOf = (k: NavKey) =>
+    k === "demand" ? dict.demand.nav : dict.admin.nav[k];
 
   // A sub-admin sees only granted sections. 'overview' is always visible; every
   // other item is gated by its section key. Groups with nothing visible drop.
   const visibleGroups = GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(
-      (item) => item.key === "overview" || canAccess(access, item.key),
+      (item) => item.key === "overview" || canAccess(access, sectionOf(item.key)),
     ),
   })).filter((group) => group.items.length > 0);
 
@@ -146,7 +154,7 @@ export function AdminNav({
   const searchable = visibleGroups.flatMap((group) =>
     group.items.map((item) => ({
       key: item.key,
-      label: dict.admin.nav[item.key],
+      label: labelOf(item.key),
       group: groups[group.key] ?? "",
       href: `${base}${item.path}`,
     })),
@@ -196,7 +204,7 @@ export function AdminNav({
                         }`}
                       >
                         <Icon className="h-4 w-4" />
-                        {dict.admin.nav[item.key]}
+                        {labelOf(item.key)}
                       </Link>
                     );
                   })}

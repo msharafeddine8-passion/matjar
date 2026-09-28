@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Tag } from "lucide-react";
 import { isLocale, type Locale } from "@/i18n/config";
@@ -11,6 +12,9 @@ import {
 import { Container } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
 import { ListingForm } from "@/components/listing-form";
+
+// A seller-only write screen: never indexed (robots.ts also disallows it).
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function NewListingPage({
   params,

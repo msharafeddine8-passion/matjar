@@ -62,7 +62,14 @@ export type LabelDomain =
   /** gigs.category — free text, values fixed by the gig form. */
   | "freelanceCategory"
   /** wholesale_listings.category — free text, values fixed by the listing form. */
-  | "wholesaleCategory";
+  | "wholesaleCategory"
+  /** event_tickets.status — plain text, default 'reserved' (0193); nothing in
+   *  the schema or the app writes any other value. */
+  | "eventTicket"
+  /** job_applications has NO status column (0064_jobs). The activity centre
+   *  gives every application the app-side value `sent`, the one fact the row
+   *  proves; named as a domain so it is labelled like everything else. */
+  | "jobApplication";
 
 /**
  * Where each domain's wording lives in the dictionary.
@@ -92,6 +99,8 @@ const BLOCKS: Record<LabelDomain, (d: Dictionary) => Record<string, string>> = {
   jobType: (d) => d.jobs.types,
   freelanceCategory: (d) => d.freelance.categories,
   wholesaleCategory: (d) => d.wholesale.categories,
+  eventTicket: (d) => d.activityCenter.ticketStatus,
+  jobApplication: (d) => d.activityCenter.applicationStatus,
 };
 
 /**
@@ -209,6 +218,61 @@ const TONES: Partial<Record<LabelDomain, Record<string, StatusTone>>> = {
     won: "success",
     lost: "neutral",
   },
+  // stay_bookings.status — 0191. Same phases as a booking: confirmed is "under
+  // way", being there is the customer's moment, no_show can still be fixed.
+  stayBooking: {
+    requested: "warning",
+    confirmed: "info",
+    checked_in: "primary",
+    checked_out: "success",
+    completed: "success",
+    declined: "danger",
+    cancelled: "neutral",
+    no_show: "warning",
+  },
+  // rental_bookings.status — 0298. The car in the customer's hands is theirs.
+  rentalBooking: {
+    requested: "warning",
+    confirmed: "info",
+    picked_up: "primary",
+    returned: "success",
+    completed: "success",
+    declined: "danger",
+    cancelled: "neutral",
+    no_show: "warning",
+  },
+  // service_requests.status — 0083 + 0207. `quoted` is the customer's turn (a
+  // price is waiting for a yes); `countered` is the merchant's (the customer
+  // already answered).
+  serviceRequest: {
+    pending: "warning",
+    quoted: "primary",
+    countered: "warning",
+    accepted: "info",
+    in_progress: "info",
+    completed: "success",
+    declined: "danger",
+    cancelled: "neutral",
+  },
+  // listings.status — 0036 + 0039, read from the SELLER's side (the only
+  // customer who sees their own listing's status). Draft and expired are the
+  // seller's move; pending waits on moderation.
+  marketListing: {
+    draft: "primary",
+    pending: "warning",
+    active: "info",
+    sold: "success",
+    rejected: "danger",
+    expired: "primary",
+  },
+  // event_tickets.status — 0193. Held seats: under way until the event.
+  eventTicket: {
+    reserved: "info",
+  },
+  // job_applications — no column; `sent` is waiting on the employer.
+  jobApplication: {
+    sent: "warning",
+  },
 };
 
 /**
@@ -229,10 +293,10 @@ export function statusTone(
 /**
  * Which domain each row of the customer activity screen speaks.
  *
- * The screen calls its four row types `order | booking | craft | lead`; three
- * of those are also domain names and one (`craft` → `craftRequest`) is not,
- * which is exactly the sort of near-miss that gets typed out twice and then
- * drifts. Stated once here, and used by both the server page that resolves the
+ * The screen has ten row types (ACTIVITY_KINDS in lib/activity.ts); three of
+ * them (`order`, `booking`, `lead`) share a name with their domain and seven
+ * do not — `craft` → `craftRequest`, `stay` → `stayBooking` and so on — which is
+ * exactly the sort of near-miss that gets typed out twice and then drifts. Stated once here, and used by both the server page that resolves the
  * WORDS and the client list that resolves the COLOUR, so the two can never
  * disagree about which vocabulary a row belongs to.
  *
@@ -243,6 +307,12 @@ export function statusTone(
 export const ACTIVITY_DOMAINS = {
   order: "order",
   booking: "booking",
+  stay: "stayBooking",
+  rental: "rentalBooking",
+  ticket: "eventTicket",
+  service: "serviceRequest",
   craft: "craftRequest",
   lead: "lead",
+  job: "jobApplication",
+  listing: "marketListing",
 } as const satisfies Record<string, LabelDomain>;

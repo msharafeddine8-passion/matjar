@@ -6,7 +6,7 @@ import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { toCategoryKey } from "@/lib/catalog";
-import { MODULE_CATALOG } from "@/lib/modules-catalog";
+import { featurePlanFloor } from "@/lib/feature-availability";
 import { hasPlan, type StorePlan } from "@/lib/plan-tiers";
 import { sectorDefaultModules } from "@/lib/sectors";
 import { Container } from "@/components/ui/container";
@@ -51,9 +51,6 @@ export default async function StoreModulesPage({
   if (s.owner_id !== user.id) redirect(`/${lang}/merchant/${storeId}`);
 
   const category = toCategoryKey(s.business_types?.slug, `store ${storeId}`);
-  // Business ranks above Pro — an exact "pro" test locked the top tier out of
-  // its own Pro modules.
-  const isPro = hasPlan(s.plan, "pro");
 
   const { data: overridesData } = await supabase
     .from("store_modules")
@@ -69,11 +66,22 @@ export default async function StoreModulesPage({
 
   // Only the sector's own capabilities (not the whole 23-module catalog — that
   // would offer a clothing shop "courses"). Each defaults ON unless overridden.
-  const items: ModuleItem[] = sectorDefaultModules(category).map((key) => ({
-    key,
-    tier: MODULE_CATALOG[key].tier,
-    enabled: overrides[key] ?? true,
-  }));
+  //
+  // The lock comes from the availability registry's plan floor — the same
+  // floor /pricing prints and the module's own screen enforces — not from a
+  // tier field of its own. That field said "Pro" for inventory (a Business
+  // screen) and for classes (open on every plan), so this page locked and
+  // labelled modules differently from the screens behind them. hasPlan ranks
+  // Business above Pro, so the top tier is never locked out of a Pro module.
+  const items: ModuleItem[] = sectorDefaultModules(category).map((key) => {
+    const floor = featurePlanFloor(key);
+    return {
+      key,
+      floor,
+      locked: floor !== "free" && !hasPlan(s.plan, floor),
+      enabled: overrides[key] ?? true,
+    };
+  });
 
   return (
     <div className="py-10">
@@ -91,12 +99,7 @@ export default async function StoreModulesPage({
         </h1>
         <p className="mt-2 text-muted-foreground">{t.subheading}</p>
         <div className="mt-6">
-          <ModulesManager
-            storeId={storeId}
-            dict={dict}
-            items={items}
-            isPro={isPro}
-          />
+          <ModulesManager storeId={storeId} dict={dict} items={items} />
         </div>
       </Container>
     </div>

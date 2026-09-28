@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { track } from "@/lib/analytics";
 import type { Locale } from "@/i18n/config";
 
 export function FavoriteButton({
@@ -51,6 +52,7 @@ export function FavoriteButton({
       setBusy(false);
       return;
     }
+    if (next) track("favorite_added", { storeId, offeringType: "store", sourceSurface: "card" });
     setBusy(false);
     router.refresh();
   }

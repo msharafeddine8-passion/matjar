@@ -16,6 +16,7 @@ import {
   Flag,
   ImageIcon,
   ShoppingBag,
+  ListChecks,
 } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -128,13 +129,22 @@ export function AdminMarketClient({
 
   async function patch(id: string, values: Partial<Record<string, unknown>>) {
     setBusyId(id);
-    const { error } = await createClient()
+    // .select("id"): an UPDATE that RLS filters out returns no error and no
+    // row. Before 0313 that is exactly what a market sub-admin's approve did —
+    // and the audit log below still recorded "approved". Zero rows is a
+    // failure, said out loud, and nothing is logged for it.
+    const { data, error } = await createClient()
       .from("listings")
       .update({ ...values, updated_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
     setBusyId(null);
     if (error) {
       notifyError(dict.common.actionFailed);
+      return;
+    }
+    if (!data?.length) {
+      notifyError(dict.moderation.noRowChanged);
       return;
     }
     let verb: AuditVerb | null = null;
@@ -211,6 +221,13 @@ export function AdminMarketClient({
                 leftIcon={<Flag className="h-4 w-4" />}
               >
                 {t.reportsLink}
+              </ButtonLink>
+              <ButtonLink
+                href={`/${lang}/admin/market/queue`}
+                size="sm"
+                leftIcon={<ListChecks className="h-4 w-4" />}
+              >
+                {dict.moderation.queueLink}
               </ButtonLink>
             </div>
           }

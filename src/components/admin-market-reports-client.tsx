@@ -7,6 +7,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/client";
 import { logAdminAction } from "@/lib/audit";
+import { notifyError } from "@/lib/notify";
 import { Container } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardBody } from "@/components/ui/card";
@@ -39,15 +40,21 @@ export function AdminMarketReportsClient({
 
   async function markReviewed(id: string, listingId?: string) {
     setBusyId(id);
-    const { error } = await createClient()
+    // .select("id") so a write RLS filtered out (0 rows, no error) is reported
+    // instead of logged as done.
+    const { data, error } = await createClient()
       .from("listing_reports")
       .update({ status: "reviewed" })
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
     setBusyId(null);
-    if (!error)
-      void logAdminAction("updated", "listing", listingId ?? id, {
-        reviewed: true,
-      });
+    if (error || !data?.length) {
+      notifyError(error ? dict.common.actionFailed : dict.moderation.noRowChanged);
+      return;
+    }
+    void logAdminAction("updated", "listing", listingId ?? id, {
+      reviewed: true,
+    });
     router.refresh();
   }
 

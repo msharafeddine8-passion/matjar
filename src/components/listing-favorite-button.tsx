@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { track } from "@/lib/analytics";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 
@@ -52,6 +53,8 @@ export function ListingFavoriteButton({
     if (error) {
       setOn(!next);
       setCount((c) => c + (next ? -1 : 1));
+    } else if (next) {
+      track("favorite_added", { offeringId: listingId, offeringType: "listing", sourceSurface: "market" });
     }
     setBusy(false);
   }

@@ -1,9 +1,16 @@
-import { waNumber } from "@/lib/phone";
+import { waNumber, waUrl } from "@/lib/phone";
 
 // WhatsApp is the dominant ordering channel in Lebanon. These helpers build a
 // click-to-chat link with a pre-filled message — no backend, no API.
 
 /** Build a wa.me link to a phone number with a pre-filled message.
+ *
+ *  Compatibility wrapper over lib/phone's builder — there is ONE wa.me
+ *  implementation (phone.ts `waUrl`), and new code should import `waLink` from
+ *  "@/lib/phone". This one survives for its existing callers because its
+ *  contract differs in one deliberate way: it never returns null. An
+ *  undialable number falls back to its bare digits, and "" opens WhatsApp's
+ *  own chat picker (order-dispatch uses that to let the merchant choose).
  *
  *  Normalisation lives in lib/phone so this and every other WhatsApp button on
  *  the platform agree. Stripping non-digits alone was not enough: a merchant
@@ -12,7 +19,7 @@ import { waNumber } from "@/lib/phone";
  *  exactly why nobody noticed. */
 export function waLink(phone: string, text: string): string {
   const n = waNumber(phone) ?? phone.replace(/[^0-9]/g, "");
-  return `https://wa.me/${n}?text=${encodeURIComponent(text)}`;
+  return waUrl(n, text);
 }
 
 export type WaLine = { name: string; qty: number; lineTotal: string };

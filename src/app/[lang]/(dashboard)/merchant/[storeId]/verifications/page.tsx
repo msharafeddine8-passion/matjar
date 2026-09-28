@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { docUrlFor, resolveDocUrls } from "@/lib/verification-docs";
 import { Container } from "@/components/ui/container";
 import { VerificationsManager, type Verification } from "@/components/verifications-manager";
 import { ChevronPrev } from "@/components/ui/directional-icon";
@@ -47,7 +48,7 @@ export default async function StoreVerificationsPage({
   // PostgREST types an embed as an array even where the foreign key is the
   // child's primary key and only one row can ever match, and it returns an
   // object in that case. Normalise both shapes to one nullable object.
-  const verifications = ((rowsData ?? []) as unknown as Record<string, unknown>[]).map(
+  const normalised = ((rowsData ?? []) as unknown as Record<string, unknown>[]).map(
     (r) => {
       const embed = r.store_verification_docs;
       return {
@@ -56,6 +57,16 @@ export default async function StoreVerificationsPage({
       };
     },
   ) as unknown as Verification[];
+  // Private scans (0314) are signed here, under the merchant's own session —
+  // the bucket policy decides — and live for minutes, not forever.
+  const docUrls = await resolveDocUrls(
+    supabase,
+    normalised.map((v) => v.store_verification_docs?.doc_url),
+  );
+  const verifications: Verification[] = normalised.map((v) => ({
+    ...v,
+    doc_view_url: docUrlFor(docUrls, v.store_verification_docs?.doc_url),
+  }));
 
   return (
     <div className="py-10">

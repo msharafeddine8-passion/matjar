@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { track } from "@/lib/analytics";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 
@@ -50,6 +51,7 @@ export function WishlistButton({
       setBusy(false);
       return;
     }
+    if (next) track("favorite_added", { offeringId: productId, offeringType: "product", sourceSurface: "product" });
     setBusy(false);
     router.refresh();
   }

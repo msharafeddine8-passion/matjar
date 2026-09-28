@@ -164,7 +164,13 @@ export default async function FreelancerProfilePage({
   const blocks = profileBlocks(p);
   const from = startingPrice(p.services);
   const briefHref = `/${lang}/freelance/brief?to=${id}`;
-  const ctaLabel = dict.professional.cta[primaryCtaKey(p.kind)];
+  // «اطلب عرض» primary, «راسل» secondary (phase 4). The shared key still
+  // decides WHICH action a sector leads with (a trade is asked to come, a
+  // freelancer to quote); freelance words it as asking for an offer.
+  const ctaLabel =
+    primaryCtaKey(p.kind) === "requestQuote"
+      ? dict.proMarket.requestOffer
+      : dict.professional.cta[primaryCtaKey(p.kind)];
   const proDict = dictSlice(dict, ["professional"]);
 
   // A true one-line fact for the sticky bar. FSI/PDI isolates the amount so an
@@ -218,6 +224,8 @@ export default async function FreelancerProfilePage({
                   freelancerId={id}
                   lang={locale}
                   dict={dict}
+                  label={dict.proMarket.message}
+                  variant="secondary"
                 />
               </>
             )}

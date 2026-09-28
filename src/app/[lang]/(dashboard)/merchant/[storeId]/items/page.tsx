@@ -16,6 +16,7 @@ import { ProductRowActions } from "@/components/product-row-actions";
 import { ProGate } from "@/components/pro-gate";
 import { planProductLimit } from "@/lib/plan";
 import { effectivePlan as resolvePlan } from "@/lib/plan-tiers";
+import { planCopy } from "@/lib/plan-copy";
 import { Money } from "@/components/ui/money";
 import { CardList, CardRow } from "@/components/ui/card";
 import { MerchantItemAvailability } from "@/components/merchant/merchant-item-availability";
@@ -304,14 +305,17 @@ export default async function StoreItemsPage({
             )}
           </div>
 
+          {/* {limit} is THIS store's cap (a Basic store hitting its 30 used to
+              be told "3 products"); the tier caps in the body come from
+              PLAN_TIERS through plan-copy. */}
           {products.length >= productCap ? (
             <ProGate
               lang={lang}
               dict={dict}
               storeId={storeId}
               compact
-              title={dict.os.pro.productLimitTitle}
-              body={dict.os.pro.productLimitBody}
+              title={planCopy(dict.os.pro.productLimitTitle, { limit: productCap })}
+              body={planCopy(dict.os.pro.productLimitBody)}
             />
           ) : category === "services" || category === "healthcare" ? (
             <ServiceForm

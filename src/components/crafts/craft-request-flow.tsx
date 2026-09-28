@@ -11,7 +11,10 @@ import { GalleryUpload } from "@/components/gallery-upload";
 import { ProfessionalCard } from "@/components/professional";
 import type { ProfessionalDict } from "@/components/professional";
 import { supportWaLink } from "@/lib/support";
+import { craftIntentFromProblem } from "@/lib/pro-market";
+import { DemandCapture } from "@/components/search/demand-capture";
 import type { Locale } from "@/i18n/config";
+import type { Dictionary } from "@/i18n/get-dictionary";
 import type { ProfessionalProfile } from "@/lib/professional";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -43,6 +46,18 @@ import type { ProfessionalProfile } from "@/lib/professional";
 //   2. مين بيجي  — who covers it. Real rows, or the honest dead end.
 //   3. التفاصيل  — name, phone, photos. Only reachable with a provider chosen,
 //                  so `provider_id` can never be null at the insert.
+//
+// Phase 4 additions:
+//   * The trade and the area are READ from the description with the site
+//     search lexicon (lib/pro-market → lib/search-intent) until the customer
+//     sets them — "مش متأكد" stays a complete answer, but «البراد ما عم يبرد
+//     بالميناء» no longer has to be classified by hand to find a fridge
+//     technician in El Mina. What was understood is said under the pickers.
+//   * The no-match step can also STORE the brief: the existing demand table
+//     (0306, submit_demand) with section 'contractors', the sector every craft
+//     trade maps to. craft_requests cannot hold it — provider_id is NOT NULL —
+//     and inventing a provider-less request table was out of scope. The
+//     admin reads it at /admin/demand; nothing is auto-matched or promised.
 //
 // What is NOT asked, and why:
 //   * A separate urgency chip. `when_pref` already asks اليوم / بكرا /
@@ -95,6 +110,10 @@ export type FlowLabels = {
   sentTitle: string;
   sentBody: string;
   needProblem: string;
+  /** "من وصفك، هيدي شغلة {trade}." — shown when the trade was read, not picked. */
+  inferred?: string;
+  /** "ومنطقتك {area}." */
+  inferredArea?: string;
   error: string;
   regions: Record<string, string>;
   myRequests: string;
@@ -112,6 +131,7 @@ export function CraftRequestFlow({
   defaultPhone,
   initial,
   labels,
+  demandDict,
 }: {
   lang: Locale;
   /** Only the `professional` slice — ProfessionalCard is the sole consumer,
@@ -124,11 +144,17 @@ export function CraftRequestFlow({
   defaultPhone: string;
   initial: { problem: string; trade: string; area: string };
   labels: FlowLabels;
+  /** The demand form's copy, crafts wording laid over it. Absent → no form. */
+  demandDict?: Pick<Dictionary, "demand">;
 }) {
   const [step, setStep] = useState<Step>("problem");
   const [problem, setProblem] = useState(initial.problem);
-  const [trade, setTrade] = useState(initial.trade);
-  const [areaSlug, setAreaSlug] = useState(initial.area);
+  const [pickedTrade, setTrade] = useState(initial.trade);
+  const [pickedArea, setAreaSlug] = useState(initial.area);
+  // A value that arrived in the URL, or was chosen here, is the customer's;
+  // until then the description decides.
+  const [tradeTouched, setTradeTouched] = useState(Boolean(initial.trade));
+  const [areaTouched, setAreaTouched] = useState(Boolean(initial.area));
   const [when, setWhen] = useState("flexible");
 
   const [matches, setMatches] = useState<ProfessionalProfile[] | null>(null);
@@ -138,6 +164,17 @@ export function CraftRequestFlow({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+
+  // Read from the words, and only ever a slug that exists in the lists this
+  // page was rendered with — a lexicon entry for a trade the taxonomy retired
+  // resolves to nothing rather than to a broken select.
+  const read = craftIntentFromProblem(problem);
+  const readTrade =
+    !tradeTouched && read.trade && trades.some((t) => t.slug === read.trade) ? read.trade : "";
+  const readArea =
+    !areaTouched && read.area && areas.some((a) => a.slug === read.area) ? read.area : "";
+  const trade = tradeTouched ? pickedTrade : readTrade;
+  const areaSlug = areaTouched ? pickedArea : readArea;
 
   const tradeRow = trades.find((t) => t.slug === trade) ?? null;
   const areaRow = areas.find((a) => a.slug === areaSlug) ?? null;
@@ -306,7 +343,10 @@ export function CraftRequestFlow({
               <Select
                 id="flow-trade"
                 value={trade}
-                onChange={(e) => setTrade(e.target.value)}
+                onChange={(e) => {
+                  setTrade(e.target.value);
+                  setTradeTouched(true);
+                }}
               >
                 <option value="">{labels.tradeAuto}</option>
                 {Object.entries(byGroup).map(([group, list]) => (
@@ -325,7 +365,10 @@ export function CraftRequestFlow({
               <Select
                 id="flow-area"
                 value={areaSlug}
-                onChange={(e) => setAreaSlug(e.target.value)}
+                onChange={(e) => {
+                  setAreaSlug(e.target.value);
+                  setAreaTouched(true);
+                }}
               >
                 <option value="">{labels.wherePlaceholder}</option>
                 {Object.entries(byRegion).map(([region, list]) => (
@@ -340,6 +383,16 @@ export function CraftRequestFlow({
               </Select>
             </Field>
           </div>
+
+          {/* Said, not silently applied: what the description was read as. */}
+          {(readTrade || readArea) && labels.inferred && (
+            <p className="-mt-1 text-xs font-semibold text-primary" aria-live="polite">
+              {readTrade && tradeRow ? labels.inferred.replace("{trade}", tradeRow.name) : null}
+              {readArea && areaRow && labels.inferredArea
+                ? `${readTrade && tradeRow ? " " : ""}${labels.inferredArea.replace("{area}", areaRow.name)}`
+                : null}
+            </p>
+          )}
 
           <Field label={labels.when} htmlFor="flow-when">
             <Select
@@ -443,6 +496,20 @@ export function CraftRequestFlow({
                   {labels.recruitCta}
                 </Link>
               </div>
+              {/* For the customer who will not open WhatsApp: the same brief,
+                  stored where the team reads unmet demand. Collapsed to one
+                  line until opened, contact optional. */}
+              {demandDict && (problem.trim() || tradeRow?.name || "").length >= 2 && (
+                <div className="mt-4 border-t border-border pt-3">
+                  <DemandCapture
+                    lang={lang}
+                    q={(problem.trim() || tradeRow?.name || "").slice(0, 120)}
+                    section="contractors"
+                    region={areaRow?.region ?? null}
+                    dict={demandDict}
+                  />
+                </div>
+              )}
             </div>
           )}
 

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
+import { robotsDisallowList } from "@/lib/seo-rules";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -17,29 +18,20 @@ export default function robots(): MetadataRoute.Robots {
           "Bytespider",
           "DataForSeoBot",
           "BLEXBot",
+          // The crawler that drained the masarak credit in August 2026
+          // (vercel-cost-guard). The firewall rule is the real block; this is
+          // the polite version for when it identifies itself.
+          "meta-externalagent",
         ],
         disallow: "/",
       },
       {
-      userAgent: "*",
-      allow: "/",
-      // Keep private + non-indexable surfaces out of search results.
-      disallow: [
-        "/ar/merchant", "/en/merchant",
-        "/ar/admin", "/en/admin",
-        "/ar/account", "/en/account",
-        "/ar/orders", "/en/orders",
-        "/ar/bookings", "/en/bookings",
-        "/ar/messages", "/en/messages",
-        // One customer's own inquiry, reachable only by its uuid (MP-023).
-        "/ar/inquiries", "/en/inquiries",
-        "/ar/notifications", "/en/notifications",
-        "/ar/wishlist", "/en/wishlist",
-        "/ar/favorites", "/en/favorites",
-        "/ar/following", "/en/following",
-        "/ar/track", "/en/track",
-        "/ar/search", "/en/search",
-      ],
+        userAgent: "*",
+        allow: "/",
+        // Private, per-user, write and bearer-token surfaces, plus the
+        // unbounded query facets. The list lives in lib/seo-rules.ts so the
+        // tests can hold it to the rules (every private prefix, both locales).
+        disallow: robotsDisallowList(),
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

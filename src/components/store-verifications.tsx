@@ -1,16 +1,17 @@
-import { BadgeCheck, ShieldCheck, ExternalLink } from "lucide-react";
+import { BadgeCheck, ShieldCheck } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 
+// number and verify_url are not here (0314, P2-PRIV-03): anon cannot read
+// them any more, and the licence number is not something the storefront needs
+// to publish. The merchant and the admin still see both on their own screens.
 export type StoreVerification = {
   id: string;
   kind: string;
   title: string;
   issuer: string | null;
-  number: string | null;
   issued_on: string | null;
   expires_on: string | null;
-  verify_url: string | null;
   status: string;
 };
 
@@ -95,9 +96,9 @@ export function StoreVerifications({
                   )}
                 </div>
                 <p className="mt-1 font-bold leading-tight">{v.title}</p>
-                {(v.issuer || v.number) && (
+                {v.issuer && (
                   <p className="mt-0.5 text-sm text-muted-foreground">
-                    {[v.issuer, v.number].filter(Boolean).join(" · ")}
+                    {v.issuer}
                   </p>
                 )}
                 {(v.issued_on || v.expires_on) && (
@@ -106,17 +107,6 @@ export function StoreVerifications({
                       .filter(Boolean)
                       .join(" — ")}
                   </p>
-                )}
-                {v.verify_url && (
-                  <a
-                    href={v.verify_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    {t.verifyUrl}
-                  </a>
                 )}
               </div>
             </div>

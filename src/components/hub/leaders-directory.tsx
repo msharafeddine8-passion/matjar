@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  BadgeCheck,
   Building2,
   Crown,
   MapPin,
@@ -24,7 +23,6 @@ export type DirectoryLabels = {
   countSuffix: string;
   noResults: string;
   clearFilters: string;
-  verified: string;
   viewProfile: string;
   featuredBadge: string;
 };
@@ -233,7 +231,6 @@ function LeaderCardView({
         <div className="min-w-0 flex-1">
           <h3 className="flex items-center gap-1.5 font-bold leading-snug transition-colors group-hover:text-primary">
             <span className="truncate">{name}</span>
-            <BadgeCheck className="h-4 w-4 shrink-0 text-accent-foreground" />
           </h3>
           {p.headline && (
             <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-primary">
@@ -270,10 +267,9 @@ function LeaderCardView({
         )}
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3">
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-accent-foreground">
-          <BadgeCheck className="h-3.5 w-3.5" /> {t.verified}
-        </span>
+      {/* No "verified" mark: business_leaders has no verification field, and an
+          admin publishing a profile is curation, not a check. See lib/trust.ts. */}
+      <div className="mt-4 flex items-center justify-end border-t border-border/60 pt-3">
         <span className="inline-flex items-center gap-1 text-xs font-bold text-primary">
           {t.viewProfile} <ArrowNext className="h-3.5 w-3.5" />
         </span>

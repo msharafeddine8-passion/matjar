@@ -119,6 +119,10 @@ export type StoreCheckout = {
   loyaltyPoints: number;
   /** stores.loyalty_points_per_unit, 0 when the store has not enabled it. */
   loyaltyPointsPerUnit: number;
+  /** The store holds at least one spendable gift card (0310
+   *  store_accepts_gift_cards), so the checkout offers the code field.
+   *  Optional: absent (or false) before 0310 is applied. */
+  acceptsGiftCards?: boolean;
 };
 
 /** The viewer half — per-user, never cached with the store half. */

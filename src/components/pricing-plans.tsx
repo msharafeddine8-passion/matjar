@@ -30,6 +30,7 @@ export function PricingPlans({
   plans,
   promoActive,
   daysLeft,
+  trialDays,
   ctaHref,
   lbpRate,
 }: {
@@ -38,6 +39,9 @@ export function PricingPlans({
   plans: Record<PlanKey, PlanConfig>;
   promoActive: boolean;
   daysLeft: number;
+  /** TRIAL_DAYS from lib/plan — the trial line under each card fills {days}
+   *  from it, so the number cannot be typed into the dictionary. */
+  trialDays: number;
   ctaHref: string;
   lbpRate: number;
 }) {
@@ -206,7 +210,7 @@ export function PricingPlans({
               </ButtonLink>
               <p className="mt-2.5 flex items-center justify-center gap-1.5 text-center text-xs font-semibold text-muted-foreground">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
-                {t.trialLine}
+                {t.trialLine.replace("{days}", String(trialDays))}
               </p>
             </div>
           );

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { fetchStorePrivateFields } from "@/lib/store-private";
 import { Container } from "@/components/ui/container";
 import {
   StoreSettingsForm,
@@ -43,13 +44,20 @@ export default async function StoreSettingsPage({
   if (!user) redirect(`/${lang}/login`);
 
   // Owner-only.
+  // The legal identity (legal_name, tax_no, legal_address, commercial_reg_no,
+  // invoice_prefix) is not on this select: 0314 revokes those columns from
+  // every client role and store_private_fields() returns them to the owner.
   const { data: store } = await supabase
     .from("stores")
-    .select("id, name, accepts_delivery, accepts_pickup, min_order, prep_time, payment_note, booking_cancel_hours, return_policy, specialties, insurance, lat, lng, commercial_reg_no, commercial_reg_verified, legal_name, tax_no, legal_address, invoice_prefix, vat_rate, vat_inclusive, business_types(slug)")
+    .select("id, name, accepts_delivery, accepts_pickup, min_order, prep_time, payment_note, booking_cancel_hours, return_policy, specialties, insurance, lat, lng, commercial_reg_verified, vat_rate, vat_inclusive, business_types(slug)")
     .eq("id", storeId)
     .eq("owner_id", user.id)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
+  // A missing entry means the getter could not answer. The form is then told
+  // so and leaves the legal columns out of its update — saving blanks over a
+  // tax number because it failed to LOAD would be the worst way to fail.
+  const legal = (await fetchStorePrivateFields(supabase, [storeId])).get(storeId);
   const isHealthcare =
     (store as unknown as { business_types: { slug: string } | null })
       .business_types?.slug === "healthcare";
@@ -89,13 +97,13 @@ export default async function StoreSettingsPage({
   const checkoutFields = (cfData ?? []) as unknown as CheckoutFieldRow[];
 
   const st = store as unknown as Record<string, unknown>;
-  const text = (k: string) => (st[k] as string | null) ?? "";
 
   const initial: StoreSettings = {
-    legal_name: text("legal_name"),
-    tax_no: text("tax_no"),
-    legal_address: text("legal_address"),
-    invoice_prefix: text("invoice_prefix"),
+    legal_loaded: legal !== undefined,
+    legal_name: legal?.legal_name ?? "",
+    tax_no: legal?.tax_no ?? "",
+    legal_address: legal?.legal_address ?? "",
+    invoice_prefix: legal?.invoice_prefix ?? "",
     // 0 is a real answer (a shop below the VAT threshold), so it is shown as 0
     // rather than blanked into a placeholder that reads like 11.
     vat_rate: String(st.vat_rate ?? 0),
@@ -125,8 +133,7 @@ export default async function StoreSettingsPage({
       (store as { lng: number | null }).lng != null
         ? String((store as { lng: number }).lng)
         : "",
-    commercial_reg_no:
-      (store as { commercial_reg_no: string | null }).commercial_reg_no ?? "",
+    commercial_reg_no: legal?.commercial_reg_no ?? "",
     commercial_reg_verified:
       (store as { commercial_reg_verified: boolean | null })
         .commercial_reg_verified ?? false,
@@ -156,6 +163,27 @@ export default async function StoreSettingsPage({
             isHealthcare={isHealthcare}
           />
         </div>
+        {/* Google Shopping / Meta catalog feed — its own page (Pro), linked
+            here because both policies it needs are store settings. */}
+        <Link
+          href={`/${lang}/merchant/${storeId}/google-feed`}
+          className="mt-6 block rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-primary/40"
+        >
+          <span className="block font-bold">{dict.googleFeed.settingsLink}</span>
+          <span className="mt-1 block text-sm text-muted-foreground">
+            {dict.googleFeed.settingsLinkHint}
+          </span>
+        </Link>
+        {/* The wording of the WhatsApp action buttons (every plan). */}
+        <Link
+          href={`/${lang}/merchant/${storeId}/settings/whatsapp`}
+          className="mt-3 block rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-primary/40"
+        >
+          <span className="block font-bold">{dict.waActions.editor.settingsLink}</span>
+          <span className="mt-1 block text-sm text-muted-foreground">
+            {dict.waActions.editor.settingsLinkHint}
+          </span>
+        </Link>
         <div className="mt-6">
           <DeliveryZonesManager storeId={storeId} dict={dict} initial={zones} />
         </div>

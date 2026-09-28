@@ -139,6 +139,7 @@ export default async function StoreOsLayout({
     // the word; the key stays where the data is.
     doctors: dict.os.team[sectorTeamMeta(category).labelKey],
     customers: dict.os.nouns[sector.customersNoun],
+    ledger: dict.ledger.nav,
     campaigns: dict.os.campaigns.link,
     staff: dict.merchant.staffLink,
     hr: dict.os.hr.title,

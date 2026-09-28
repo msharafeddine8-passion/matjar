@@ -16,6 +16,8 @@ import {
   getTradeCounts,
   getTradeGroups,
 } from "@/lib/data/crafts";
+import { localeAlternates } from "@/lib/site";
+import { supplyRobots } from "@/lib/professional";
 
 export async function generateMetadata({
   params,
@@ -25,7 +27,16 @@ export async function generateMetadata({
   const { lang } = await params;
   if (!isLocale(lang)) return {};
   const dict = await getDictionary(lang);
-  return { title: dict.crafts.title, description: dict.crafts.subtitle };
+  // Indexable at zero providers, and the only crafts page that is: the
+  // symptom index and the full 47-trade taxonomy are content of their own
+  // (supplyRobots' `uniqueContent`). The 47 trade pages stay noindex until
+  // each has a provider — see crafts/[trade]/page.tsx.
+  return {
+    title: dict.crafts.title,
+    description: dict.crafts.subtitle,
+    alternates: localeAlternates(lang, "/crafts"),
+    robots: supplyRobots({ supply: 0, uniqueContent: true }),
+  };
 }
 
 // The jobs Lebanese households actually call about, phrased as the SYMPTOM
@@ -134,6 +145,7 @@ export default async function CraftsPage({
               submit: t.askSubmit,
               didYouMean: t.askDidYouMean,
               needProblem: t.askNeedProblem,
+              understood: dict.proMarket.askUnderstood,
             }}
           />
         </div>

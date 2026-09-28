@@ -18,7 +18,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { localeAlternates, SITE_URL } from "@/lib/site";
-import { productJsonLd, jsonLdScript } from "@/lib/jsonld";
+import { offeringJsonLd, jsonLdScript } from "@/lib/jsonld";
 import {
   getPublicProductView,
   getOwnedProductView,
@@ -64,6 +64,7 @@ import { RestockButton } from "@/components/restock-button";
 import { ContentReport } from "@/components/listing-report";
 import { sectorHasTeam } from "@/lib/sectors";
 import {
+  offeringPriceLabel,
   offeringSectionSlot,
   resolveOffering,
   type OfferingSectionKey,
@@ -193,6 +194,17 @@ export default async function ProductPage({
   const basePrice = effectivePrice(product);
   const compareAt = compareAtPrice(product);
   const flashEnd = flashEndsAt(product);
+  // A service the merchant never priced says so; nothing on this page prints a
+  // zero for it — not the hero, not the sticky bar, not the story card, not
+  // the JSON-LD.
+  const priceLabel = offeringPriceLabel({
+    variant: offering.variant,
+    price: basePrice,
+  });
+  const priceText =
+    priceLabel === "onConsult"
+      ? dict.offering.priceOnConsult
+      : formatUsd(basePrice);
   const lbpRate = await getUsdLbpRate();
   // Related lists are filtered to this offering's own kind, so a clinic page
   // recommends services and a shop page recommends goods. Sections the variant
@@ -242,11 +254,16 @@ export default async function ProductPage({
     isStoreOwner = (st as { owner_id?: string } | null)?.owner_id === user.id;
   }
   const attrText = attributeSummary(product.category, product.attributes, l);
-  const soldOut = shows("stock") && product.stock != null && product.stock <= 0;
+  // Sold out is a fact about a basket: only an offering that can be put in
+  // one can be sold out of. A tracked count of 0 blocks the order on a dish
+  // as on a good (the RPC refuses it either way); the BADGE and the waitlist
+  // are the retail-only parts, gated on `showsStock` below.
+  const soldOut =
+    offering.addableToCart && product.stock != null && product.stock <= 0;
 
   // Back-in-stock: is this signed-in viewer already waiting on this product?
   let onWaitlist = false;
-  if (user && soldOut) {
+  if (user && soldOut && offering.showsStock) {
     const { data: wl } = await supabase
       .from("stock_waitlist")
       .select("id")
@@ -291,33 +308,43 @@ export default async function ProductPage({
     </>
   );
 
-  nodes.price = (
-    <>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        {/* .text-money replaces hand-rolled dir=ltr + tabular-nums and adds
-            the bidi isolation the house standard calls for. */}
-        <span
-          className={`text-money text-2xl font-extrabold ${flashEnd != null ? "text-warning" : "text-primary"}`}
-        >
-          <Money value={basePrice} />
-        </span>
-        {compareAt != null && (
-          <span className="text-money text-lg text-muted-foreground line-through">
-            <Money value={compareAt} />
-          </span>
-        )}
-        {flashEnd != null && <FlashCountdown endsAt={flashEnd} dict={dict} />}
-      </div>
-      {lbpRate > 0 && (
-        <p dir="ltr" className="mt-1 text-sm tabular-nums text-muted-foreground">
-          {formatLbp(basePrice, lbpRate, l)}
+  nodes.price =
+    priceLabel === "onConsult" ? (
+      <>
+        <p className="mt-3 text-xl font-extrabold text-primary">
+          {dict.offering.priceOnConsult}
         </p>
-      )}
-      {attrText && (
-        <p className="mt-3 text-sm text-muted-foreground">{attrText}</p>
-      )}
-    </>
-  );
+        {attrText && (
+          <p className="mt-3 text-sm text-muted-foreground">{attrText}</p>
+        )}
+      </>
+    ) : (
+      <>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          {/* .text-money replaces hand-rolled dir=ltr + tabular-nums and adds
+              the bidi isolation the house standard calls for. */}
+          <span
+            className={`text-money text-2xl font-extrabold ${flashEnd != null ? "text-warning" : "text-primary"}`}
+          >
+            <Money value={basePrice} />
+          </span>
+          {compareAt != null && (
+            <span className="text-money text-lg text-muted-foreground line-through">
+              <Money value={compareAt} />
+            </span>
+          )}
+          {flashEnd != null && <FlashCountdown endsAt={flashEnd} dict={dict} />}
+        </div>
+        {lbpRate > 0 && (
+          <p dir="ltr" className="mt-1 text-sm tabular-nums text-muted-foreground">
+            {formatLbp(basePrice, lbpRate, l)}
+          </p>
+        )}
+        {attrText && (
+          <p className="mt-3 text-sm text-muted-foreground">{attrText}</p>
+        )}
+      </>
+    );
 
   // Duration is real or absent: `duration_minutes` is a merchant-entered column,
   // never inferred. A service with no duration simply has no duration line.
@@ -332,10 +359,15 @@ export default async function ProductPage({
       </p>
     ) : null;
 
+  // The stock BADGE is retail-only (`showsStock`): a dish that ran out is
+  // blocked at the buy box, not labelled "نفد المخزون" as if it had shelves.
+  // The "طُلب {n} مرة" line is popularity, not inventory, and stays for any
+  // offering that reached an order.
   nodes.stock =
-    product.stock != null || soldCount > 0 ? (
+    (offering.showsStock && product.stock != null) || soldCount > 0 ? (
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        {product.stock != null &&
+        {offering.showsStock &&
+          product.stock != null &&
           (soldOut ? (
             <span className="rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-bold text-danger">
               {dict.product.outOfStock}
@@ -481,8 +513,11 @@ export default async function ProductPage({
             {ctaLabel}
           </Link>
         </>
-      ) : checkout ? (
-        /* No checkout context means the store row is not readable to this
+      ) : offering.addableToCart && checkout ? (
+        /* `addableToCart` is the resolver's one cart test — the two branches
+           above already caught the booking and contact CTAs, so this is belt
+           and braces, and the buy box asserts it again on its own side.
+           No checkout context means the store row is not readable to this
            viewer — an owner previewing a not-yet-public store, say. There is
            nothing to order from, so the buy box does not render rather than
            collecting an address for an RPC that would refuse. */
@@ -503,8 +538,10 @@ export default async function ProductPage({
             category={product.category}
             lbpRate={lbpRate}
             ctaLabel={ctaLabel}
+            offering={offering}
+            soldOutLabel={dict.offering.soldOut[offering.noun]}
           />
-          {soldOut && (
+          {soldOut && offering.showsStock && (
             <div className="mt-3 border-t border-border pt-3">
               <RestockButton
                 productId={product.id}
@@ -543,6 +580,12 @@ export default async function ProductPage({
           productId={product.id}
           name={name}
           price={basePrice}
+          priceText={priceText}
+          scanLabel={
+            offering.cta === "bookAppointment"
+              ? dict.offering.scanToBook
+              : dict.share.scanToOrder
+          }
           imageUrl={product.images[0] ?? null}
           baseUrl={SITE_URL}
           dict={dict}
@@ -607,6 +650,12 @@ export default async function ProductPage({
           imageUrl={p.imageUrl}
           storeName={showStore ? p.storeName : undefined}
           lbpRate={lbpRate}
+          offering={{
+            itemKind: p.itemKind,
+            category: p.category,
+            durationMinutes: p.durationMinutes,
+          }}
+          copy={dict.offering}
         />
       ))}
     </div>
@@ -686,13 +735,18 @@ export default async function ProductPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: jsonLdScript(
-            productJsonLd({
+            // Typed by the resolver's noun: a Product with stock for goods, a
+            // Service provided by the store for an appointment, a MenuItem for
+            // a dish. An unpriced service carries no Offer at all.
+            offeringJsonLd({
+              noun: offering.noun,
               name,
               description,
               image: product.images[0],
               url: `${SITE_URL}/${lang}/product/${id}`,
-              price: basePrice,
+              price: priceLabel === "onConsult" ? null : basePrice,
               storeName: product.storeName,
+              brand: product.brand,
               available: !soldOut,
               rating: productReviews.avg,
               reviewCount: productReviews.count,
@@ -744,11 +798,15 @@ export default async function ProductPage({
         {(offering.transacts || offering.cta === "bookAppointment") && (
           <ProductBuyBar
             targetId="buy-box"
-            price={formatUsd(basePrice)}
-            compareAt={compareAt != null ? formatUsd(compareAt) : null}
+            price={priceText}
+            compareAt={
+              priceLabel !== "onConsult" && compareAt != null
+                ? formatUsd(compareAt)
+                : null
+            }
             label={ctaLabel}
             soldOut={soldOut}
-            soldOutLabel={dict.product.outOfStock}
+            soldOutLabel={dict.offering.soldOut[offering.noun]}
           />
         )}
 

@@ -25,6 +25,7 @@ import { categoryIcons } from "@/components/category-icon";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { formatUsd } from "@/lib/currency";
 import { Money } from "@/components/ui/money";
+import { TagSource } from "@/components/attribution/tag-source";
 
 type Service = {
   id: string;
@@ -610,6 +611,7 @@ export function BookingPanel({
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-strong text-success-strong-foreground">
           <Check className="h-6 w-6" />
         </div>
+        <TagSource kind="booking" storeId={storeId} />
         <h3 className="mt-3 text-lg font-extrabold">
           {dict.booking.bookedTitle}
         </h3>

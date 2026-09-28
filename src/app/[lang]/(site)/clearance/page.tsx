@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Percent, ImageIcon } from "lucide-react";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
+import { localeAlternates } from "@/lib/site";
 import { getClearance } from "@/lib/data/offers";
 import { getUsdLbpRate } from "@/lib/data/settings";
 import { formatLbp } from "@/lib/currency";
@@ -22,7 +23,11 @@ export async function generateMetadata({
   const { lang } = await params;
   if (!isLocale(lang)) return {};
   const dict = await getDictionary(lang);
-  return { title: dict.clearance.title, description: dict.clearance.subtitle };
+  return {
+    title: dict.clearance.title,
+    description: dict.clearance.subtitle,
+    alternates: localeAlternates(lang, "/clearance"),
+  };
 }
 
 export default async function ClearancePage({

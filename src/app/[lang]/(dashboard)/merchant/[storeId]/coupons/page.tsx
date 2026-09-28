@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Gift, Stamp } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
@@ -66,6 +67,28 @@ export default async function StoreCouponsPage({
         <div className="mt-6">
           <CouponManager storeId={storeId} dict={dict} coupons={coupons} />
         </div>
+        {/* Loyalty card + gift cards (0310) sit beside coupons: the same
+            owner, the same Pro floor, the same "bring them back" job. */}
+        <nav aria-label={dict.loyaltyCards.nav.heading} className="mt-8 grid gap-3 sm:grid-cols-2">
+          {(
+            [
+              ["loyalty", Stamp, dict.loyaltyCards.nav.loyalty, dict.loyaltyCards.nav.loyaltyHint],
+              ["gift-cards", Gift, dict.loyaltyCards.nav.gift, dict.loyaltyCards.nav.giftHint],
+            ] as const
+          ).map(([path, Icon, label, hint]) => (
+            <Link
+              key={path}
+              href={`/${lang}/merchant/${storeId}/${path}`}
+              className="flex items-start gap-3 rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-primary/40"
+            >
+              <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <span>
+                <span className="block text-sm font-bold">{label}</span>
+                <span className="block text-xs text-muted-foreground">{hint}</span>
+              </span>
+            </Link>
+          ))}
+        </nav>
       </Container>
     </div>
   );

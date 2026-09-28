@@ -36,6 +36,15 @@ export async function WorldsShowcase({ lang, dict }: { lang: Locale; dict: Dicti
   // Every group empty means an empty marketplace, and a heading over nothing is
   // its own dead end.
   if (!live.length) return null;
+  // Columns follow the count so the last row is never a lone orphan tile:
+  // four groups sit 4-up, two 2-up, three / six 3-up. (Literal class names —
+  // Tailwind only ships classes it can see in source.)
+  const cols =
+    live.length % 4 === 0
+      ? "lg:grid-cols-4"
+      : live.length === 2
+        ? "lg:grid-cols-2"
+        : "lg:grid-cols-3";
   return (
     <section className="hidden py-5 sm:py-8 lg:block lg:py-12">
       <Container>
@@ -64,7 +73,7 @@ export async function WorldsShowcase({ lang, dict }: { lang: Locale; dict: Dicti
             unwinds into a plain three-column grid. */}
         <div
           data-animate
-          className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-3 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden"
+          className={`-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:mx-0 lg:grid ${cols} lg:gap-3 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden`}
         >
           {live.map((g, i) => {
             const Icon = groupIcons[g];

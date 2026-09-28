@@ -13,6 +13,7 @@ import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { fetchOneStorePrivateFields } from "@/lib/store-private";
 import { toCategoryKey, type CategoryKey } from "@/lib/catalog";
 import {
   getSector,
@@ -20,6 +21,7 @@ import {
   sectorPrimarySetup,
 } from "@/lib/sectors";
 import { computeCompleteness } from "@/lib/completeness";
+import { validateStorePublic } from "@/lib/data-quality";
 import { parseHours } from "@/lib/hours";
 import { SITE_URL } from "@/lib/site";
 import { Container } from "@/components/ui/container";
@@ -61,8 +63,13 @@ import {
 } from "@/components/os-dashboard/reviews-widget";
 import { MerchantToday } from "@/components/merchant/merchant-today";
 import { dictSlice } from "@/lib/dict-slice";
-import type { StorePlan } from "@/lib/plan-tiers";
+import { effectivePlan, hasPlan, type StorePlan } from "@/lib/plan-tiers";
+import { isBusiness } from "@/lib/plan";
 import { formatUsd } from "@/lib/currency";
+import { labelMap } from "@/lib/status-labels";
+import type { QuickChip } from "@/lib/quick-panel";
+import { QuickPanel } from "@/components/quick-panel/quick-panel";
+import { MatjarBroughtCard } from "@/components/attribution/matjar-brought-card";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -130,10 +137,14 @@ export default async function StoreOsHomePage({
       // lat/lng: the map pin is a completeness item (8 of 13 live stores have
       // none), so the coordinates ride along on the store row already fetched
       // rather than costing a second query.
-      // status_reason/status_changed_at: the owner of a suspended shop is the
-      // one person who most needs to know why and since when, and audit_logs is
-      // super-admin-only by RLS — so it rides on their own store row (0282).
-      "id, name, slug, status, accent_color, owner_id, short_code, plan, trial_ends_at, logo_url, cover_url, description, hours, whatsapp, lat, lng, status_reason, status_changed_at, business_types(slug, name_ar, name_en)",
+      // status_changed_at: the owner of a suspended shop is the one person who
+      // most needs to know why and since when (0282). The WHY, status_reason,
+      // is not on this row any more: 0314 revokes it from every client role and
+      // store_private_fields() hands it to the owner only (read below, and only
+      // when the shop is stopped).
+      // phone/area/service_area/region: read by the public data quality gate
+      // (lib/data-quality.ts) whose notes the checklist shows the owner.
+      "id, name, slug, status, accent_color, owner_id, short_code, plan, trial_ends_at, logo_url, cover_url, description, hours, whatsapp, phone, area, service_area, region, lat, lng, status_changed_at, business_types(slug, name_ar, name_en)",
     )
     .eq("id", storeId)
     .maybeSingle();
@@ -153,9 +164,12 @@ export default async function StoreOsHomePage({
     description: string | null;
     hours: unknown;
     whatsapp: string | null;
+    phone: string | null;
+    area: string | null;
+    service_area: string | null;
+    region: string | null;
     lat: number | null;
     lng: number | null;
-    status_reason: string | null;
     status_changed_at: string | null;
     business_types: { slug: string; name_ar: string; name_en: string } | null;
   };
@@ -166,6 +180,9 @@ export default async function StoreOsHomePage({
   /** Suspended and rejected are outcomes, not waiting rooms: the merchant is
    *  owed an explanation rather than the "under review" reassurance. */
   const isStopped = s.status === "suspended" || s.status === "rejected";
+  const statusReason = isStopped
+    ? (await fetchOneStorePrivateFields(supabase, storeId)).status_reason
+    : null;
   const typeName =
     (lang === "ar" ? s.business_types?.name_ar : s.business_types?.name_en) ??
     "";
@@ -186,6 +203,7 @@ export default async function StoreOsHomePage({
   const canOrders = isOwner || (perms.orders ?? false);
   const canBookings = isOwner || (perms.bookings ?? false);
   const canProducts = isOwner || (perms.products ?? false);
+  const canCustomers = isOwner || (perms.customers ?? false);
   const canRevenue = canOrders;
 
   const allModules = new Set(Object.values(sector.modules).flat());
@@ -750,6 +768,28 @@ export default async function StoreOsHomePage({
   );
   const checklistDone = completeness.next === null;
 
+  // The public data quality gate, on the same facts. Not a second checklist:
+  // completeness is what the merchant still wants to do, this is what the
+  // platform checks before ranking the page — and the one state ("blocked")
+  // that keeps a live page out of explore is something the owner must be told
+  // in plain words rather than infer from a percentage.
+  const storeQuality = validateStorePublic(
+    {
+      name: s.name,
+      category: s.business_types?.slug ?? null,
+      area: s.area,
+      service_area: s.service_area,
+      region: s.region,
+      phone: s.phone,
+      whatsapp: s.whatsapp,
+      description: s.description,
+      logo_url: s.logo_url,
+      cover_url: s.cover_url,
+      offerings: isOwner ? (primaryCount ?? itemsCount) : undefined,
+    },
+    { sector: category, modules: enabledModules },
+  );
+
   // ---- Smart suggestions (rule-based, from data already on hand) -----------
   const hasAudience =
     (followersRes.count ?? 0) > 0 || (report?.total_orders ?? 0) > 0;
@@ -987,6 +1027,22 @@ export default async function StoreOsHomePage({
 
   const SectorIcon = sector.Icon;
 
+  // ---- «المساعد الذكي» (Pro + Business) -------------------------------------
+  // Chips follow the person's permissions (the key each answer's rows are
+  // gated on) and the sector's modules. Below Pro the same chips render
+  // locked with the upgrade prompt, and no query runs. Every answer is fetched
+  // on tap by merchant/[storeId]/quick-panel-actions.ts, which re-checks all
+  // of this server-side.
+  const panelPlan = effectivePlan(s.plan, s.trial_ends_at);
+  const panelChips: QuickChip[] = [];
+  if (canOrders && hasOrders) panelChips.push("todayOrders");
+  if (canProducts) panelChips.push("lowStock");
+  if (canCustomers) panelChips.push("debts");
+  if (canBookings && hasBookings) panelChips.push("tomorrowBookings");
+  if (canOrders && hasOrders) panelChips.push("abandonedCarts");
+  if (canCustomers) panelChips.push("inactiveCustomers");
+  if (canOrders) panelChips.push("weekSales");
+
   return (
     <div className="py-8 sm:py-10">
       <Container className="max-w-5xl">
@@ -998,6 +1054,18 @@ export default async function StoreOsHomePage({
             <ChevronPrev className="h-4 w-4" />
             {dict.merchant.products.back}
           </Link>
+
+          <QuickPanel
+            storeId={storeId}
+            lang={lang}
+            locked={!hasPlan(panelPlan, "pro")}
+            chips={panelChips}
+            business={isBusiness(panelPlan)}
+            t={dict.quickPanel}
+            waT={dict.waActions}
+            orderStatus={labelMap(dict, "order")}
+            bookingStatus={labelMap(dict, "booking")}
+          />
 
           {/* ===== The phone's first screenful =====
               A merchant on a phone gets the decision before the decoration:
@@ -1122,7 +1190,7 @@ export default async function StoreOsHomePage({
               dict={dict}
               status={s.status as "suspended" | "rejected"}
               storeName={s.name}
-              reason={s.status_reason}
+              reason={statusReason}
               changedAt={s.status_changed_at}
               className="mt-6"
             />
@@ -1139,6 +1207,7 @@ export default async function StoreOsHomePage({
                 storeSlug={s.slug}
                 status={s.status}
                 completeness={completeness}
+                quality={storeQuality}
               />
             </div>
           )}
@@ -1151,6 +1220,8 @@ export default async function StoreOsHomePage({
               </div>
             ))}
           </div>
+
+          {canOrders && <MatjarBroughtCard storeId={storeId} lang={lang} />}
 
           {/* The share card hands over a QR and a short link meant for a
               shopfront or a receipt. Until the store is approved both resolve

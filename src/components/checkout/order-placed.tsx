@@ -7,6 +7,7 @@ import { Money } from "@/components/ui/money";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import type { PlacedOrder } from "@/components/checkout/checkout-form";
+import { TagSource } from "@/components/attribution/tag-source";
 
 // What a customer sees the moment an order exists — the same screen whichever
 // page placed it.
@@ -41,12 +42,14 @@ export function OrderPlaced({
   // same reason `total` does: the caller clears its cart on the line after
   // this component is handed the result, so anything derived from that cart
   // reads empty here. Frozen at placement, it cannot.
-  const { orderId, total, waUrl, lines } = order;
+  const { orderId, total, waUrl, lines, giftCardNote } = order;
   return (
     <div className="mt-6 rounded-2xl border border-success/30 bg-success-soft p-6 text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-strong text-success-strong-foreground">
         <Check className="h-6 w-6" />
       </div>
+      {/* Source attribution + transaction_completed (0312); renders nothing. */}
+      <TagSource kind="order" orderId={orderId} />
       <h3 className="mt-3 text-lg font-extrabold">
         {dict.store.orderPlacedTitle}
       </h3>
@@ -113,6 +116,12 @@ export function OrderPlaced({
           </span>
           <Money value={total} cents className="text-lg font-extrabold" />
         </div>
+        {/* A gift card applied at checkout is a PAYMENT on the order (0310):
+            the total above stays the amount of record; this line says what
+            the card paid and what is left, or why it was not applied. */}
+        {giftCardNote && (
+          <p className="mt-2 border-t border-border pt-2 text-sm font-semibold">{giftCardNote}</p>
+        )}
         <p className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">
           {dict.orders.nextPending}
         </p>

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
@@ -11,6 +12,9 @@ import { Tag } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
 import { ListingForm, type ListingInitial } from "@/components/listing-form";
+
+// A seller-only write screen: never indexed (robots.ts also disallows it).
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

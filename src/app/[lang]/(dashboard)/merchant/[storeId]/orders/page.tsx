@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { loadStaffNotes, pickStaffNote } from "@/lib/order-staff-note";
 import { Container } from "@/components/ui/container";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { type OrderPayment } from "@/components/order-payments";
@@ -19,6 +20,13 @@ import {
   MerchantOrderCard,
   type MerchantOrderCardData,
 } from "@/components/merchant/merchant-order-card";
+import { ShoppingCart } from "lucide-react";
+import { getUsdLbpRate } from "@/lib/data/settings";
+import {
+  bodiesOf,
+  loadLastSent,
+  loadWaTemplates,
+} from "@/lib/wa-actions-server";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -63,6 +71,8 @@ type OrderRow = {
   delivery_instructions: string | null;
   custom_fields: Record<string, string> | null;
   scheduled_for: string | null;
+  customer_id: string | null;
+  delivery_zone_id: string | null;
 };
 type StoreLocation = { id: string; name: string | null; area: string | null };
 type TeamMember = { user_id: string; name: string; role: string };
@@ -101,11 +111,18 @@ export default async function StoreOrdersPage({
       // three descriptive unit-pricing columns (0299) so a butcher's line can
       // read "2 كيلو" instead of "2×". Nothing computes a total from them —
       // no deployed function can even see them — so no money moves.
-      "id, status, total, fulfillment, address, phone, customer_name, customer_note, store_note, created_at, location_id, assigned_to, tags, delivery_fee, change_for, delivery_instructions, custom_fields, scheduled_for, order_items(name, quantity, unit_price, note, products(sold_by, unit_measure, unit_amount))",
+      "id, status, total, fulfillment, address, phone, customer_name, customer_note, store_note, created_at, location_id, assigned_to, tags, delivery_fee, change_for, delivery_instructions, custom_fields, scheduled_for, customer_id, delivery_zone_id, order_items(name, quantity, unit_price, note, products(sold_by, unit_measure, unit_amount))",
     )
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });
-  const orders = (data ?? []) as unknown as OrderRow[];
+  // The internal note lives in order_staff_notes from 0314 (the ordering
+  // customer could read orders.store_note through the API). store_note stays
+  // in the select as the pre-0314 source; after 0314 it is always NULL.
+  const staffNotes = await loadStaffNotes(supabase, storeId);
+  const orders = ((data ?? []) as unknown as OrderRow[]).map((o) => ({
+    ...o,
+    store_note: pickStaffNote(staffNotes, o.id, o.store_note),
+  }));
 
   // Assignable team (owner + staff, with names) for the per-order assignee
   // picker. One RPC — the merchant page can't read other users' profiles.
@@ -183,6 +200,43 @@ export default async function StoreOrdersPage({
     deliveryByOrder.set(d.order_id, d),
   );
 
+  // WhatsApp action buttons (every plan, 0309). The wording, the live rate for
+  // the LBP amount, when each button was last tapped, and the ETA the order's
+  // delivery zone states — the only ETA a confirmation may quote. Every read
+  // is defensive: before 0309 the buttons use the default wording.
+  const zoneIds = [
+    ...new Set(orders.map((o) => o.delivery_zone_id).filter((z): z is string => !!z)),
+  ];
+  const [waTemplates, rate, lastSent, zoneRes] = await Promise.all([
+    loadWaTemplates(supabase, storeId),
+    getUsdLbpRate(),
+    loadLastSent(supabase, storeId, "order", orders.map((o) => o.id)),
+    zoneIds.length
+      ? supabase
+          .from("store_delivery_zones")
+          .select("id, eta_min_minutes, eta_max_minutes")
+          .in("id", zoneIds)
+      : Promise.resolve({ data: [] as unknown[] }),
+  ]);
+  const zoneEta: Record<string, { min: number | null; max: number | null }> = {};
+  for (const z of (zoneRes.data ?? []) as {
+    id: string;
+    eta_min_minutes: number | null;
+    eta_max_minutes: number | null;
+  }[]) {
+    zoneEta[z.id] = { min: z.eta_min_minutes, max: z.eta_max_minutes };
+  }
+  const wa = {
+    rate,
+    lastSent,
+    zoneEta,
+    templates: {
+      order_confirmation: bodiesOf(waTemplates.templates, "order_confirmation"),
+      order_status: bodiesOf(waTemplates.templates, "order_status"),
+      review_request: bodiesOf(waTemplates.templates, "review_request"),
+    },
+  };
+
   // Shape each order for the client filter: resolve its ledger and branch label
   // here so the interactive list can filter/search in memory without refetching.
   const cards: OrderCard[] = orders.map((o) => {
@@ -235,9 +289,18 @@ export default async function StoreOrdersPage({
           {(store as { name: string }).name}
         </Link>
         <AutoRefresh />
-        <h1 className="mt-3 text-3xl font-extrabold tracking-tight">
-          {dict.merchant.ordersTitle}
-        </h1>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-3xl font-extrabold tracking-tight">
+            {dict.merchant.ordersTitle}
+          </h1>
+          <Link
+            href={`/${lang}/merchant/${storeId}/abandoned-carts`}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-surface px-3.5 text-sm font-bold transition-colors hover:border-primary/40"
+          >
+            <ShoppingCart className="h-4 w-4" aria-hidden />
+            {dict.waActions.carts.link}
+          </Link>
+        </div>
 
         {/* Below lg the merchant is holding the phone one-handed with somebody
             waiting, so the orders that need a decision come first, in full, as
@@ -288,6 +351,7 @@ export default async function StoreOrdersPage({
             team={team}
             couriers={couriers}
             canDispatch={canDispatch}
+            wa={wa}
           />
         ) : (
           // ISS-016/034: the same dashed box used to be shown to a store still

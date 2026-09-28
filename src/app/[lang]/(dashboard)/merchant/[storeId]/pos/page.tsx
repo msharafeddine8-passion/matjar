@@ -10,6 +10,7 @@ import { getStorePlan } from "@/lib/plan-server";
 import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
 import { formatUsd } from "@/lib/currency";
+import { SITE_URL } from "@/lib/site";
 import {
   PosTerminal,
   type PosProduct,
@@ -107,6 +108,14 @@ export default async function StorePosPage({
       .order("is_primary", { ascending: false }),
   ]);
 
+  // Loyalty phone + gift-card code at the till (0310). Both reads fail softly
+  // before the migration is applied, and the till then renders as before.
+  const [{ data: programRow }, { data: acceptsGift, error: giftErr }] = await Promise.all([
+    supabase.from("loyalty_programs").select("kind, is_active").eq("store_id", storeId).maybeSingle(),
+    supabase.rpc("store_accepts_gift_cards", { p_store_id: storeId }),
+  ]);
+  const program = programRow as { kind: "stamps" | "points"; is_active: boolean } | null;
+
   const todaySales = (todayData ?? []) as { total: number }[];
   const todayTotal = todaySales.reduce((s, r) => s + Number(r.total), 0);
 
@@ -137,6 +146,13 @@ export default async function StorePosPage({
             products={(productsData ?? []) as PosProduct[]}
             customers={(customersData ?? []) as PosCustomer[]}
             locations={(locationsData ?? []) as PosLocation[]}
+            extras={{
+              loyalty: program?.is_active ? program.kind : null,
+              giftCards: !giftErr && acceptsGift === true,
+              lang,
+              storeName: (store as { name: string }).name,
+              siteUrl: SITE_URL,
+            }}
           />
         </div>
       </Container>

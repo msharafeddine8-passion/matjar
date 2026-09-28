@@ -46,6 +46,7 @@ import {
   Images,
   BookOpen,
   Inbox,
+  NotebookPen,
 } from "lucide-react";
 import type { CategoryKey } from "./catalog";
 import { categoryModule } from "./modules";
@@ -77,6 +78,7 @@ export type OsModuleKey =
   | "items"
   | "doctors"
   | "customers"
+  | "ledger"
   | "campaigns"
   | "staff"
   | "hr"
@@ -109,7 +111,7 @@ export const OS_MODULE_META: Record<
     Icon: LucideIcon;
     path: string;
     ownerOnly?: boolean;
-    perm?: "orders" | "bookings" | "products";
+    perm?: "orders" | "bookings" | "products" | "customers";
     /** Minimum paid tier to open this module (stores below see a lock +
      *  upsell). Absent = available on every plan. */
     minPlan?: "pro" | "business";
@@ -139,6 +141,11 @@ export const OS_MODULE_META: Record<
   items: { Icon: Package, path: "items", perm: "products" },
   doctors: { Icon: Stethoscope, path: "doctors", perm: "bookings", minPlan: "pro" },
   customers: { Icon: Users, path: "customers", perm: "orders", minPlan: "pro" },
+  // دفتر الدين. No minPlan: free on every plan (FEATURES.debtLedger). Gated on
+  // the `customers` staff permission — the exact key the database has used for
+  // customer_transactions and store_customers since 0211 — so the nav shows it
+  // to precisely the staff the RLS lets read it. The owner always sees it.
+  ledger: { Icon: NotebookPen, path: "ledger", perm: "customers" },
   campaigns: { Icon: Megaphone, path: "campaigns", perm: "orders", minPlan: "business" },
   staff: { Icon: UserCog, path: "staff", ownerOnly: true, minPlan: "pro" },
   // Owner-only regardless of plan tier: this screen shows every salary in the
@@ -182,10 +189,14 @@ export type SectorConfig = {
   modules: Record<OsGroupKey, OsModuleKey[]>;
 };
 
-const MONEY: OsModuleKey[] = ["accounting", "reports", "coupons", "subscription"];
+// `ledger` (دفتر الدين — what customers owe the shop) leads the money group in
+// every sector: it is the one money screen that is free on every plan, so on a
+// free store it is the first unlocked row rather than one buried under locks.
+const MONEY: OsModuleKey[] = ["ledger", "accounting", "reports", "coupons", "subscription"];
 const STORE: OsModuleKey[] = ["tools", "branches", "verifications", "modules", "edit", "settings"];
 // Real estate has no goods suppliers; every other sector tracks supplier debts.
 const MONEY_WITH_SUPPLIERS: OsModuleKey[] = [
+  "ledger",
   "accounting",
   "suppliers",
   "reports",
@@ -595,14 +606,24 @@ export type ProfileSectionKey =
   | "healthcareInfo"
   | "doctors"
   | "verifications"
+  // Phase 3 (profile engine, src/lib/profile-engine.ts). `summary` is the
+  // at-a-glance WHO / WHAT / WHEN / WHERE / HOW MUCH / WHY TRUST block; it
+  // renders only for the sectors the engine gives one and only with at least
+  // two real facts. `loyalty` is a slot: it renders nothing until a component
+  // is registered for it (src/components/store/profile-module-registry.ts).
+  | "summary"
+  | "loyalty"
   | "reviews";
 
 /** Exactly the order the page rendered before this existed, so any sector
- *  without an explicit composition keeps rendering as it did. */
+ *  without an explicit composition keeps rendering as it did. The two keys
+ *  added since (`summary`, `loyalty`) render nothing unless the profile
+ *  engine finds content for them, so their default slots change no page. */
 export const DEFAULT_PROFILE_ORDER: ProfileSectionKey[] = [
   "announcement",
   "hero",
   "header",
+  "summary",
   "branches",
   "delivery",
   "location",
@@ -622,6 +643,7 @@ export const DEFAULT_PROFILE_ORDER: ProfileSectionKey[] = [
   "healthcareInfo",
   "doctors",
   "verifications",
+  "loyalty",
   "reviews",
 ];
 
@@ -631,11 +653,17 @@ const LEAD: ProfileSectionKey[] = ["announcement", "hero", "header"];
 
 const PROFILE_ORDER: Partial<Record<CategoryKey, ProfileSectionKey[]>> = {
   // You choose a clinic by its doctors, and its credentials are the trust
-  // signal. Both used to sit below the product grid. `hours` sits above the
-  // booking engine because "are they open at all, and on which days" is the
-  // question that decides whether the calendar below is worth opening.
-  healthcare: [...LEAD, "healthcareInfo", "doctors", "hours", "catalog",
-    "verifications", "reservations", "location", "branches", "delivery", "reviews"],
+  // signal. Both used to sit below the product grid.
+  //
+  // Phase 3: the summary answers WHO / WHAT / WHEN / WHERE / HOW MUCH / WHY
+  // TRUST in one block straight under the name — including "open right now,
+  // and today's hours", which is why `hours` no longer has to sit above the
+  // booking engine to answer that. The page then follows the same questions in
+  // depth: the people, the services (and the calendar), the visit terms, the
+  // week, the map, the credentials, the reviews.
+  healthcare: [...LEAD, "summary", "doctors", "catalog", "healthcareInfo",
+    "hours", "location", "branches", "verifications", "loyalty", "reviews",
+    "reservations", "delivery"],
   // The work is the pitch: evidence first, price list second.
   beauty: [...LEAD, "portfolio", "catalog", "doctors", "memberships",
     "reservations", "hours", "reviews", "location", "branches", "delivery",
@@ -643,8 +671,8 @@ const PROFILE_ORDER: Partial<Record<CategoryKey, ProfileSectionKey[]>> = {
   // Nobody browses a restaurant's amenities. They read the menu — but only
   // after learning whether the food can reach them at all, which is what the
   // fulfillment strip above it answers.
-  food: [...LEAD, "delivery", "catalog", "reservations", "hours", "reviews",
-    "location", "branches"],
+  food: [...LEAD, "delivery", "catalog", "reservations", "hours", "loyalty",
+    "reviews", "location", "branches"],
   // A stay begins with dates, not with a description.
   hospitality: [...LEAD, "stay", "catalog", "location", "hours", "reviews",
     "branches", "verifications"],
@@ -667,12 +695,13 @@ const PROFILE_ORDER: Partial<Record<CategoryKey, ProfileSectionKey[]>> = {
   sportsCourts: [...LEAD, "resources", "classes", "memberships", "catalog",
     "hours", "reviews", "location", "branches"],
   // Trades sell evidence of work and trust before they sell a price.
-  contractors: [...LEAD, "portfolio", "serviceRequest", "verifications", "catalog",
+  contractors: [...LEAD, "summary", "portfolio", "serviceRequest", "verifications", "catalog",
     "hours", "reviews", "location"],
-  professional: [...LEAD, "serviceRequest", "doctors", "verifications", "portfolio",
+  professional: [...LEAD, "summary", "serviceRequest", "doctors", "verifications", "portfolio",
     "catalog", "hours", "reviews", "location"],
-  services: [...LEAD, "serviceRequest", "portfolio", "catalog", "doctors",
-    "hours", "reviews", "location", "branches"],
+  services: [...LEAD, "summary", "serviceRequest", "portfolio", "catalog",
+    "doctors", "hours", "verifications", "loyalty", "reviews", "location",
+    "branches"],
   petCare: [...LEAD, "catalog", "doctors", "reservations", "stay", "hours",
     "reviews", "location", "branches"],
   // The goods sectors had no composition of their own, so they inherited a
@@ -681,8 +710,8 @@ const PROFILE_ORDER: Partial<Record<CategoryKey, ProfileSectionKey[]>> = {
   // Somebody who opens a shop's page came to see what it sells. This is the same
   // defect the clinic had, and it survived longer only because retail is the
   // fallback everything else was measured against.
-  retail: [...LEAD, "catalog", "delivery", "reviews", "location", "hours",
-    "branches", "verifications"],
+  retail: [...LEAD, "catalog", "delivery", "loyalty", "reviews", "location",
+    "hours", "branches", "verifications"],
   pharmacy: [...LEAD, "catalog", "delivery", "reviews", "location", "hours",
     "branches", "verifications"],
   farm: [...LEAD, "catalog", "delivery", "reviews", "location", "hours",

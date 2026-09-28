@@ -23,6 +23,7 @@ import { revalidateStores } from "@/lib/cache-actions";
 import { logAdminAction, type AuditVerb } from "@/lib/audit";
 import { matchesQuery } from "@/lib/admin-search";
 import { regions } from "@/lib/catalog";
+import type { IssueCode, QualityLevel } from "@/lib/data-quality";
 import { Container } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardBody } from "@/components/ui/card";
@@ -50,6 +51,15 @@ export type AdminStore = {
   statusReason: string | null;
   statusChangedAt: string | null;
   statusChangedByName: string | null;
+  /** The public data quality gate (lib/data-quality.ts), computed on the
+   *  server from the row. `blocked` cannot be made active from this screen. */
+  quality: { level: QualityLevel; issues: IssueCode[] };
+};
+
+const qualityVariant: Record<QualityLevel, "success" | "warning" | "danger"> = {
+  ok: "success",
+  incomplete: "warning",
+  blocked: "danger",
 };
 
 const statusVariant: Record<
@@ -182,7 +192,20 @@ export function AdminStoresClient({
     setReason("");
   }
 
+  /** A store the gate holds as `blocked` cannot be made active — the only
+   *  transition gated. Suspending, rejecting and everything else stay open, so
+   *  no existing merchant is locked out of anything they have today. */
+  function gateBlocks(id: string, next: AdminStore["status"]): boolean {
+    if (next !== "active") return false;
+    const store = stores.find((s) => s.id === id);
+    return store?.quality.level === "blocked";
+  }
+
   async function applyStatus(id: string, next: AdminStore["status"]) {
+    if (gateBlocks(id, next)) {
+      notifyError(dict.dataQuality.blockedApprove);
+      return;
+    }
     const message = await writeStatus(id, next);
     if (message) notifyError(message);
   }
@@ -293,6 +316,11 @@ export function AdminStoresClient({
                         {dict.admin.plans[s.plan]}
                       </Badge>
                     )}
+                    {s.quality.level !== "ok" && (
+                      <Badge variant={qualityVariant[s.quality.level]} size="sm">
+                        {dict.dataQuality.levels[s.quality.level]}
+                      </Badge>
+                    )}
                   </div>
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">
                     {s.typeName}
@@ -308,6 +336,19 @@ export function AdminStoresClient({
                       {s.commercialRegVerified && (
                         <BadgeCheck className="h-4 w-4 text-primary" />
                       )}
+                    </p>
+                  )}
+                  {/* What the gate found, in the reviewer's words. Nothing here
+                      is written back — the list is for the owner to act on by
+                      hand or to hand to the merchant. */}
+                  {s.quality.issues.length > 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      <span className="font-semibold">
+                        {dict.dataQuality.adminHeading}:
+                      </span>{" "}
+                      {s.quality.issues
+                        .map((code) => dict.dataQuality.issues[code])
+                        .join(" · ")}
                     </p>
                   )}
                   </div>
@@ -363,7 +404,12 @@ export function AdminStoresClient({
                         <>
                           <Button
                             size="sm"
-                            disabled={busy === s.id}
+                            disabled={busy === s.id || s.quality.level === "blocked"}
+                            title={
+                              s.quality.level === "blocked"
+                                ? dict.dataQuality.blockedApprove
+                                : undefined
+                            }
                             onClick={() => applyStatus(s.id, "active")}
                             leftIcon={<Check className="h-4 w-4" />}
                           >
@@ -398,7 +444,12 @@ export function AdminStoresClient({
                         <>
                           <Button
                             size="sm"
-                            disabled={busy === s.id}
+                            disabled={busy === s.id || s.quality.level === "blocked"}
+                            title={
+                              s.quality.level === "blocked"
+                                ? dict.dataQuality.blockedApprove
+                                : undefined
+                            }
                             onClick={() => applyStatus(s.id, "active")}
                             leftIcon={<Play className="h-4 w-4" />}
                           >
@@ -429,14 +480,13 @@ export function AdminStoresClient({
                         value={s.plan}
                         disabled={busy === s.id}
                         onChange={(e) =>
-                          patch(s.id, {
-                            plan: e.target.value,
-                            // Any paid plan implies an active/verified store.
-                            is_verified:
-                              e.target.value === "free"
-                                ? s.isVerified
-                                : true,
-                          })
+                          // The plan and nothing else. This used to also write
+                          // is_verified = true for any paid tier, which made a
+                          // purchase set a trust column — the same coupling
+                          // admin-subs-client.tsx already removed. Verification
+                          // moves only through its own toggles and the
+                          // store_verifications queue (see lib/trust.ts).
+                          patch(s.id, { plan: e.target.value })
                         }
                         aria-label={dict.admin.planLabel}
                         title={dict.admin.planLabel}

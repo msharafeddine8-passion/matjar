@@ -20,6 +20,7 @@ import {
   type CheckoutViewer,
   type StoreCheckout,
 } from "@/lib/checkout";
+import { assertAddableToCart, type OfferingExperience } from "@/lib/offering";
 
 export type Variant = {
   id: string;
@@ -67,6 +68,8 @@ export function ProductOrder({
   lbpRate = 0,
   category = null,
   ctaLabel,
+  offering,
+  soldOutLabel,
 }: {
   lang: Locale;
   dict: Dictionary;
@@ -93,6 +96,14 @@ export function ProductOrder({
   /** Primary CTA wording chosen by the offering resolver: "أضف إلى السلة" for a
    *  good, "أضف إلى الطلب" for a menu item. Omitted = the generic order label. */
   ctaLabel?: string;
+  /** The resolved offering. The buy box is the only place a product page can
+   *  build a basket, so it asks the resolver's one cart test itself before it
+   *  opens the checkout — a service handed to this component by mistake gets
+   *  the resolver's refusal, not an order. */
+  offering?: Pick<OfferingExperience, "addableToCart" | "cta">;
+  /** Sold-out wording in the offering's own noun ("نفد المخزون" for a good,
+   *  "مش متوفّر هلّق" for a dish). Omitted = the retail phrase. */
+  soldOutLabel?: string;
 }) {
   // Apparel variants carry color/size → render a 2-step picker; legacy flat
   // variants (no color/size) keep the single pill row.
@@ -230,8 +241,20 @@ export function ProductOrder({
       : undefined;
 
   function startCheckout() {
+    // Throws for a service or a directory-only row. Nothing below this line
+    // may run for an offering the resolver says has no basket.
+    if (offering) assertAddableToCart(offering);
     setAttemptKey(newIdempotencyKey());
     setCheckingOut(true);
+  }
+
+  // Same test, rendered: a page that handed a non-addable offering to the buy
+  // box gets the honest sentence instead of a quantity stepper. After the
+  // hooks above on purpose — React needs them called in the same order.
+  if (offering && !offering.addableToCart) {
+    return (
+      <p className="text-sm text-muted-foreground">{dict.offering.notAddable}</p>
+    );
   }
 
   // The order exists. Same confirmation the store cart shows — the reference,
@@ -589,7 +612,7 @@ export function ProductOrder({
             >
               <ShoppingCart className="h-4 w-4" />
               {soldOut
-                ? dict.product.outOfStock
+                ? (soldOutLabel ?? dict.product.outOfStock)
                 : !modifiersOk
                   ? dict.product.modChoose
                   : (ctaLabel ?? dict.product.buyNow)}

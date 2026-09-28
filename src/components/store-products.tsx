@@ -48,6 +48,7 @@ import type {
   CheckoutViewer,
   StoreCheckout,
 } from "@/lib/checkout";
+import { resolveOffering } from "@/lib/offering";
 
 // Delivery zone (migration 0172). The type now lives with the rest of the
 // checkout contract in src/lib/checkout.ts — re-exported here only so the
@@ -225,7 +226,24 @@ export function StoreProducts({
   const isRow = effectiveLayout === "menu";
   const isShowcase = effectiveLayout === "showcase";
   const isGrid = !isRow; // image-top card (grid or showcase) vs. row list
-  const addLabel = isBooking ? dict.store.book : dict.store.order;
+  // Every row this grid receives is a good (`item_kind !== 'service'` — the
+  // section splits them before handing them over), so the offering is the
+  // sector's goods experience: a dish in a restaurant, a product elsewhere.
+  // The resolver decides the button's noun — "أضف إلى الطلب" on a menu, "أضف
+  // إلى السلة" in a shop — the same vocabulary the sticky CTA and the offering
+  // page already use, so one screen no longer says both. It also decides
+  // whether a stock count belongs on a card at all (a kitchen has no shelves)
+  // and whether the grid may add anything to a basket.
+  const storeOffering = resolveOffering({ category, itemKind: "product" });
+  const addLabel = isBooking
+    ? dict.store.book
+    : dict.offering.cta[storeOffering.cta];
+  const canAdd = storeOffering.addableToCart;
+  const soldOutLabel = dict.offering.soldOut[storeOffering.noun];
+  const lowStockOf = (p: { stock?: number | null }) =>
+    storeOffering.showsStock && p.stock != null && p.stock > 0 && p.stock <= 5
+      ? dict.store.onlyLeft.replace("{n}", String(p.stock))
+      : null;
 
   function setQty(id: string, qty: number) {
     // Never let the cart exceed tracked stock — overselling is also caught
@@ -372,9 +390,9 @@ export function StoreProducts({
                 <p className="mt-1">
                   <PriceTag p={p} lang={lang} />
                 </p>
-                {p.stock != null && p.stock > 0 && p.stock <= 5 && (
+                {lowStockOf(p) && (
                   <p className="mt-1 text-xs font-bold text-warning">
-                    {dict.store.onlyLeft.replace("{n}", String(p.stock))}
+                    {lowStockOf(p)}
                   </p>
                 )}
                 {/* z-[1] keeps the action above the stretched link; min-h-11
@@ -383,7 +401,7 @@ export function StoreProducts({
                 <div className="relative z-[1] mt-3 flex justify-end">
                   {p.stock != null && p.stock <= 0 ? (
                     <span className="flex min-h-11 w-full items-center justify-center rounded-lg bg-surface-muted px-3.5 py-2 text-center text-sm font-bold text-muted-foreground">
-                      {dict.store.soldOut}
+                      {soldOutLabel}
                     </span>
                   ) : p.hasVariants ? (
                     <Link
@@ -401,8 +419,9 @@ export function StoreProducts({
                     />
                   ) : (
                     <button
-                      onClick={() => setQty(p.id, 1)}
-                      className="min-h-11 w-full rounded-lg bg-primary px-3.5 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover"
+                      onClick={() => canAdd && setQty(p.id, 1)}
+                      disabled={!canAdd}
+                      className="min-h-11 w-full rounded-lg bg-primary px-3.5 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
                     >
                       {addLabel}
                     </button>
@@ -449,16 +468,16 @@ export function StoreProducts({
                 />
                 <p className="mt-0.5 text-sm">
                   <PriceTag p={p} lang={lang} />
-                  {p.stock != null && p.stock > 0 && p.stock <= 5 && (
+                  {lowStockOf(p) && (
                     <span className="ms-2 text-xs font-bold text-warning">
-                      {dict.store.onlyLeft.replace("{n}", String(p.stock))}
+                      {lowStockOf(p)}
                     </span>
                   )}
                 </p>
               </div>
               {p.stock != null && p.stock <= 0 ? (
                 <span className="shrink-0 rounded-lg bg-surface-muted px-3.5 py-2 text-sm font-bold text-muted-foreground">
-                  {dict.store.soldOut}
+                  {soldOutLabel}
                 </span>
               ) : p.hasVariants ? (
                 <Link
@@ -476,8 +495,9 @@ export function StoreProducts({
                 />
               ) : (
                 <button
-                  onClick={() => setQty(p.id, 1)}
-                  className="relative shrink-0 rounded-lg bg-primary px-3.5 py-2 text-sm font-bold text-primary-foreground transition-colors before:absolute before:-inset-y-1 before:content-[''] hover:bg-primary-hover"
+                  onClick={() => canAdd && setQty(p.id, 1)}
+                  disabled={!canAdd}
+                  className="relative shrink-0 rounded-lg bg-primary px-3.5 py-2 text-sm font-bold text-primary-foreground transition-colors before:absolute before:-inset-y-1 before:content-[''] hover:bg-primary-hover disabled:opacity-50"
                 >
                   {addLabel}
                 </button>

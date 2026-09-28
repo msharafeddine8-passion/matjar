@@ -12,6 +12,7 @@ import { FeatureRoadmap } from "@/components/feature-roadmap";
 import { categoryKeys, type CategoryKey } from "@/lib/catalog";
 import { sectorConfig } from "@/lib/sectors";
 import { leadKinds, sectorCapabilities } from "@/lib/feature-availability";
+import { fillPlanCopy, planCopyVars } from "@/lib/plan-copy";
 
 export async function generateMetadata({
   params,
@@ -32,9 +33,10 @@ export async function generateMetadata({
 // the button. Rendered under BOTH store-creation CTAs on this page, because the
 // second one is where the reader who scrolled the whole page ends up.
 //
-// It says three products, not "free", because the free plan caps at three
-// (FREE_PRODUCT_LIMIT) and a merchant who finds that out after uploading their
-// catalogue has been sold something.
+// It names the free product cap, not "free", because the free plan is capped and
+// a merchant who finds that out after uploading their catalogue has been sold
+// something. The number is the {freeProducts} placeholder, filled from
+// planProductLimit("free") by lib/plan-copy — never typed into the dictionary.
 function Reassurance({ items, center = false }: { items: readonly string[]; center?: boolean }) {
   return (
     <ul
@@ -64,6 +66,8 @@ export default async function MerchantsPage({
   const m = dict.merchantsPage;
   const base = `/${lang}`;
   const moduleLabels = dict.os.modules.labels;
+  const copyVars = planCopyVars();
+  const reassure = m.entryReassure.map((line) => fillPlanCopy(line, copyVars));
 
   // The inquiry kinds a listing sector's lead form really offers. The one place
   // this page names something narrower than a module — "request a viewing",
@@ -92,7 +96,7 @@ export default async function MerchantsPage({
                 {m.seePricing}
               </Link>
             </div>
-            <Reassurance items={m.entryReassure} />
+            <Reassurance items={reassure} />
           </div>
         </Container>
       </div>
@@ -224,7 +228,7 @@ export default async function MerchantsPage({
           <Link href={`${base}/merchant/new`} className="mt-6 inline-flex h-12 items-center rounded-xl bg-primary px-8 text-sm font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover">
             {dict.common.openStore}
           </Link>
-          <Reassurance items={m.entryReassure} center />
+          <Reassurance items={reassure} center />
         </div>
       </Container>
     </div>

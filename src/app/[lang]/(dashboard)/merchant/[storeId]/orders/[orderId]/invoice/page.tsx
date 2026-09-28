@@ -44,7 +44,10 @@ export default async function OrderInvoicePage({
   const [{ data: store }, { data: orderData }] = await Promise.all([
     supabase
       .from("stores")
-      .select("id, name, logo_url, phone, area, legal_name, tax_no, commercial_reg_no, legal_address")
+      // The legal identity printed below comes from the issued invoice's own
+      // frozen copy (store_invoices), never from the live store row — and the
+      // store's legal columns are not client-readable after 0314 anyway.
+      .select("id, name, logo_url, phone, area")
       .eq("id", storeId)
       .maybeSingle(),
     supabase
@@ -94,10 +97,6 @@ export default async function OrderInvoicePage({
     logo_url: string | null;
     phone: string | null;
     area: string | null;
-    legal_name: string | null;
-    tax_no: string | null;
-    commercial_reg_no: string | null;
-    legal_address: string | null;
   };
   const order = orderData as unknown as {
     id: string;

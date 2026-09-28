@@ -13,7 +13,9 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { regions as catalogRegions } from "@/lib/catalog";
-import { localeAlternates } from "@/lib/site";
+import { SITE_URL, localeAlternates } from "@/lib/site";
+import { NOINDEX_FOLLOW, listingRobots } from "@/lib/seo-rules";
+import { jsonLdScript, listingJsonLd } from "@/lib/jsonld";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { getListingById, getMarketRegions } from "@/lib/data/market";
 import { waLink } from "@/lib/whatsapp";
@@ -39,16 +41,31 @@ export async function generateMetadata({
   const { lang, id } = await params;
   if (!isLocale(lang) || !UUID_RE.test(id)) return {};
   const listing = await getListingById(id, lang as Locale, null);
-  if (!listing) return { title: "Matjar" };
+  // Not found / not public: nothing to describe, and nothing to index.
+  if (!listing) return { robots: NOINDEX_FOLLOW };
+  // The layout's title template already appends "· متجر"; the old
+  // "`${title} | Matjar`" rendered "X | Matjar · متجر".
+  const description = listing.description
+    ? listing.description.slice(0, 160)
+    : undefined;
   return {
-    title: `${listing.title} | Matjar`,
-    description: listing.description ?? undefined,
+    title: listing.title,
+    description,
     alternates: localeAlternates(lang, `/market/${id}`),
     openGraph: {
+      type: "website",
       title: listing.title,
-      description: listing.description ?? undefined,
-      images: listing.image ? [listing.image] : undefined,
+      description,
+      images: listing.image ? [{ url: listing.image, alt: listing.title }] : undefined,
     },
+    twitter: {
+      card: listing.image ? "summary_large_image" : "summary",
+      title: listing.title,
+      description,
+    },
+    // Sold / expired stay reachable (old links keep working) but leave the
+    // index; only a live listing is worth ranking (lib/seo-rules).
+    robots: listingRobots(listing.status),
   };
 }
 
@@ -84,8 +101,26 @@ export default async function ListingPage({
       day: "numeric",
     });
 
+  // Product + Offer only for an active (InStock) or sold (SoldOut) listing
+  // with a real price; null otherwise (lib/jsonld listingJsonLd).
+  const structured = listingJsonLd({
+    name: listing.title,
+    description: listing.description,
+    image: listing.image,
+    url: `${SITE_URL}/${lang}/market/${id}`,
+    price: listing.price,
+    status: listing.status,
+    storeName: listing.storeId ? listing.storeName : null,
+  });
+
   return (
     <div className="py-8">
+      {structured && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdScript(structured) }}
+        />
+      )}
       <ListingViewTracker listingId={id} />
       <Container>
         <div className="pb-1">

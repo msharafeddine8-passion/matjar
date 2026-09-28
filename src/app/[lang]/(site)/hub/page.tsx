@@ -9,7 +9,6 @@ import {
   TrendingUp,
   Tag,
   MessageSquare,
-  Camera,
   Users,
   ClipboardList,
   Package,
@@ -31,6 +30,8 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { localeAlternates } from "@/lib/site";
 import { Container } from "@/components/ui/container";
 import { getAcademyGuides } from "@/lib/data/academy";
+import { createClient } from "@/lib/supabase/server";
+import { featureCopy } from "@/lib/feature-availability";
 
 export async function generateMetadata({
   params,
@@ -65,6 +66,19 @@ export default async function HubPage({
   const m = h.home;
   const base = `/${lang}`;
   const guideCount = (await getAcademyGuides()).length;
+
+  // The leaders card in the hero cluster said "Soon" unconditionally — a
+  // fixed badge string that would have kept saying it after the first profile
+  // was published. Same predicate /hub/leaders renders its directory from
+  // (`published = true`), so the two pages cannot disagree about whether the
+  // directory exists; the pending word is the registry's canonical one.
+  const supabase = await createClient();
+  const { count: leaderCount } = await supabase
+    .from("business_leaders")
+    .select("id", { count: "exact", head: true })
+    .eq("published", true);
+  const leadersLine =
+    (leaderCount ?? 0) > 0 ? h.leaders.heroBrowse : featureCopy("coming_soon", dict);
 
   return (
     <div className="pb-16">
@@ -136,7 +150,7 @@ export default async function HubPage({
                 <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
                   <span className="grid h-9 w-9 place-items-center rounded-xl bg-accent-soft text-accent-foreground"><Crown className="h-5 w-5" /></span>
                   <h3 className="mt-3 text-sm font-extrabold">{h.leadersTitle}</h3>
-                  <p className="text-xs text-muted-foreground">{h.leaders.comingBadge}</p>
+                  <p className="text-xs text-muted-foreground">{leadersLine}</p>
                 </div>
                 <div className="col-span-2 rounded-2xl border border-border bg-surface p-4 shadow-sm">
                   <div className="flex items-center gap-3">

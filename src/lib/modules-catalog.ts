@@ -42,7 +42,14 @@ export type FeatureModuleKey =
   | "messaging" // customer ↔ business chat
   | "media"; // gallery + cover + video
 
-export type ModuleTier = "free" | "pro";
+// The plan floor a module's MERCHANT SCREEN is gated at. Mirrors the enforced
+// `minPlan` in OS_MODULE_META / the plan floor in feature-availability.ts, and
+// src/lib/__tests__/feature-availability-ssot.test.ts fails if the two drift:
+// this field used to say inventory was "pro" while the inventory screen locks
+// at Business, and classes/memberships/courses "pro" while their screens carry
+// no plan guard at all — so the module manager locked a free-plan gym out of
+// the classes it could already run.
+export type ModuleTier = "free" | "pro" | "business";
 
 export type FeatureModuleDef = {
   key: FeatureModuleKey;
@@ -60,15 +67,15 @@ export const MODULE_CATALOG: Record<FeatureModuleKey, FeatureModuleDef> = {
   catalog: { key: "catalog", labelKey: "catalog", tier: "free" },
   menu: { key: "menu", labelKey: "menu", tier: "free" },
   orders: { key: "orders", labelKey: "orders", tier: "free" },
-  inventory: { key: "inventory", labelKey: "inventory", tier: "pro", dependsOn: ["catalog"] },
+  inventory: { key: "inventory", labelKey: "inventory", tier: "business", dependsOn: ["catalog"] },
   delivery: { key: "delivery", labelKey: "delivery", tier: "free", dependsOn: ["orders"] },
   pos: { key: "pos", labelKey: "pos", tier: "pro", dependsOn: ["catalog"] },
 
   appointments: { key: "appointments", labelKey: "appointments", tier: "free" },
   timeslot: { key: "timeslot", labelKey: "timeslot", tier: "free" },
-  classes: { key: "classes", labelKey: "classes", tier: "pro" },
+  classes: { key: "classes", labelKey: "classes", tier: "free" },
   reservations: { key: "reservations", labelKey: "reservations", tier: "free" },
-  memberships: { key: "memberships", labelKey: "memberships", tier: "pro" },
+  memberships: { key: "memberships", labelKey: "memberships", tier: "free" },
   // Was `tier: "pro", dependsOn: ["timeslot"]` for as long as it named nothing.
   // Both parts were wrong once MJ-003 built it (migration 0298): the engine is
   // a DAY RANGE with an exclusion constraint, not a grid of hourly slots, so
@@ -80,9 +87,11 @@ export const MODULE_CATALOG: Record<FeatureModuleKey, FeatureModuleDef> = {
   requests: { key: "requests", labelKey: "requests", tier: "free" },
   listings: { key: "listings", labelKey: "listings", tier: "free" },
   portfolio: { key: "portfolio", labelKey: "portfolio", tier: "free" },
-  courses: { key: "courses", labelKey: "courses", tier: "pro" },
+  courses: { key: "courses", labelKey: "courses", tier: "free" },
 
-  team: { key: "team", labelKey: "team", tier: "free" },
+  // The storefront team page is fed by merchant/[storeId]/doctors, which is an
+  // isPro screen — so the toggle locks where the screen locks.
+  team: { key: "team", labelKey: "team", tier: "pro" },
   reviews: { key: "reviews", labelKey: "reviews", tier: "free" },
   verifications: { key: "verifications", labelKey: "verifications", tier: "free" },
   location: { key: "location", labelKey: "location", tier: "free" },

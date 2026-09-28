@@ -67,7 +67,13 @@ export type FilterKey =
   | "hasOffers"
   | "rated"
   | "verified"
-  | "registered";
+  | "registered"
+  /** stores.accepts_delivery — goods sectors only. */
+  | "delivers"
+  /** stores.accepts_pickup — goods sectors only. */
+  | "pickup"
+  /** At least one active, priced item_kind = 'service' row. */
+  | "hasPricedServices";
 
 export const FACET_FILTERS = ["group", "sector", "region"] as const;
 export type FacetFilterKey = (typeof FACET_FILTERS)[number];
@@ -103,6 +109,46 @@ export type DiscoveryCoverage = {
   withSpecialties: number;
   withProviders: number;
   withSections: number;
+  /** stores.accepts_delivery = true. */
+  withDelivery: number;
+  /** stores.accepts_pickup = true. */
+  withPickup: number;
+  /** Stores with at least one active, priced service row. */
+  withPricedServices: number;
+  /** The boolean counts again, per sector, so a page pinned to one sector
+   *  judges a filter against THAT sector's stores. Without it "has priced
+   *  services" is 3 of 17 marketplace-wide — an honest partition — yet 2 of 2
+   *  on the clinic page, where it narrows nothing. Optional so hand-built
+   *  coverages (tests) fall back to the marketplace-wide numbers. */
+  bySectorCounts?: Partial<Record<CategoryKey, SectorCounts>>;
+};
+
+/** The boolean-backing counts of DiscoveryCoverage, for one sector. */
+export type SectorCounts = Pick<
+  DiscoveryCoverage,
+  | "total"
+  | "withHours"
+  | "withCatalog"
+  | "withOffers"
+  | "rated"
+  | "verified"
+  | "registered"
+  | "withDelivery"
+  | "withPickup"
+  | "withPricedServices"
+>;
+
+export const EMPTY_SECTOR_COUNTS: SectorCounts = {
+  total: 0,
+  withHours: 0,
+  withCatalog: 0,
+  withOffers: 0,
+  rated: 0,
+  verified: 0,
+  registered: 0,
+  withDelivery: 0,
+  withPickup: 0,
+  withPricedServices: 0,
 };
 
 export const EMPTY_COVERAGE: DiscoveryCoverage = {
@@ -120,6 +166,10 @@ export const EMPTY_COVERAGE: DiscoveryCoverage = {
   withSpecialties: 0,
   withProviders: 0,
   withSections: 0,
+  withDelivery: 0,
+  withPickup: 0,
+  withPricedServices: 0,
+  bySectorCounts: {},
 };
 
 /**
@@ -151,17 +201,53 @@ const BOOLEAN_BACKING: Record<BooleanFilterKey, Backing> = {
   rated: { count: (c) => c.rated, mode: "partition" },
   verified: { count: (c) => c.verified, mode: "partition" },
   registered: { count: (c) => c.registered, mode: "partition" },
+  // All three are store-level partitions: the number IS the match count. On
+  // production every store still carries the column default (delivery AND
+  // pickup on), so both are `universal` today and stay hidden until a merchant
+  // actually switches one off — the moment they start meaning something.
+  delivers: { count: (c) => c.withDelivery, mode: "partition" },
+  pickup: { count: (c) => c.withPickup, mode: "partition" },
+  hasPricedServices: {
+    count: (c) => c.withPricedServices,
+    mode: "partition",
+  },
 };
 
-/** Whether a boolean filter has earned its place at the current inventory. */
+/**
+ * The counts a boolean filter is judged against for a scope.
+ *
+ * `null` (the whole marketplace), or a coverage with no per-sector breakdown,
+ * is the marketplace-wide census unchanged. A named scope sums just those
+ * sectors, so a filter is offered on a sector page only if it partitions THAT
+ * sector's stores.
+ */
+export function scopedCounts(
+  scope: CategoryKey[] | null,
+  coverage: DiscoveryCoverage,
+): DiscoveryCoverage {
+  const by = coverage.bySectorCounts;
+  if (!scope || !scope.length || !by) return coverage;
+  const sum: SectorCounts = { ...EMPTY_SECTOR_COUNTS };
+  for (const s of scope) {
+    const c = by[s];
+    if (!c) continue;
+    for (const k of Object.keys(sum) as (keyof SectorCounts)[]) sum[k] += c[k];
+  }
+  return { ...coverage, ...sum };
+}
+
+/** Whether a boolean filter has earned its place at the current inventory —
+ *  for the whole marketplace, or for `scope` when a page is pinned. */
 export function filterAvailability(
   key: BooleanFilterKey,
   coverage: DiscoveryCoverage,
+  scope: CategoryKey[] | null = null,
 ): FilterAvailability {
   const { count, mode } = BOOLEAN_BACKING[key];
-  const n = count(coverage);
+  const c = scopedCounts(scope, coverage);
+  const n = count(c);
   if (n <= 0) return "empty";
-  if (mode === "partition" && coverage.total > 0 && n >= coverage.total)
+  if (mode === "partition" && c.total > 0 && n >= c.total)
     return "universal";
   return "offer";
 }
@@ -244,7 +330,17 @@ const shopSearch: SearchFieldKey[] = [
   "catalogItem",
   "sectionName",
 ];
-const shopFilters: FilterKey[] = [...BASE_FILTERS, "hasCatalog", "hasOffers"];
+const shopFilters: FilterKey[] = [
+  ...BASE_FILTERS,
+  "delivers",
+  "pickup",
+  "hasCatalog",
+  "hasOffers",
+];
+
+/** Sectors that sell a visit, a session or a job: whether any price is on the
+ *  page is the first thing a buyer asks, and most such stores publish none. */
+const PRICED: FilterKey = "hasPricedServices";
 
 /** Sectors you entrust: you are buying judgement, so credentials matter more
  *  than a price list, and the practice description is the real search field. */
@@ -259,6 +355,7 @@ const trustFilters: FilterKey[] = [
   "verified",
   "registered",
   "hasCatalog",
+  PRICED,
 ];
 
 export const sectorDiscovery: Record<CategoryKey, SectorDiscovery> = {
@@ -291,32 +388,32 @@ export const sectorDiscovery: Record<CategoryKey, SectorDiscovery> = {
   },
   services: {
     search: [...BASE_SEARCH, "specialties", "catalogItem"],
-    filters: [...BASE_FILTERS, "verified", "hasCatalog"],
+    filters: [...BASE_FILTERS, "verified", "hasCatalog", PRICED],
     catalogNoun: "services",
   },
   beauty: {
     search: [...BASE_SEARCH, "catalogItem", "providerName"],
-    filters: [...BASE_FILTERS, "hasCatalog", "hasOffers"],
+    filters: [...BASE_FILTERS, "hasCatalog", "hasOffers", PRICED],
     catalogNoun: "services",
   },
   petCare: {
     search: [...BASE_SEARCH, "catalogItem", "providerName"],
-    filters: [...BASE_FILTERS, "hasCatalog"],
+    filters: [...BASE_FILTERS, "hasCatalog", PRICED],
     catalogNoun: "services",
   },
   fitness: {
     search: [...BASE_SEARCH, "catalogItem", "providerName"],
-    filters: [...BASE_FILTERS, "hasCatalog"],
+    filters: [...BASE_FILTERS, "hasCatalog", PRICED],
     catalogNoun: "classes",
   },
   sportsCourts: {
     search: [...BASE_SEARCH, "catalogItem"],
-    filters: [...BASE_FILTERS, "hasCatalog"],
+    filters: [...BASE_FILTERS, "hasCatalog", PRICED],
     catalogNoun: "classes",
   },
   education: {
     search: [...BASE_SEARCH, "catalogItem", "providerName"],
-    filters: [...BASE_FILTERS, "verified", "hasCatalog"],
+    filters: [...BASE_FILTERS, "verified", "hasCatalog", PRICED],
     catalogNoun: "courses",
   },
   hospitality: {
@@ -365,8 +462,11 @@ const FILTER_ORDER: FilterKey[] = [
   "sector",
   "region",
   "openNow",
+  "delivers",
+  "pickup",
   "hasOffers",
   "hasCatalog",
+  "hasPricedServices",
   "rated",
   "verified",
   "registered",
@@ -409,7 +509,8 @@ export function resolveFilters(
       return facetIsUseful(groupOptions(coverage));
     }
     if (key === "region") return facetIsUseful(regionOptions(coverage));
-    return filterAvailability(key, coverage) === "offer";
+    // Judged against the pinned sector's own stores when there is one.
+    return filterAvailability(key, coverage, scope) === "offer";
   });
 }
 
@@ -562,6 +663,9 @@ export type DiscoveryQuery = {
   rated: boolean;
   verified: boolean;
   registered: boolean;
+  delivers: boolean;
+  pickup: boolean;
+  hasPricedServices: boolean;
   sort: DiscoverySort;
   page: number;
 };
@@ -577,22 +681,25 @@ export const DEFAULT_QUERY: DiscoveryQuery = {
   rated: false,
   verified: false,
   registered: false,
+  delivers: false,
+  pickup: false,
+  hasPricedServices: false,
   sort: "recommended",
   page: 1,
 };
 
 /** Query-string spelling of each boolean. Short, because these end up in links
  *  people paste. */
-const BOOL_PARAM: Record<
-  "openNow" | "hasCatalog" | "hasOffers" | "rated" | "verified" | "registered",
-  string
-> = {
+const BOOL_PARAM: Record<BooleanFilterKey, string> = {
   openNow: "open",
   hasCatalog: "catalog",
   hasOffers: "offers",
   rated: "rated",
   verified: "verified",
   registered: "registered",
+  delivers: "delivery",
+  pickup: "pickup",
+  hasPricedServices: "priced",
 };
 
 type RawParams = Record<string, string | string[] | undefined>;
@@ -635,6 +742,9 @@ export function parseDiscoveryQuery(sp: RawParams): DiscoveryQuery {
     rated: truthy(sp[BOOL_PARAM.rated]),
     verified: truthy(sp[BOOL_PARAM.verified]),
     registered: truthy(sp[BOOL_PARAM.registered]),
+    delivers: truthy(sp[BOOL_PARAM.delivers]),
+    pickup: truthy(sp[BOOL_PARAM.pickup]),
+    hasPricedServices: truthy(sp[BOOL_PARAM.hasPricedServices]),
     sort: oneOf(sp.sort, DISCOVERY_SORTS) ?? "recommended",
     page:
       Number.isFinite(pageRaw) && pageRaw > 1 ? Math.floor(pageRaw) : 1,

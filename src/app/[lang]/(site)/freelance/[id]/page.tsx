@@ -2,13 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import {
-  User,
-  Check,
-  Images,
-  ExternalLink,
-  BadgeCheck,
-} from "lucide-react";
+import { User, Check, Images, ExternalLink } from "lucide-react";
 import { ChevronNext, ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
@@ -24,8 +18,12 @@ import { getUsdLbpRate } from "@/lib/data/settings";
 import { requestNow } from "@/lib/now";
 import { formatLbp } from "@/lib/currency";
 import { Card } from "@/components/ui/card";
+import { ButtonLink } from "@/components/ui/button";
+import { splitServicesByOwner } from "@/lib/professional";
 import { Badge } from "@/components/ui/badge";
 import { ContactFreelancerButton } from "@/components/contact-freelancer-button";
+import { TrustBadges } from "@/components/trust-badges";
+import { resolveProfessionalTrust } from "@/lib/trust";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -114,13 +112,37 @@ export default async function GigDetailPage({
   const gigCount = profile?.gig_count ?? 1;
 
   // Same shape the grid uses, so the cards below are the cards above.
-  const { data: relData } = await supabase.rpc("browse_gigs", {
-    p_category: gig.category,
-    p_limit: 5,
-  });
-  const related = ((relData ?? []) as unknown as BrowsedGig[])
-    .filter((g) => g.id !== gig.id)
-    .slice(0, 2);
+  //
+  // Split by owner (phase 4). browse_gigs by category returned this same
+  // person's other gigs as "related services" — with one freelancer on the
+  // platform, that was the same person presented as two more sellers. Their
+  // own services now sit under their name; "related" is other people only.
+  const [{ data: relData }, { data: ownData }] = await Promise.all([
+    supabase.rpc("browse_gigs", { p_category: gig.category, p_limit: 8 }),
+    supabase
+      .from("gigs")
+      .select("id, title, price, freelancer_id")
+      .eq("freelancer_id", gig.freelancer_id)
+      .eq("status", "active")
+      .neq("id", gig.id)
+      .order("created_at", { ascending: false })
+      .limit(6),
+  ]);
+  const related = splitServicesByOwner(
+    (relData ?? []) as unknown as (BrowsedGig & { freelancer_id: string })[],
+    gig.freelancer_id,
+    gig.id,
+  ).others.slice(0, 2);
+  const moreFromPerson = (ownData ?? []) as {
+    id: string;
+    title: string;
+    price: number | null;
+    freelancer_id: string;
+  }[];
+  const briefHref = `/${lang}/freelance/brief?to=${gig.freelancer_id}${
+    gig.category ? `&cat=${encodeURIComponent(gig.category)}` : ""
+  }`;
+  const pm = dict.proMarket;
 
   const lbpRate = await getUsdLbpRate();
   // Beirut, not UTC — "available today" has to mean the buyer's today.
@@ -180,12 +202,15 @@ export default async function GigDetailPage({
                 className="flex items-center gap-1 text-sm font-bold"
               >
                 <span className="truncate">{personName}</span>
-                {profile?.freelancer_verified && (
-                  <BadgeCheck
-                    className="h-4 w-4 shrink-0 text-primary"
-                    aria-label={t.verifiedTitle}
-                  />
-                )}
+                {/* Inside a Link, so an icon mark rather than a badge link. */}
+                <TrustBadges
+                  variant="mark"
+                  signals={resolveProfessionalTrust({
+                    identityVerified: Boolean(profile?.freelancer_verified),
+                  })}
+                  dict={dict}
+                  lang={lang}
+                />
               </span>
               <span className="block text-xs text-muted-foreground">
                 {gigCount > 1
@@ -313,14 +338,60 @@ export default async function GigDetailPage({
                 {t.ownerPreviewNote}
               </p>
             ) : (
-              <ContactFreelancerButton
-                freelancerId={gig.freelancer_id}
-                lang={lang as Locale}
-                dict={dict}
-              />
+              // «اطلب عرض» leads: the buyer describes the job once and it reaches
+              // this person as a structured brief. «راسل» is the open chat.
+              <div className="flex flex-wrap gap-2">
+                <ButtonLink href={briefHref}>{pm.requestOffer}</ButtonLink>
+                <ContactFreelancerButton
+                  freelancerId={gig.freelancer_id}
+                  lang={lang as Locale}
+                  dict={dict}
+                  label={pm.message}
+                  variant="secondary"
+                />
+              </div>
             )}
           </div>
         </Card>
+
+        {/* The same person's other services, under their name — not as
+            strangers in a "related" grid. */}
+        {moreFromPerson.length > 0 && (
+          <section className="mt-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-lg font-extrabold tracking-tight">
+                {pm.moreFrom.replace("{name}", personName)}
+              </h2>
+              <Link
+                href={`/${lang}/freelance/pro/${gig.freelancer_id}`}
+                className="inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline"
+              >
+                {pm.allServicesOf.replace("{name}", personName)}
+              </Link>
+            </div>
+            <ul className="mt-2 divide-y divide-border rounded-2xl border border-border bg-surface">
+              {moreFromPerson.map((g) => (
+                <li key={g.id}>
+                  <Link
+                    href={`/${lang}/freelance/${g.id}`}
+                    className="flex min-h-11 min-w-0 items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-surface-muted"
+                  >
+                    <span className="min-w-0 truncate text-sm font-semibold">{g.title}</span>
+                    <span className="flex shrink-0 items-center gap-1 text-sm">
+                      {g.price != null && (
+                        <>
+                          <span className="text-xs text-muted-foreground">{t.from}</span>
+                          <bdi className="font-bold text-primary">{money(Number(g.price))}</bdi>
+                        </>
+                      )}
+                      <ChevronNext className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Work samples gallery — the strongest signal a service listing has. */}
         {Array.isArray(gig.gallery) && gig.gallery.length > 0 && (
@@ -363,7 +434,7 @@ export default async function GigDetailPage({
         {related.length > 0 && (
           <div className="mt-10">
             <h2 className="text-lg font-extrabold tracking-tight">
-              {t.relatedTitle}
+              {pm.relatedOthers}
             </h2>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {related.map((g) => (
@@ -387,11 +458,17 @@ export default async function GigDetailPage({
           it. Here it is in reach from anywhere in the listing. Desktop keeps the
           inline button; a bar there would be noise. */}
       {!isOwn && (
-        <div className="sticky bottom-0 z-30 border-t border-border bg-surface/95 p-3 backdrop-blur-sm sm:hidden">
+        <div className="sticky bottom-0 z-30 flex gap-2 border-t border-border bg-surface/95 p-3 backdrop-blur-sm sm:hidden">
+          <ButtonLink href={briefHref} className="flex-1">
+            {pm.requestOffer}
+          </ButtonLink>
           <ContactFreelancerButton
             freelancerId={gig.freelancer_id}
             lang={lang as Locale}
             dict={dict}
+            label={pm.message}
+            variant="secondary"
+            className="flex-1"
           />
         </div>
       )}
