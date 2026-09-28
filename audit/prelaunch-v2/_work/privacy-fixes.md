@@ -269,3 +269,8 @@ P2-PRIV-04|P2|privacy|(DB) orders, /merchant/[storeId]/orders|all|Merchant inter
 P1-JOBS-08|P1|jobs|/jobs/[id]|all|Applications to closed, deleted or expired jobs accepted via the API|job_applications_insert checked only applicant_id|WITH CHECK requires job active, not deleted, deadline >= Beirut today; form shows "Applications closed" on 42501|supabase/migrations/0314_privacy_hardening.sql|written-not-applied|closed/expired job accepts|refused 42501|deadline day itself stays open
 P2-MARKET-CROSSPOST|P2|market|/merchant/[storeId]/items (product form)|all|Product cross-posted to the Sunday Market without a category (7 of 10 live cross-posts)|product-form inserted listings with no category_id|Form asks for a market category (required select, checked before the product is saved); buildCrossPostListing() adds category_id; no sector mapping (categories are item types)|src/components/product-form.tsx|fixed|listing without category|category required|7 existing listings left for a moderator
 ```
+
+
+## Deploy order (verified 2026-09-28)
+
+0314 must be applied AFTER this branch is deployed, not before. Running the column-grant guard test against the live main code (7f74d0f) fails: main still reads private stores columns (tax_no, legal_name, legal_address, commercial_reg_no, invoice_prefix, status_reason, status_changed_by) on the merchant dashboard, settings, invoice and admin stores pages, and the public store page reads store_verifications.number / verify_url as anon. With 0314 applied, those queries fail with 42501. The branch code works with and without 0314, so: deploy → apply 0314 immediately after. 0315 is additive and safe at any time.
