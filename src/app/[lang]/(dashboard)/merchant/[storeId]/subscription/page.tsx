@@ -188,7 +188,7 @@ export default async function StoreSubscriptionPage({
               <Crown className="h-5 w-5 text-accent" />
               {t.upgradeTitle}
             </h2>
-            <p className="mt-2 text-sm text-warning/80">{t.upgradeBody}</p>
+            <p className="mt-2 text-sm text-warning/80">{planCopy(t.upgradeBody)}</p>
             <p className="mt-3 flex items-baseline gap-2">
               <span className="text-3xl font-extrabold text-warning">
                 ${PRO_PRICE_MONTHLY}

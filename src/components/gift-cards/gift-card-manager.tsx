@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Ban, Check, Copy, Gift, MessageCircle, Printer } from "lucide-react";
+import { Ban, Check, Copy, Gift, MessageCircle, Printer, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { notifyError, notifySuccess } from "@/lib/notify";
@@ -401,6 +401,27 @@ function CardRow({
     router.refresh();
   }
 
+  // A balance link that went to the wrong person, or was posted somewhere: a
+  // fresh token (0316) makes the old /gift/<token> 404. The CODE is untouched —
+  // it is the spending credential, and a leaked code is what "void" is for.
+  async function rotateLink() {
+    const ok = await confirm({
+      message: t.confirmRotate,
+      confirmLabel: t.rotateLink,
+      cancelLabel: dict.loyaltyCards.common.cancel,
+    });
+    if (!ok) return;
+    setBusy(true);
+    const { error } = await createClient().rpc("rotate_gift_card_link", { p_id: card.id });
+    setBusy(false);
+    if (error) {
+      notifyError(t.errors[giftErrorKey(error.message)]);
+      return;
+    }
+    notifySuccess(t.rotated);
+    router.refresh();
+  }
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(link);
@@ -468,6 +489,15 @@ function CardRow({
         >
           {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
           {copied ? dict.loyaltyCards.common.copied : dict.loyaltyCards.common.copy}
+        </button>
+        <button
+          type="button"
+          onClick={rotateLink}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-bold hover:border-primary/40 disabled:opacity-60"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          {t.rotateLink}
         </button>
         {card.status === "active" && (
           <button

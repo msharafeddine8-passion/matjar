@@ -11,6 +11,7 @@ import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
 import { formatUsd } from "@/lib/currency";
 import { SITE_URL } from "@/lib/site";
+import { beirutToday } from "@/lib/quick-panel";
 import {
   PosTerminal,
   type PosProduct,
@@ -74,8 +75,9 @@ export default async function StorePosPage({
     if (!(perms.orders ?? false)) redirect(`/${lang}/merchant/${storeId}`);
   }
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
+  // Beirut's day, not the server's: on Vercel setHours(0) is UTC midnight, so
+  // a sale rung up between 00:00 and 03:00 Beirut used to count as yesterday.
+  const startOfToday = beirutToday(new Date()).start;
   const [
     { data: productsData },
     { data: customersData },

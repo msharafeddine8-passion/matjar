@@ -17,7 +17,9 @@ export function JobApplyForm({
 }: {
   jobId: string;
   lang: Locale;
-  dict: Dictionary;
+  /** Only the two namespaces the form reads: this is a client component, and
+   *  the whole dictionary would ride along in every job page's payload. */
+  dict: Pick<Dictionary, "jobs" | "auth">;
   applied: boolean;
 }) {
   const router = useRouter();

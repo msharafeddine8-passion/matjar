@@ -8,6 +8,7 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { notifyError } from "@/lib/notify";
+import { beirutYmd } from "@/lib/quick-panel";
 
 type Unit = {
   unit_id: string;
@@ -42,7 +43,7 @@ export function StaySearch({
   dict: Dictionary;
 }) {
   const t = dict.stay;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = beirutYmd(new Date());
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(2);

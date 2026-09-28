@@ -5,6 +5,7 @@ import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { fetchStorePrivateFields } from "@/lib/store-private";
+import { beirutToday } from "@/lib/quick-panel";
 import { Container } from "@/components/ui/container";
 import { PushNotice } from "@/components/push-notice";
 import { StoreStatusNotice } from "@/components/store-status-notice";
@@ -74,8 +75,8 @@ export default async function MerchantPage({
       .from("bookings")
       .select("id", { count: "exact", head: true })
       .in("store_id", storeIds);
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    // Beirut's midnight; setHours(0) on the server was UTC midnight (03:00 here).
+    const startOfDay = beirutToday(new Date()).start;
     const orders = (ordersData ?? []) as {
       total: number;
       status: string;

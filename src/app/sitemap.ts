@@ -4,6 +4,7 @@ import { createPublicClient } from "@/lib/supabase/public-client";
 import { getAcademyGuides } from "@/lib/data/academy";
 import { getSectionSupply } from "@/lib/data/section-supply";
 import { getDiscoveryCoverage } from "@/lib/data/discovery";
+import { beirutYmd } from "@/lib/quick-panel";
 import {
   ALWAYS_INDEXED_PATHS,
   GATED_SECTION_PATHS,
@@ -116,7 +117,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .is("deleted_at", null)
         .limit(ROWS),
       // jobs/gigs/wholesale/leaders have no updated_at column — id/slug only.
-      supabase.from("job_postings").select("id").eq("status", "active").limit(ROWS),
+      // The board's own predicate: a deleted posting, or one past its deadline,
+      // is a 404-or-closed page a crawler should not be sent to.
+      supabase
+        .from("job_postings")
+        .select("id")
+        .eq("status", "active")
+        .is("deleted_at", null)
+        .or(`apply_deadline.is.null,apply_deadline.gte.${beirutYmd(new Date())}`)
+        .limit(ROWS),
       supabase.from("gigs").select("id").eq("status", "active").limit(ROWS),
       supabase
         .from("wholesale_products")

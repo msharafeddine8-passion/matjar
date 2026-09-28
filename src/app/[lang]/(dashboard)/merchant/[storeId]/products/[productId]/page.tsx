@@ -13,6 +13,7 @@ import {
   type ProductInitial,
 } from "@/components/product-edit-form";
 import { unitPricingValue } from "@/lib/unit-pricing";
+import { beirutYmd } from "@/lib/quick-panel";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -143,8 +144,7 @@ export default async function EditProductPage({
     stock: product.stock != null ? String(product.stock) : "",
     sectionId: (product.section_id as string | null) ?? "",
     dealToday:
-      (product.deal_date as string | null) ===
-      new Date().toISOString().slice(0, 10),
+      (product.deal_date as string | null) === beirutYmd(new Date()),
     flashPrice: product.flash_price != null ? String(product.flash_price) : "",
     flashStart: (product.flash_start as string | null) ?? "",
     flashEnd: (product.flash_end as string | null) ?? "",

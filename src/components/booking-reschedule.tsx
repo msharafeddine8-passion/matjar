@@ -6,6 +6,7 @@ import { CalendarClock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { beirutYmd } from "@/lib/quick-panel";
 
 // Move a booking to a new date/time via reschedule_booking (0175): the server
 // re-runs the same conflict rules as placing, so a taken slot is refused.
@@ -71,7 +72,7 @@ export function BookingReschedule({
       <input
         type="date"
         value={date}
-        min={new Date().toISOString().slice(0, 10)}
+        min={beirutYmd(new Date())}
         onChange={(e) => setDate(e.target.value)}
         className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs outline-none focus:border-primary"
       />

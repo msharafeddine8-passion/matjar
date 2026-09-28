@@ -3,6 +3,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public-client";
 import { MIN_NAV_ITEMS, hasEnough } from "@/lib/rail";
+import { beirutYmd } from "@/lib/quick-panel";
 
 // Whether a whole SECTION has enough behind it to be worth linking to.
 //
@@ -60,14 +61,37 @@ const countSections = unstable_cache(
       return count ?? 0;
     };
 
+    // Jobs and the market carry more than a status: the board drops deleted
+    // postings and ones past their deadline (jobs/(index) liveJobs), and a
+    // seller's delete is a soft delete since 0313. Counting status alone kept
+    // a section linked on the strength of rows its own page will not show.
+    const today = beirutYmd(new Date());
+    const liveJobs = async (): Promise<number> => {
+      const { count } = await supabase
+        .from("job_postings")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active")
+        .is("deleted_at", null)
+        .or(`apply_deadline.is.null,apply_deadline.gte.${today}`);
+      return count ?? 0;
+    };
+    const liveListings = async (): Promise<number> => {
+      const { count } = await supabase
+        .from("listings")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active")
+        .is("deleted_at", null);
+      return count ?? 0;
+    };
+
     const [crafts, jobs, freelance, wholesale, delivery, market] =
       await Promise.all([
         n("craft_providers", "status", "active"),
-        n("job_postings", "status", "active"),
+        liveJobs(),
         n("gigs", "status", "active"),
         n("wholesale_products", "status", "active"),
         n("delivery_companies", "is_active", true),
-        n("listings", "status", "active"),
+        liveListings(),
       ]);
 
     return { crafts, jobs, freelance, wholesale, delivery, market };

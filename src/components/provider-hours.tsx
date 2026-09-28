@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { fieldClass } from "@/components/ui/field";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { beirutYmd } from "@/lib/quick-panel";
 
 export type HourRule = {
   id: string;
@@ -229,7 +230,7 @@ export function ProviderHours({
           <input
             type="date"
             value={blockDate}
-            min={new Date().toISOString().slice(0, 10)}
+            min={beirutYmd(new Date())}
             onChange={(e) => setBlockDate(e.target.value)}
             className="rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary"
           />
