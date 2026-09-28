@@ -172,3 +172,17 @@ npx vitest run              →  Test Files  59 passed (59)
   (new: import-mapping.test.ts + quick-panel.test.ts = 71 tests)
 npm run check:migrations    →  PASS — no NEW violation. Every live SECURITY DEFINER function outside the baseline says who may execute it and pins search_path = ''.
 ```
+
+
+## Applied to production (2026-09-28)
+
+Rolled-back run first (migration + fixtures + assertions in one uncommitted transaction), a follow-up read confirmed nothing persisted, then apply_migration:
+
+| migration | checks |
+|---|---|
+| 0310 loyalty & gift cards | 113 / 113 |
+| 0311 import | 22 / 22 |
+| 0312 attribution & events | 55 / 55 |
+| 0313 market moderation & review trust | 51 / 51 |
+
+After apply: existing loyalty_ledger rows unchanged (5), orders (7) and listings (12) unchanged, 2 of 5 store reviews now verified_purchase (both backed by a completed purchase), 0 product reviews lost their flag. Supabase security advisor: no finding names any new object.

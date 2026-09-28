@@ -113,3 +113,17 @@ P2-MARKET-10|P2|market|/merchant/[storeId]/products|retail|Merchant cross-post i
 P3-MARKET-11|P3|market|—|all|Phone verification|no SMS gateway, no OTP mechanism (zero-cost)|Documented; not faked|—|not-feasible|—|—|—
 P3-MARKET-12|P3|market|/account|all|Renew can bump an active listing to the top any number of times|no cooldown|0313 clamps created_at to now(); cooldown is a product call|supabase/migrations/0313_market_moderation.sql|partial|any date|now() only|—
 ```
+
+
+## Applied to production (2026-09-28)
+
+Rolled-back run first (migration + fixtures + assertions in one uncommitted transaction), a follow-up read confirmed nothing persisted, then apply_migration:
+
+| migration | checks |
+|---|---|
+| 0310 loyalty & gift cards | 113 / 113 |
+| 0311 import | 22 / 22 |
+| 0312 attribution & events | 55 / 55 |
+| 0313 market moderation & review trust | 51 / 51 |
+
+After apply: existing loyalty_ledger rows unchanged (5), orders (7) and listings (12) unchanged, 2 of 5 store reviews now verified_purchase (both backed by a completed purchase), 0 product reviews lost their flag. Supabase security advisor: no finding names any new object.

@@ -158,3 +158,17 @@ PASS — no NEW violation. Every live SECURITY DEFINER function outside the base
    * A POS sale paid partly by gift card still has `pos_sales.payment_method = 'cash'`. The card part lives in `gift_card_redemptions`, so "cash taken today" on the POS screen overstates cash by the gift-card amounts.
    * A cancelled order that is later reactivated is due in full; its card credit was already returned.
    * Card links cannot be rotated yet. There is no revoke, unlike the 0307 statement links.
+
+
+## Applied to production (2026-09-28)
+
+Rolled-back run first (migration + fixtures + assertions in one uncommitted transaction), a follow-up read confirmed nothing persisted, then apply_migration:
+
+| migration | checks |
+|---|---|
+| 0310 loyalty & gift cards | 113 / 113 |
+| 0311 import | 22 / 22 |
+| 0312 attribution & events | 55 / 55 |
+| 0313 market moderation & review trust | 51 / 51 |
+
+After apply: existing loyalty_ledger rows unchanged (5), orders (7) and listings (12) unchanged, 2 of 5 store reviews now verified_purchase (both backed by a completed purchase), 0 product reviews lost their flag. Supabase security advisor: no finding names any new object.
