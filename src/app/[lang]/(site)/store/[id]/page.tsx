@@ -236,7 +236,11 @@ export default async function StorePage({
             // the admin review queue, not the storefront. Leaving it out of the
             // query means it never reaches the browser at all, rather than
             // being fetched and then simply not drawn.
-            "id, kind, title, issuer, number, issued_on, expires_on, verify_url, status",
+            // number and verify_url are left out for the same reason (0314,
+            // P2-PRIV-03): a shopper needs the claim, who issued it and
+            // whether an admin checked it — not the licence number. anon's
+            // column grant is exactly this list (VERIFICATION_ANON_COLUMNS).
+            "id, kind, title, issuer, issued_on, expires_on, status",
           )
           .eq("store_id", id)
           .neq("status", "rejected")

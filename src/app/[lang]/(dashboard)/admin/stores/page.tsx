@@ -10,12 +10,17 @@ import {
   warnIfTruncated,
 } from "@/lib/data/bounds";
 import { toCategoryKey } from "@/lib/catalog";
+import { EMPTY_PRIVATE_FIELDS, fetchStorePrivateFields } from "@/lib/store-private";
 import {
   PRIMARY_ENTITY_SECTORS,
   validateStorePublic,
 } from "@/lib/data-quality";
 import { AdminStoresClient, type AdminStore } from "@/components/admin-stores-client";
 
+// commercial_reg_no, status_reason and status_changed_by are not on this row:
+// 0314 revokes them from every client role, and they arrive through
+// store_private_fields() (admin_can('stores') sees all three) — see
+// src/lib/store-private.ts.
 type StoreRow = {
   id: string;
   name: string;
@@ -32,11 +37,8 @@ type StoreRow = {
   plan: "free" | "basic" | "pro" | "business";
   is_verified: boolean;
   featured_until: string | null;
-  commercial_reg_no: string | null;
   commercial_reg_verified: boolean;
-  status_reason: string | null;
   status_changed_at: string | null;
-  status_changed_by: string | null;
   business_types: { slug: string; name_ar: string; name_en: string } | null;
 };
 
@@ -70,7 +72,7 @@ export default async function AdminStoresPage({
         .select(
           // area … cover_url and the type slug feed the data quality column
           // (lib/data-quality.ts); nothing else on this screen reads them.
-          "id, name, owner_id, region, area, service_area, phone, whatsapp, description, logo_url, cover_url, status, plan, is_verified, featured_until, commercial_reg_no, commercial_reg_verified, status_reason, status_changed_at, status_changed_by, business_types(slug, name_ar, name_en)",
+          "id, name, owner_id, region, area, service_area, phone, whatsapp, description, logo_url, cover_url, status, plan, is_verified, featured_until, commercial_reg_verified, status_changed_at, business_types(slug, name_ar, name_en)",
         )
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -79,6 +81,11 @@ export default async function AdminStoresPage({
     FETCH_BOUNDS.adminStores,
     "stores (admin roster)",
   );
+  const privateFields = await fetchStorePrivateFields(
+    supabase,
+    rows.map((r) => r.id),
+  );
+  const priv = (id: string) => privateFields.get(id) ?? EMPTY_PRIVATE_FIELDS;
 
   // Catalogue size per store, for the "no offerings" flag. One bounded read of
   // store ids rather than a count per store; the same ceiling discovery.ts
@@ -103,7 +110,9 @@ export default async function AdminStoresPage({
   const peopleIds = [
     ...new Set([
       ...rows.map((r) => r.owner_id),
-      ...rows.map((r) => r.status_changed_by).filter((id): id is string => !!id),
+      ...rows
+        .map((r) => priv(r.id).status_changed_by)
+        .filter((id): id is string => !!id),
     ]),
   ];
   const ownerMap = new Map<string, string>();
@@ -153,6 +162,7 @@ export default async function AdminStoresPage({
       },
       { sector },
     );
+    const p = priv(r.id);
     return {
     id: r.id,
     name: r.name,
@@ -162,14 +172,14 @@ export default async function AdminStoresPage({
     quality: { level: quality.level, issues: quality.issues.map((i) => i.code) },
     isVerified: r.is_verified,
     featuredUntil: r.featured_until,
-    commercialRegNo: r.commercial_reg_no,
+    commercialRegNo: p.commercial_reg_no,
     commercialRegVerified: r.commercial_reg_verified,
     // NULL stays NULL all the way to the screen. Nothing here invents a reason
     // for the 20 stores suspended before there was anywhere to write one.
-    statusReason: r.status_reason,
+    statusReason: p.status_reason,
     statusChangedAt: r.status_changed_at,
-    statusChangedByName: r.status_changed_by
-      ? (ownerMap.get(r.status_changed_by) ?? null)
+    statusChangedByName: p.status_changed_by
+      ? (ownerMap.get(p.status_changed_by) ?? null)
       : null,
     typeName: r.business_types
       ? lang === "ar"

@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { FileText, ImagePlus, Loader2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { hasNativeCamera, pickNativeImage } from "@/lib/native";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -92,14 +92,16 @@ export function ImageUpload({
   aspect,
   objectPosition,
   dict,
+  privateBucket,
 }: {
   folder: string;
   value: string | null;
   onChange: (url: string | null) => void;
   label: string;
   /**
-   * Shown under the label, before anything is picked. Every file this uploads
-   * goes to the `store-assets` bucket, which is public — so where that is not
+   * Shown under the label, before anything is picked. Unless `privateBucket`
+   * is set, every file this uploads goes to the `store-assets` bucket, which
+   * is public — so where that is not
    * obvious from the field itself, say so here rather than letting someone
    * find out afterwards.
    */
@@ -115,11 +117,25 @@ export function ImageUpload({
   objectPosition?: string;
   /** Optional — enables localized error text; falls back to Arabic if omitted. */
   dict?: Dictionary;
+  /**
+   * Upload to this PRIVATE bucket instead of the public store-assets one.
+   * `value` / `onChange` then carry the object PATH (`<folder>/<random>.<ext>`),
+   * never a URL — there is no public URL to give. The preview is drawn from the
+   * picked file itself. Used for verification documents (0314, P1-PRIV-02).
+   */
+  privateBucket?: "verification-docs";
 }) {
   const box = aspect ? `${aspect} w-full` : "h-32 w-full";
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Local object URL of the last picked file (private mode only).
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
 
   const tooLargeMsg =
     dict?.upload?.tooLarge ?? "الصورة كبيرة جدًّا. جرّب صورة أصغر.";
@@ -139,6 +155,19 @@ export function ImageUpload({
     const supabase = createClient();
     const ext = file.name.split(".").pop() ?? "jpg";
     const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+    if (privateBucket) {
+      const { error: privErr } = await supabase.storage
+        .from(privateBucket)
+        .upload(path, file, { contentType: file.type || undefined, upsert: false });
+      if (privErr) {
+        setError(failedMsg);
+      } else {
+        setPreview(URL.createObjectURL(file));
+        onChange(path);
+      }
+      setUploading(false);
+      return;
+    }
     const { error: upErr } = await supabase.storage
       .from("store-assets")
       .upload(path, file, { cacheControl: "3600", upsert: false });
@@ -183,14 +212,33 @@ export function ImageUpload({
       <div className="mt-1.5">
         {value ? (
           <div className={`relative ${box} overflow-hidden rounded-xl border border-border`}>
-            <Image
-              src={value}
-              alt=""
-              fill
-              className="object-cover"
-              style={objectPosition ? { objectPosition } : undefined}
-              sizes="400px"
-            />
+            {privateBucket ? (
+              // A private path is not a URL. Draw the picked file if we still
+              // have it; otherwise a neutral document mark.
+              preview ? (
+                <Image
+                  src={preview}
+                  alt=""
+                  fill
+                  unoptimized
+                  className="object-cover"
+                  sizes="400px"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center bg-surface-muted text-muted-foreground">
+                  <FileText className="h-8 w-8" />
+                </span>
+              )
+            ) : (
+              <Image
+                src={value}
+                alt=""
+                fill
+                className="object-cover"
+                style={objectPosition ? { objectPosition } : undefined}
+                sizes="400px"
+              />
+            )}
             <button
               type="button"
               onClick={() => onChange(null)}

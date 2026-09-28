@@ -5,18 +5,24 @@ import { useRouter } from "next/navigation";
 import { StickyNote, Pencil, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import { saveStaffNote } from "@/lib/order-staff-note";
 
-// Internal, staff-only note on an order (orders.store_note). Merchants can jot a
-// handling reminder ("call before delivery", "gift wrap") that customers never
-// see. The write goes straight through RLS — the orders_update policy already
-// lets the owner or staff with the 'orders' permission edit their store's rows.
+// Internal, staff-only note on an order. Merchants can jot a handling reminder
+// ("call before delivery", "gift wrap") that customers never see — and, from
+// 0314, cannot read through the API either: the note lives in
+// order_staff_notes (staff_can(store, 'orders') only) instead of
+// orders.store_note, which the ordering customer's own row exposed. The save
+// falls back to the old column while 0314 is not applied
+// (src/lib/order-staff-note.ts).
 export function OrderNoteEditor({
   orderId,
+  storeId,
   note,
   labels,
   errorLabel,
 }: {
   orderId: string;
+  storeId: string;
   note: string | null;
   labels: {
     title: string;
@@ -35,14 +41,14 @@ export function OrderNoteEditor({
 
   async function save() {
     if (busy) return;
-    const next = value.trim();
     setBusy(true);
-    const { error } = await createClient()
-      .from("orders")
-      .update({ store_note: next || null })
-      .eq("id", orderId);
+    const ok = await saveStaffNote(createClient(), {
+      orderId,
+      storeId,
+      note: value,
+    });
     setBusy(false);
-    if (error) {
+    if (!ok) {
       notifyError(errorLabel);
       return;
     }

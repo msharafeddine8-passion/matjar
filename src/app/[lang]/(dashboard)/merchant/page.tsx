@@ -4,6 +4,7 @@ import { Plus, Store as StoreIcon } from "lucide-react";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { fetchStorePrivateFields } from "@/lib/store-private";
 import { Container } from "@/components/ui/container";
 import { PushNotice } from "@/components/push-notice";
 import { StoreStatusNotice } from "@/components/store-status-notice";
@@ -40,16 +41,27 @@ export default async function MerchantPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/${lang}/login`);
 
+  // status_reason is not in these selects: 0314 revokes it from every client
+  // role, and it arrives through store_private_fields(), which gives it to the
+  // owner (and an admin) only — see src/lib/store-private.ts.
   const { data } = await supabase
     .from("stores")
     .select(
-      "id, name, status, area, status_reason, status_changed_at, business_types(name_ar, name_en)",
+      "id, name, status, area, status_changed_at, business_types(name_ar, name_en)",
     )
     .eq("owner_id", user.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
-  const stores = (data ?? []) as unknown as StoreRow[];
+  const ownRows = (data ?? []) as unknown as Omit<StoreRow, "status_reason">[];
+  const ownPrivate = await fetchStorePrivateFields(
+    supabase,
+    ownRows.map((s) => s.id),
+  );
+  const stores: StoreRow[] = ownRows.map((s) => ({
+    ...s,
+    status_reason: ownPrivate.get(s.id)?.status_reason ?? null,
+  }));
 
   const storeIds = stores.map((s) => s.id);
   let stats = { today: 0, total: 0, sales: 0, pending: 0, bookings: 0 };
@@ -100,11 +112,15 @@ export default async function MerchantPage({
     const { data: ss } = await supabase
       .from("stores")
       .select(
-        "id, name, status, area, status_reason, status_changed_at, business_types(name_ar, name_en)",
+        "id, name, status, area, status_changed_at, business_types(name_ar, name_en)",
       )
       .in("id", extraIds)
       .is("deleted_at", null);
-    staffStores = (ss ?? []) as unknown as StoreRow[];
+    // A staff member is not told the admin's reason (the getter returns it to
+    // the owner only), so the notice falls back to its generic wording.
+    staffStores = ((ss ?? []) as unknown as Omit<StoreRow, "status_reason">[]).map(
+      (s) => ({ ...s, status_reason: null }),
+    );
   }
   const allStores = [...stores, ...staffStores];
 

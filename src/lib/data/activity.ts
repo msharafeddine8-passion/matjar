@@ -1,190 +1,172 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import {
+  normaliseActivity,
+  countNeedingCustomer as countPure,
+  type ActivityItem,
+  type RawActivity,
+} from "@/lib/activity";
 
-// Everything the customer started, in one place.
+// Everything the customer started, in one place — the fetching half.
 //
-// Matjar creates four kinds of customer transaction and, until now, each lived
-// at its own route behind Account. A marketplace where the customer cannot
-// answer "where is my thing?" in one tap is a catalogue.
+// The decisions (what a row is called, whether it is the customer's move,
+// what "again" means) live in lib/activity.ts, which is pure and tested. This
+// file only reads, and only the caller's own rows: every table below has an
+// RLS policy that returns a customer exactly their own rows (customer_id /
+// applicant_id / seller_id = auth.uid()), and every query ALSO filters on the
+// caller's id, so a merchant who is also a customer does not get their
+// store's rows mixed into their personal list.
 //
-// Deliberately NOT merged into a single status vocabulary: "قيد التحضير" on a
-// food order and "عم يشتغل" on a plumber are different promises, and flattening
-// them into one pill is how a customer ends up believing a booking is an order.
-// Each row keeps its own domain wording and carries its type with it.
+// One round trip per kind, all in parallel, no per-row follow-ups: names come
+// in through embedded selects, and "already reviewed" is one extra read of
+// the customer's own store reviews plus an embed on craft_reviews.
+//
+// Leads: until migration 0315 is applied the customer has no SELECT on
+// `leads` (0190/0198 gave it to store staff only), so that read returns []
+// and the inquiries tab simply does not appear — the same as before. It does
+// not error.
 
-export type ActivityKind = "order" | "booking" | "craft" | "lead";
+export type { ActivityItem, ActivityKind } from "@/lib/activity";
 
-export type ActivityItem = {
-  id: string;
-  kind: ActivityKind;
-  storeName: string;
-  /** Deep link to the existing detail screen for this kind. */
-  href: string;
-  title: string;
-  status: string;
-  createdAt: string;
-  /** Raw `lead_kind`, leads only — the row's only description when the customer
-   *  sent no message. Carried raw so the SCREEN can translate it; this module
-   *  stays data-only and the site layout can keep calling it just to count
-   *  badges without pulling the whole dictionary in behind it. */
-  leadKind: string | null;
-  /** Money, where the transaction has any. Bookings and leads usually don't. */
-  total: number | null;
-  /** True when the ball is in the CUSTOMER's court — drives the tab badge. */
-  needsCustomer: boolean;
-};
+/** Rows per kind. One screen of history per kind, not an archive. */
+const PER_KIND = 50;
 
-export async function getCustomerActivity(
-  lang: string,
-): Promise<ActivityItem[]> {
+async function fetchCustomerActivity(lang: string): Promise<ActivityItem[]> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return [];
+  const uid = user.id;
 
-  // Four independent reads rather than a view: each table has its own RLS and
-  // its own shape, and a union view would need a security definer wrapper for
-  // no gain at this size.
-  const [orders, bookings, crafts, leads] = await Promise.all([
+  const [
+    orders,
+    bookings,
+    stays,
+    rentals,
+    tickets,
+    services,
+    crafts,
+    leads,
+    jobs,
+    listings,
+    reviews,
+  ] = await Promise.all([
     supabase
       .from("orders")
-      .select("id, status, total, created_at, stores(name)")
-      .eq("customer_id", user.id)
+      .select("id, status, total, created_at, updated_at, store_id, stores(name)")
+      .eq("customer_id", uid)
       .order("created_at", { ascending: false })
-      .limit(50),
+      .limit(PER_KIND),
     supabase
       .from("bookings")
       .select(
-        "id, status, service_name, requested_date, created_at, stores(name)",
+        "id, status, service_name, requested_date, created_at, store_id, product_id, stores(name)",
       )
-      .eq("customer_id", user.id)
+      .eq("customer_id", uid)
       .order("created_at", { ascending: false })
-      .limit(50),
+      .limit(PER_KIND),
+    supabase
+      .from("stay_bookings")
+      .select(
+        "id, status, check_in, check_out, grand_total, created_at, store_id, stores(name), accommodation_units(name, name_en)",
+      )
+      .eq("customer_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(PER_KIND),
+    supabase
+      .from("rental_bookings")
+      .select(
+        "id, status, pickup_date, return_date, grand_total, created_at, store_id, stores(name), rental_vehicles(name, name_en)",
+      )
+      .eq("customer_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(PER_KIND),
+    supabase
+      .from("event_tickets")
+      .select(
+        "id, status, quantity, created_at, store_id, stores(name), event_ticket_types(name, name_en)",
+      )
+      .eq("customer_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(PER_KIND),
+    supabase
+      .from("service_requests")
+      .select(
+        "id, status, description, quote_amount, counter_amount, created_at, store_id, stores(name)",
+      )
+      .eq("customer_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(PER_KIND),
     supabase
       .from("craft_requests")
-      .select("id, status, description, created_at, craft_providers(name)")
-      .eq("customer_id", user.id)
+      .select(
+        "id, status, description, created_at, provider_id, craft_providers(name), craft_reviews(id)",
+      )
+      .eq("customer_id", uid)
       .order("created_at", { ascending: false })
-      .limit(50),
+      .limit(PER_KIND),
     supabase
       .from("leads")
-      .select("id, status, kind, message, created_at, stores(name)")
-      .eq("customer_id", user.id)
+      .select("id, status, kind, message, created_at, store_id, stores(name)")
+      .eq("customer_id", uid)
       .order("created_at", { ascending: false })
-      .limit(50),
+      .limit(PER_KIND),
+    supabase
+      .from("job_applications")
+      .select("id, created_at, job_id, job_postings(title, company_name)")
+      .eq("applicant_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(PER_KIND),
+    supabase
+      .from("listings")
+      .select("id, status, title, price, created_at, updated_at")
+      .eq("seller_id", uid)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(PER_KIND),
+    // Store reviews are one per customer per store (no order id), so "this
+    // order still wants a review" means "you have not reviewed this store".
+    supabase
+      .from("reviews")
+      .select("store_id")
+      .eq("customer_id", uid)
+      .is("deleted_at", null)
+      .limit(200),
   ]);
 
-  const out: ActivityItem[] = [];
+  // A failed read of one kind drops that kind, never the whole screen.
+  const rows = <T,>(r: { data: unknown; error: unknown }): T[] =>
+    r.error ? [] : ((r.data ?? []) as T[]);
 
-  for (const o of (orders.data ?? []) as unknown as {
-    id: string;
-    status: string;
-    total: number;
-    created_at: string;
-    stores: { name: string } | null;
-  }[]) {
-    out.push({
-      id: o.id,
-      kind: "order",
-      storeName: o.stores?.name ?? "",
-      href: `/${lang}/orders/${o.id}`,
-      title: `#${o.id.slice(0, 8)}`,
-      status: o.status,
-      createdAt: o.created_at,
-      leadKind: null,
-      total: Number(o.total ?? 0),
-      // A finished order the customer hasn't reviewed is still "theirs to do".
-      needsCustomer: o.status === "completed",
-    });
-  }
+  const raw: RawActivity = {
+    orders: rows(orders),
+    bookings: rows(bookings),
+    stays: rows(stays),
+    rentals: rows(rentals),
+    tickets: rows(tickets),
+    services: rows(services),
+    crafts: rows(crafts),
+    leads: rows(leads),
+    jobs: rows(jobs),
+    listings: rows(listings),
+    reviewedStoreIds: rows<{ store_id: string }>(reviews).map((r) => r.store_id),
+  };
 
-  for (const b of (bookings.data ?? []) as unknown as {
-    id: string;
-    status: string;
-    service_name: string | null;
-    requested_date: string | null;
-    created_at: string;
-    stores: { name: string } | null;
-  }[]) {
-    out.push({
-      id: b.id,
-      kind: "booking",
-      storeName: b.stores?.name ?? "",
-      // The appointment, not the pile of appointments (MP-023). Route added
-      // alongside this change; it 404s on anything that is not this customer's
-      // own booking, same as orders/[id].
-      href: `/${lang}/bookings/${b.id}`,
-      title: b.service_name ?? "",
-      status: b.status,
-      createdAt: b.created_at,
-      leadKind: null,
-      total: null,
-      // A confirmed appointment is something to show up to.
-      needsCustomer: b.status === "accepted" || b.status === "scheduled",
-    });
-  }
-
-  for (const c of (crafts.data ?? []) as unknown as {
-    id: string;
-    status: string;
-    description: string;
-    created_at: string;
-    craft_providers: { name: string } | null;
-  }[]) {
-    out.push({
-      id: c.id,
-      kind: "craft",
-      storeName: c.craft_providers?.name ?? "",
-      href: `/${lang}/crafts/requests/${c.id}`,
-      title: c.description.slice(0, 60),
-      status: c.status,
-      createdAt: c.created_at,
-      leadKind: null,
-      total: null,
-      // Finished work is waiting to be rated.
-      needsCustomer: c.status === "completed",
-    });
-  }
-
-  for (const l of (leads.data ?? []) as unknown as {
-    id: string;
-    status: string;
-    kind: string | null;
-    message: string | null;
-    created_at: string;
-    stores: { name: string } | null;
-  }[]) {
-    out.push({
-      id: l.id,
-      kind: "lead",
-      storeName: l.stores?.name ?? "",
-      // NOT /messages. create_lead() (0190) writes a lead and never opens a
-      // conversation, so that link sent the customer to a message list their
-      // inquiry was not in — checked against production: none of the real leads
-      // has a conversation with the store it was written to. /inquiries/{id} is
-      // where the inquiry actually is.
-      href: `/${lang}/inquiries/${l.id}`,
-      // The kind is NOT folded into the title any more. `lead_kind` is a
-      // Postgres enum, so a customer who tapped "request a viewing" and typed
-      // nothing got the literal string `test_drive` as their row's heading.
-      // It travels as leadKind instead, and the screen puts words on it.
-      title: (l.message ?? "").slice(0, 60),
-      status: l.status,
-      createdAt: l.created_at,
-      leadKind: l.kind,
-      total: null,
-      needsCustomer: false,
-    });
-  }
-
-  return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return normaliseActivity(raw, lang, Date.now());
 }
 
-/** What the tab badge shows: only what the customer themselves must act on.
- *  needsCustomer is already decided per domain above — an order to review, an
- *  appointment to attend, finished work to rate. Counting anything else would
- *  make the badge a number the customer cannot clear. */
+/**
+ * The customer's activity, newest first.
+ *
+ * Memoised per request with React `cache`: the site layout calls this for the
+ * tab badge on every page and the activity page calls it again for the list —
+ * one set of reads serves both.
+ */
+export const getCustomerActivity = cache(fetchCustomerActivity);
+
+/** What the tab badge shows: only what the customer themselves must act on. */
 export function countNeedingCustomer(items: ActivityItem[]): number {
-  return items.filter((i) => i.needsCustomer).length;
+  return countPure(items);
 }

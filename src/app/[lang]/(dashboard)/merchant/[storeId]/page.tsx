@@ -13,6 +13,7 @@ import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { fetchOneStorePrivateFields } from "@/lib/store-private";
 import { toCategoryKey, type CategoryKey } from "@/lib/catalog";
 import {
   getSector,
@@ -136,12 +137,14 @@ export default async function StoreOsHomePage({
       // lat/lng: the map pin is a completeness item (8 of 13 live stores have
       // none), so the coordinates ride along on the store row already fetched
       // rather than costing a second query.
-      // status_reason/status_changed_at: the owner of a suspended shop is the
-      // one person who most needs to know why and since when, and audit_logs is
-      // super-admin-only by RLS — so it rides on their own store row (0282).
+      // status_changed_at: the owner of a suspended shop is the one person who
+      // most needs to know why and since when (0282). The WHY, status_reason,
+      // is not on this row any more: 0314 revokes it from every client role and
+      // store_private_fields() hands it to the owner only (read below, and only
+      // when the shop is stopped).
       // phone/area/service_area/region: read by the public data quality gate
       // (lib/data-quality.ts) whose notes the checklist shows the owner.
-      "id, name, slug, status, accent_color, owner_id, short_code, plan, trial_ends_at, logo_url, cover_url, description, hours, whatsapp, phone, area, service_area, region, lat, lng, status_reason, status_changed_at, business_types(slug, name_ar, name_en)",
+      "id, name, slug, status, accent_color, owner_id, short_code, plan, trial_ends_at, logo_url, cover_url, description, hours, whatsapp, phone, area, service_area, region, lat, lng, status_changed_at, business_types(slug, name_ar, name_en)",
     )
     .eq("id", storeId)
     .maybeSingle();
@@ -167,7 +170,6 @@ export default async function StoreOsHomePage({
     region: string | null;
     lat: number | null;
     lng: number | null;
-    status_reason: string | null;
     status_changed_at: string | null;
     business_types: { slug: string; name_ar: string; name_en: string } | null;
   };
@@ -178,6 +180,9 @@ export default async function StoreOsHomePage({
   /** Suspended and rejected are outcomes, not waiting rooms: the merchant is
    *  owed an explanation rather than the "under review" reassurance. */
   const isStopped = s.status === "suspended" || s.status === "rejected";
+  const statusReason = isStopped
+    ? (await fetchOneStorePrivateFields(supabase, storeId)).status_reason
+    : null;
   const typeName =
     (lang === "ar" ? s.business_types?.name_ar : s.business_types?.name_en) ??
     "";
@@ -1185,7 +1190,7 @@ export default async function StoreOsHomePage({
               dict={dict}
               status={s.status as "suspended" | "rejected"}
               storeName={s.name}
-              reason={s.status_reason}
+              reason={statusReason}
               changedAt={s.status_changed_at}
               className="mt-6"
             />

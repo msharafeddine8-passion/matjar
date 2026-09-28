@@ -1,45 +1,62 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { RotateCcw } from "lucide-react";
-import type { Locale } from "@/i18n/config";
-import type { Dictionary } from "@/i18n/get-dictionary";
+import { ReorderSheet, type ActivityCopy } from "@/components/activity/reorder-sheet";
 
-// Re-adds a past order's items to the store's (persisted) cart and opens the
-// store, so the customer can review and place them again in one tap.
+// "Order again" on a past order.
+//
+// It used to overwrite the store's whole cart with the old lines, blind: items
+// since switched off, sold out, given variants (which the grid cart would then
+// charge at the base price) or turned into services all went straight back in,
+// and whatever the customer had already put in that cart was wiped. It now
+// opens the same checked reorder sheet as the activity centre — current
+// prices, what changed, what cannot come back and why — and merges into the
+// cart instead of replacing it.
 export function ReorderButton({
+  orderId,
   storeId,
-  items,
+  storeName,
   lang,
-  dict,
+  label,
+  closeLabel,
+  copy,
+  className,
 }: {
+  orderId: string;
   storeId: string;
-  items: { product_id: string | null; quantity: number }[];
-  lang: Locale;
-  dict: Dictionary;
+  storeName: string;
+  lang: string;
+  label: string;
+  closeLabel: string;
+  copy: ActivityCopy;
+  className?: string;
 }) {
-  const router = useRouter();
-
-  function reorder() {
-    const cart: Record<string, number> = {};
-    for (const it of items) {
-      if (it.product_id) cart[it.product_id] = (cart[it.product_id] ?? 0) + it.quantity;
-    }
-    try {
-      localStorage.setItem(`matjar-cart-${storeId}`, JSON.stringify(cart));
-    } catch {
-      /* ignore */
-    }
-    router.push(`/${lang}/store/${storeId}`);
-  }
+  const [open, setOpen] = useState(false);
 
   return (
-    <button
-      onClick={reorder}
-      className="inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2.5 text-sm font-bold transition-colors hover:border-primary hover:text-primary"
-    >
-      <RotateCcw className="h-4 w-4" />
-      {dict.orders.reorder}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={
+          className ??
+          "inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2.5 text-sm font-bold transition-colors hover:border-primary hover:text-primary"
+        }
+      >
+        <RotateCcw className="h-4 w-4" />
+        {label}
+      </button>
+      <ReorderSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        orderId={orderId}
+        storeId={storeId}
+        storeName={storeName}
+        lang={lang}
+        copy={copy}
+        closeLabel={closeLabel}
+      />
+    </>
   );
 }

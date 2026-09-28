@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { loadStaffNotes, pickStaffNote } from "@/lib/order-staff-note";
 import { Container } from "@/components/ui/container";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { type OrderPayment } from "@/components/order-payments";
@@ -114,7 +115,14 @@ export default async function StoreOrdersPage({
     )
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });
-  const orders = (data ?? []) as unknown as OrderRow[];
+  // The internal note lives in order_staff_notes from 0314 (the ordering
+  // customer could read orders.store_note through the API). store_note stays
+  // in the select as the pre-0314 source; after 0314 it is always NULL.
+  const staffNotes = await loadStaffNotes(supabase, storeId);
+  const orders = ((data ?? []) as unknown as OrderRow[]).map((o) => ({
+    ...o,
+    store_note: pickStaffNote(staffNotes, o.id, o.store_note),
+  }));
 
   // Assignable team (owner + staff, with names) for the per-order assignee
   // picker. One RPC — the merchant page can't read other users' profiles.

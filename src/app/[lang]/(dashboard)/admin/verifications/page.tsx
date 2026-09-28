@@ -4,6 +4,7 @@ import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdminSection } from "@/lib/admin-guard";
+import { docUrlFor, resolveDocUrls } from "@/lib/verification-docs";
 import { Container } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -47,13 +48,24 @@ export default async function AdminVerificationsPage({
 
   // Same normalisation as the merchant page: PostgREST types a one-to-one embed
   // as an array, so accept either shape and settle on one nullable object.
-  const rows = ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => {
+  const normalised = ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => {
     const embed = r.store_verification_docs;
     return {
       ...r,
       store_verification_docs: (Array.isArray(embed) ? embed[0] : embed) ?? null,
     };
   }) as unknown as VerificationRow[];
+  // The scan lives in the private verification-docs bucket (0314). Sign every
+  // path once, under this admin's session (admin_can('verifications') is what
+  // the bucket policy checks); a legacy public URL passes through unchanged.
+  const docUrls = await resolveDocUrls(
+    supabase,
+    normalised.map((r) => r.store_verification_docs?.doc_url),
+  );
+  const rows = normalised.map((r) => ({
+    ...r,
+    doc_view_url: docUrlFor(docUrls, r.store_verification_docs?.doc_url),
+  }));
   const kindLabel = (kind: string) =>
     t.kinds[kind as keyof typeof t.kinds] ?? kind;
 
@@ -114,9 +126,9 @@ export default async function AdminVerificationsPage({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-4 pt-1">
-                      {r.store_verification_docs?.doc_url && (
+                      {r.doc_view_url && (
                         <a
-                          href={r.store_verification_docs.doc_url}
+                          href={r.doc_view_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"

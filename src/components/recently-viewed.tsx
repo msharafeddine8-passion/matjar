@@ -26,35 +26,53 @@ type Row = {
   durationMinutes: number | null;
 };
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // Records the current product in localStorage and shows the previously viewed
 // ones — lightweight personalization, no account or server state needed.
+//
+// Without `currentId` (the activity centre) it only READS the list: nothing is
+// being viewed there, so nothing is recorded. `dict` is narrowed to the two
+// blocks it reads so a caller can pass a slice instead of the whole file.
 export function RecentlyViewed({
   currentId,
   lang,
   dict,
+  title,
 }: {
-  currentId: string;
+  currentId?: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "product" | "offering">;
+  /** Heading override; defaults to dict.product.recentlyViewed. */
+  title?: string;
 }) {
   const [items, setItems] = useState<Row[]>([]);
 
   useEffect(() => {
     let ids: string[] = [];
     try {
-      ids = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+      const parsed: unknown = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+      ids = Array.isArray(parsed) ? parsed : [];
     } catch {
       ids = [];
     }
-    const others = ids.filter((id) => id !== currentId).slice(0, MAX);
+    // Only ids: a hand-edited or corrupt entry must not turn the `.in()`
+    // below into a 400 that blanks the whole strip.
+    const others = ids
+      .filter((id): id is string => typeof id === "string" && UUID_RE.test(id))
+      .filter((id) => id !== currentId)
+      .slice(0, MAX);
     // Record the current product at the front for next time.
-    try {
-      localStorage.setItem(
-        KEY,
-        JSON.stringify([currentId, ...others].slice(0, MAX)),
-      );
-    } catch {
-      /* ignore */
+    if (currentId) {
+      try {
+        localStorage.setItem(
+          KEY,
+          JSON.stringify([currentId, ...others].slice(0, MAX)),
+        );
+      } catch {
+        /* ignore */
+      }
     }
     if (others.length === 0) return;
 
@@ -114,7 +132,7 @@ export function RecentlyViewed({
     <section className="mt-12">
       <h2 className="mb-4 flex items-center gap-2 text-xl font-bold">
         <History className="h-5 w-5 text-primary" />
-        {dict.product.recentlyViewed}
+        {title ?? dict.product.recentlyViewed}
       </h2>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {items.map((p) => (

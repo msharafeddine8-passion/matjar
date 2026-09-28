@@ -158,10 +158,13 @@ export default async function OrderDetailPage({
               <OrderCancelButton id={order.id} kind="order" dict={dict} />
             )}
             <ReorderButton
+              orderId={order.id}
               storeId={order.store_id}
-              items={order.order_items}
+              storeName={order.stores?.name ?? ""}
               lang={lang}
-              dict={dict}
+              label={dict.orders.reorder}
+              closeLabel={dict.common.close}
+              copy={dict.activityCenter}
             />
             <PrintInvoiceButton label={t.print} />
           </div>

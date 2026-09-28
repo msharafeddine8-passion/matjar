@@ -203,6 +203,16 @@ const DB_VALUES: Record<LabelDomain, { source: string; values: string[] }> = {
       "other",
     ],
   },
+  eventTicket: {
+    source:
+      "0193_event_tickets.sql — status text default 'reserved'; buy_tickets (0193/0196) never writes another value",
+    values: ["reserved"],
+  },
+  jobApplication: {
+    source:
+      "0064_jobs.sql — job_applications has no status column; lib/activity.ts gives every row 'sent'",
+    values: ["sent"],
+  },
 };
 
 const DOMAINS = Object.keys(DB_VALUES) as LabelDomain[];

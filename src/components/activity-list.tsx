@@ -2,96 +2,236 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Package, CalendarCheck, Wrench, MessageSquare } from "lucide-react";
+import {
+  Package,
+  CalendarCheck,
+  BedDouble,
+  CarFront,
+  Ticket,
+  FileText,
+  Wrench,
+  MessageSquare,
+  Briefcase,
+  Tag,
+  RotateCcw,
+  CalendarPlus,
+  UserRoundCheck,
+} from "lucide-react";
 import { ChevronNext } from "@/components/ui/directional-icon";
 import type { LucideIcon } from "lucide-react";
 import type { Locale } from "@/i18n/config";
-import type { ActivityItem, ActivityKind } from "@/lib/data/activity";
+import {
+  ACTIVITY_KINDS,
+  againAction,
+  againCandidates,
+  formatDayRange,
+  formatInstant,
+  primaryAction,
+  type ActionKey,
+  type ActivityItem,
+  type ActivityKind,
+} from "@/lib/activity";
 import { Badge } from "@/components/ui/badge";
+import { Money } from "@/components/ui/money";
 import { ACTIVITY_DOMAINS, statusTone } from "@/lib/status-labels";
+import {
+  ReorderSheet,
+  type ActivityCopy,
+} from "@/components/activity/reorder-sheet";
 
 const ICONS: Record<ActivityKind, LucideIcon> = {
   order: Package,
   booking: CalendarCheck,
+  stay: BedDouble,
+  rental: CarFront,
+  ticket: Ticket,
+  service: FileText,
   craft: Wrench,
   lead: MessageSquare,
+  job: Briefcase,
+  listing: Tag,
 };
 
-/** What tapping this row does, in the row's own vocabulary.
- *
- *  Deliberately a statement about the DESTINATION, never a prediction: "track
- *  your order" is true because the order page tracks it, where "arriving today"
- *  would be a promise nobody made. A booking is never called an order here
- *  either — each kind keeps its own noun, the same rule lib/data/activity.ts
- *  applies to statuses. */
-function nextAction(it: ActivityItem, labels: Record<string, string>): string {
-  if (it.kind === "order")
-    return it.status === "completed" ? labels.actionReview : labels.actionTrack;
-  if (it.kind === "booking") return labels.actionBooking;
-  if (it.kind === "craft")
-    return it.status === "completed"
-      ? labels.actionRateWork
-      : labels.actionCraft;
-  return labels.actionLead;
-}
+const AGAIN_ICONS: Partial<Record<ActionKey, LucideIcon>> = {
+  reorder: RotateCcw,
+  rebook: CalendarPlus,
+  requestAgain: FileText,
+  hireAgain: UserRoundCheck,
+};
+
+type ReorderTarget = { orderId: string; storeId: string; storeName: string };
 
 // One screen for everything the customer started.
 //
-// The type filter is a segmented rail, not a dropdown: on a phone the whole
-// point is that switching between "my orders" and "my appointments" is a thumb
-// move, not a menu. Filtering happens client-side because the whole set is one
-// page of rows — a round trip per tab would make the fast thing slow. The rail
-// sticks under the header below lg so the filter is still reachable forty rows
-// down, which is exactly where a customer with real history is looking.
+// Ten kinds share one list, and every row states its kind, speaks its own
+// status vocabulary (words AND colour, lib/status-labels.ts) and names the one
+// next step in that kind's terms (lib/activity.ts). Nothing on this screen is
+// called an "order" unless it is one.
+//
+// The type filter is a segmented rail, not a dropdown: on a phone switching
+// between "my orders" and "my appointments" is a thumb move. Filtering is
+// client-side because the whole set is one page of rows. The rail sticks under
+// the header below lg so the filter is reachable forty rows down.
 export function ActivityList({
   items,
   labels,
+  copy,
   statusLabels,
   leadKindLabels,
+  closeLabel,
   lang,
 }: {
   items: ActivityItem[];
+  /** The original `activity` block (+ emptyHref). */
   labels: Record<string, string>;
-  /** Each domain keeps its own wording — see lib/data/activity.ts. */
+  /** The `activityCenter` block. */
+  copy: ActivityCopy;
+  /** Each domain keeps its own wording. */
   statusLabels: Record<ActivityKind, Record<string, string>>;
   /** `lead_kind` → words, for the leads that arrived without a message. */
   leadKindLabels: Record<string, string>;
+  closeLabel: string;
   lang: Locale;
 }) {
   const [kind, setKind] = useState<ActivityKind | "all">("all");
+  const [reorder, setReorder] = useState<ReorderTarget | null>(null);
 
   const counts: Record<string, number> = { all: items.length };
   for (const i of items) counts[i.kind] = (counts[i.kind] ?? 0) + 1;
 
-  const tabs: { key: ActivityKind | "all"; label: string }[] = [
-    { key: "all", label: labels.all },
-    { key: "order", label: labels.orders },
-    { key: "booking", label: labels.bookings },
-    { key: "craft", label: labels.crafts },
-    { key: "lead", label: labels.leads },
-  ];
+  // Tab labels: the four original kinds keep their existing words.
+  const tabLabel: Record<ActivityKind, string> = {
+    order: labels.orders,
+    booking: labels.bookings,
+    stay: copy.tab_stay,
+    rental: copy.tab_rental,
+    ticket: copy.tab_ticket,
+    service: copy.tab_service,
+    craft: labels.crafts,
+    lead: labels.leads,
+    job: copy.tab_job,
+    listing: copy.tab_listing,
+  };
+  const kindLabel: Record<ActivityKind, string> = {
+    order: labels.kind_order,
+    booking: labels.kind_booking,
+    stay: copy.kind_stay,
+    rental: copy.kind_rental,
+    ticket: copy.kind_ticket,
+    service: copy.kind_service,
+    craft: labels.kind_craft,
+    lead: labels.kind_lead,
+    job: copy.kind_job,
+    listing: copy.kind_listing,
+  };
+  const actionLabel = (k: ActionKey) => copy.actions[k];
 
+  const tabs: (ActivityKind | "all")[] = ["all", ...ACTIVITY_KINDS];
   const shown = kind === "all" ? items : items.filter((i) => i.kind === kind);
-  const dateFmt = new Intl.DateTimeFormat(lang === "ar" ? "ar" : "en", {
-    month: "short",
-    day: "numeric",
-  });
+  const again = againCandidates(items, lang);
+
+  function againButton(it: ActivityItem) {
+    const a = againAction(it, lang);
+    if (!a) return null;
+    const Icon = AGAIN_ICONS[a.key] ?? RotateCcw;
+    const cls =
+      "inline-flex h-[var(--m-touch)] items-center gap-1.5 rounded-xl border border-border px-3 text-sm font-bold transition-colors hover:border-primary hover:text-primary";
+    if (a.key === "reorder") {
+      return (
+        <button
+          type="button"
+          className={cls}
+          onClick={() =>
+            setReorder({
+              orderId: it.id,
+              storeId: it.storeId!,
+              storeName: it.storeName,
+            })
+          }
+        >
+          <Icon className="h-4 w-4" />
+          {actionLabel(a.key)}
+        </button>
+      );
+    }
+    return (
+      <Link href={a.href!} className={cls}>
+        <Icon className="h-4 w-4" />
+        {actionLabel(a.key)}
+      </Link>
+    );
+  }
 
   return (
     <>
-      {/* Horizontal rail, never wrapped: five chips must stay one row at 360px. */}
+      {/* ===== Again: places the customer has already dealt with ===== */}
+      {again.length > 0 && (
+        <section className="mt-5" aria-labelledby="again-title">
+          <h2 id="again-title" className="text-base font-extrabold">
+            {copy.againTitle}
+          </h2>
+          <p className="text-xs text-muted-foreground">{copy.againHint}</p>
+          <ul className="-mx-[var(--m-page-x)] mt-2 flex gap-2 overflow-x-auto px-[var(--m-page-x)] pb-1 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
+            {again.map(({ item, action }) => {
+              const Icon = AGAIN_ICONS[action.key] ?? RotateCcw;
+              const inner = (
+                <>
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+                    <Icon className="h-4.5 w-4.5" />
+                  </span>
+                  <span className="min-w-0 text-start">
+                    <span dir="auto" className="block max-w-[11rem] truncate text-sm font-bold">
+                      {item.storeName || item.title}
+                    </span>
+                    <span className="block text-xs font-semibold text-primary">
+                      {actionLabel(action.key)}
+                    </span>
+                  </span>
+                </>
+              );
+              const cls =
+                "flex min-h-[var(--m-touch)] shrink-0 items-center gap-2 rounded-2xl border border-border bg-surface p-2.5 pe-4 transition-colors active:bg-surface-muted";
+              return (
+                <li key={`${action.key}-${item.kind}-${item.id}`}>
+                  {action.key === "reorder" ? (
+                    <button
+                      type="button"
+                      className={cls}
+                      onClick={() =>
+                        setReorder({
+                          orderId: item.id,
+                          storeId: item.storeId!,
+                          storeName: item.storeName,
+                        })
+                      }
+                    >
+                      {inner}
+                    </button>
+                  ) : (
+                    <Link href={action.href!} className={cls}>
+                      {inner}
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {/* Horizontal rail, never wrapped: the chips must stay one row at 360px. */}
       <div className="sticky top-[calc(var(--m-header-h)+env(safe-area-inset-top))] z-30 -mx-[var(--m-page-x)] mt-4 flex gap-2 overflow-x-auto bg-background/95 px-[var(--m-page-x)] py-2 backdrop-blur-md [scrollbar-width:none] lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:backdrop-blur-none [&::-webkit-scrollbar]:hidden">
-        {tabs.map((t) => {
-          const on = kind === t.key;
-          const n = counts[t.key] ?? 0;
+        {tabs.map((key) => {
+          const on = kind === key;
+          const n = counts[key] ?? 0;
           // A filter that leads to an empty screen is a dead end, so tabs with
           // nothing behind them are not offered at all.
-          if (t.key !== "all" && n === 0) return null;
+          if (key !== "all" && n === 0) return null;
           return (
             <button
-              key={t.key}
+              key={key}
               type="button"
-              onClick={() => setKind(t.key)}
+              onClick={() => setKind(key)}
               aria-pressed={on}
               className={`flex h-[var(--m-touch)] shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-bold transition-colors ${
                 on
@@ -99,7 +239,7 @@ export function ActivityList({
                   : "border-border text-muted-foreground hover:border-primary/40"
               }`}
             >
-              {t.label}
+              {key === "all" ? labels.all : tabLabel[key]}
               <span className="text-xs opacity-70 tabular-nums">{n}</span>
             </button>
           );
@@ -124,49 +264,49 @@ export function ActivityList({
           {shown.map((it) => {
             const Icon = ICONS[it.kind];
             const status = statusLabels[it.kind]?.[it.status] ?? it.status;
-            // Half the leads in this market carry no message — the customer
-            // taps "request a viewing" and waits for the phone to ring. The
-            // kind is then the only thing describing the row, so it stands in
-            // for the title, in words rather than as the raw enum.
+            // Half the leads carry no message; the kind then stands in for the
+            // title, in words rather than as the raw enum.
             const title =
               it.title ||
               (it.leadKind ? (leadKindLabels[it.leadKind] ?? it.leadKind) : "");
+            const when = formatDayRange(it.startsOn, it.endsOn, lang);
+            const primary = primaryAction(it, lang);
+            const hasAgain = againAction(it, lang) != null;
             return (
-              <li key={`${it.kind}-${it.id}`}>
+              <li
+                key={`${it.kind}-${it.id}`}
+                className="rounded-2xl border border-border bg-surface"
+              >
                 <Link
-                  href={it.href}
-                  className="flex items-start gap-3 rounded-2xl border border-border bg-surface p-4 transition-colors active:bg-surface-muted"
+                  href={primary.href ?? it.href}
+                  className="flex items-start gap-3 rounded-2xl p-4 transition-colors active:bg-surface-muted"
                 >
                   <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
                     <Icon className="h-5 w-5" />
                   </span>
 
                   <span className="min-w-0 flex-1">
-                    {/* Type is always stated. Four kinds sharing one pill is how
-                        a customer ends up thinking a booking was an order. */}
+                    {/* Type is always stated. */}
                     <span className="flex flex-wrap items-center gap-x-2 text-xs font-bold text-muted-foreground">
-                      {labels[`kind_${it.kind}`]}
+                      {kindLabel[it.kind]}
                       <span
                         dir="ltr"
                         className="font-normal tabular-nums"
                         suppressHydrationWarning
                       >
-                        {dateFmt.format(new Date(it.createdAt))}
+                        {formatInstant(it.createdAt, lang)}
                       </span>
-                      {/* "بدّو منّك شي" is not a status — it is the one thing
-                          on the row that is about the customer rather than
-                          about the transaction, so it takes `accent` and never
-                          `warning`, which this screen already spends on "the
-                          shop has not answered yet". */}
+                      {/* About the customer, not the transaction: `accent`,
+                          never `warning`, which means "the other side has
+                          not answered yet" here. */}
                       {it.needsCustomer && (
                         <Badge variant="accent">{labels.needsYou}</Badge>
                       )}
                     </span>
 
-                    {/* dir=auto: store/product names are merchant text and may
-                        be Latin inside the RTL page. */}
+                    {/* dir=auto: merchant text may be Latin inside RTL. */}
                     <span dir="auto" className="mt-0.5 block truncate font-bold">
-                      {it.storeName || title}
+                      {it.storeName || title || kindLabel[it.kind]}
                     </span>
                     {it.storeName && title && (
                       <span
@@ -176,55 +316,68 @@ export function ActivityList({
                         {title}
                       </span>
                     )}
+                    {/* The day it happens on — the row's own date column,
+                        never a computed ETA. */}
+                    {(when || it.quantity) && (
+                      <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+                        {when && <bdi>{when}</bdi>}
+                        {it.kind === "ticket" && it.quantity ? (
+                          <bdi>
+                            {copy.ticketsCount.replace("{n}", String(it.quantity))}
+                          </bdi>
+                        ) : null}
+                      </span>
+                    )}
 
                     <span className="mt-1.5 flex flex-wrap items-center gap-2">
-                      {/* Colour by phase, words by domain. Four vocabularies
-                          share this column, and every one of them used to be
-                          the same neutral grey — a cancelled booking, a
-                          finished order and an order on the van were one
-                          shade, so the pill cost a line of height and told the
-                          customer nothing. The tone table lives beside the
-                          label table (lib/status-labels.ts) so a status can
-                          never gain words without also gaining a colour. */}
-                      {/* `md`, not `sm`: sm is 11px, and 12px is the floor at
-                          which Arabic dots and harakat still resolve on a
-                          phone — the same rule the footer's app badges keep. */}
+                      {/* Colour by phase, words by domain. 12px floor for
+                          Arabic dots on a phone, hence `md`. */}
                       <Badge
                         size="md"
-                        variant={statusTone(
-                          ACTIVITY_DOMAINS[it.kind],
-                          it.status,
-                        )}
+                        variant={statusTone(ACTIVITY_DOMAINS[it.kind], it.status)}
                       >
                         {status}
                       </Badge>
-                      {/* Money only where the transaction has any — a booking
-                          and an inquiry carry none, and a $0.00 would read as a
-                          price that was agreed. */}
+                      {/* Money only where the row states an amount; a $0.00
+                          would read as a price that was agreed. */}
                       {it.total != null && it.total > 0 && (
-                        <span
-                          dir="ltr"
-                          className="text-money text-sm font-bold tabular-nums"
-                        >
-                          ${it.total.toFixed(2)}
-                        </span>
+                        <Money value={it.total} className="text-sm font-bold" />
                       )}
                     </span>
 
                     {/* What this row is for. Never an ETA, never a count. */}
                     <span className="mt-2 block text-xs font-bold text-primary">
-                      {nextAction(it, labels)}
+                      {actionLabel(primary.key)}
                     </span>
                   </span>
 
-                  {/* Forward affordance: points into the row's destination in
-                      both directions. */}
                   <ChevronNext className="mt-3 h-5 w-5 shrink-0 text-muted-foreground" />
                 </Link>
+
+                {/* Outside the link: a button inside an <a> is invalid and
+                    swallows the tap on some phones. */}
+                {hasAgain && (
+                  <div className="flex flex-wrap gap-2 border-t border-border px-4 py-2.5">
+                    {againButton(it)}
+                  </div>
+                )}
               </li>
             );
           })}
         </ul>
+      )}
+
+      {reorder && (
+        <ReorderSheet
+          open
+          onClose={() => setReorder(null)}
+          orderId={reorder.orderId}
+          storeId={reorder.storeId}
+          storeName={reorder.storeName}
+          lang={lang}
+          copy={copy}
+          closeLabel={closeLabel}
+        />
       )}
     </>
   );

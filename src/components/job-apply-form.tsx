@@ -48,7 +48,10 @@ export function JobApplyForm({
     });
     setLoading(false);
     if (insErr) {
-      setError(dict.auth.errorGeneric);
+      // 42501 = the row policy refused it. From 0314 that happens when the
+      // posting closed, was removed, or passed its deadline (Beirut date) while
+      // this page was open — say that, rather than "something went wrong".
+      setError(insErr.code === "42501" ? t.deadlinePassed : dict.auth.errorGeneric);
       return;
     }
     setDone(true);

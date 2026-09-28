@@ -369,6 +369,7 @@ export function OrdersFilter({
                   )}
                   <OrderNoteEditor
                     orderId={order.id}
+                    storeId={storeId}
                     note={order.store_note}
                     labels={dict.orders.storeNote}
                     errorLabel={dict.common.actionFailed}

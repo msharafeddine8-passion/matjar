@@ -33,6 +33,10 @@ export type StoreSettings = {
   lng: string;
   commercial_reg_no: string;
   commercial_reg_verified: boolean;
+  /** False when the legal fields below could not be read (they come from
+   *  store_private_fields(), 0314). The save then leaves them untouched
+   *  instead of overwriting the real values with the blanks shown. */
+  legal_loaded: boolean;
   legal_name: string;
   tax_no: string;
   legal_address: string;
@@ -87,6 +91,20 @@ export function StoreSettingsForm({
     setError(null);
     const form = new FormData(e.currentTarget);
     const minRaw = String(form.get("min_order") ?? "").trim();
+    // Legal identity. issue_invoice() refuses to number an invoice without
+    // legal_name, and until now there was no field anywhere in the app that
+    // could set it — which is why zero invoices had ever been issued despite
+    // the whole engine being built (0248). Sent only when it was loaded.
+    const legalPatch = initial.legal_loaded
+      ? {
+          commercial_reg_no: String(form.get("commercial_reg_no") ?? "").trim() || null,
+          legal_name: String(form.get("legal_name") ?? "").trim() || null,
+          tax_no: String(form.get("tax_no") ?? "").trim() || null,
+          legal_address: String(form.get("legal_address") ?? "").trim() || null,
+          invoice_prefix:
+            String(form.get("invoice_prefix") ?? "").trim().toUpperCase() || null,
+        }
+      : {};
     const { error: saveError } = await createClient()
       .from("stores")
       .update({
@@ -98,15 +116,7 @@ export function StoreSettingsForm({
         booking_cancel_hours:
           Math.max(0, Number(form.get("booking_cancel_hours")) || 0),
         return_policy: String(form.get("return_policy") ?? "").trim() || null,
-        commercial_reg_no: String(form.get("commercial_reg_no") ?? "").trim() || null,
-        // Legal identity + VAT. issue_invoice() refuses to number an invoice
-        // without legal_name, and until now there was no field anywhere in the
-        // app that could set it — which is why zero invoices had ever been
-        // issued despite the whole engine being built (0248).
-        legal_name: String(form.get("legal_name") ?? "").trim() || null,
-        tax_no: String(form.get("tax_no") ?? "").trim() || null,
-        legal_address: String(form.get("legal_address") ?? "").trim() || null,
-        invoice_prefix: String(form.get("invoice_prefix") ?? "").trim().toUpperCase() || null,
+        ...legalPatch,
         vat_rate: Math.min(100, Math.max(0, Number(form.get("vat_rate")) || 0)),
         vat_inclusive: vatInclusive,
         specialties: String(form.get("specialties") ?? "") || null,

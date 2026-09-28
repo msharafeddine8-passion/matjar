@@ -1,7 +1,7 @@
 "use client";
 import { revalidateProduct, revalidateStore } from "@/lib/cache-actions";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Plus, X, Trash2 } from "lucide-react";
@@ -14,9 +14,10 @@ import { sectorHasTeam } from "@/lib/sectors";
 import { planCopy } from "@/lib/plan-copy";
 import { ImageUpload } from "@/components/image-upload";
 import { DigitalFileUpload, type DigitalFile } from "@/components/digital-file-upload";
-import { fieldClass } from "@/components/ui/field";
+import { fieldClass, Select } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { UnitPricingFields } from "@/components/unit-pricing-fields";
+import { buildCrossPostListing } from "@/lib/market-crosspost";
 import {
   unitPricingColumns,
   PIECE_PRICED,
@@ -78,6 +79,33 @@ export function ProductForm({
   const [inOffers, setInOffers] = useState(false);
   const [inClearance, setInClearance] = useState(false);
   const [inMarket, setInMarket] = useState(false);
+  // The Sunday Market category for the cross-post (P2-MARKET-CROSSPOST). Asked,
+  // never guessed: market categories are item types and a store's sector is
+  // not (src/lib/market-crosspost.ts). Loaded the first time the box is ticked.
+  const [marketCategoryId, setMarketCategoryId] = useState("");
+  const [marketCategories, setMarketCategories] = useState<
+    { id: string; name: string }[] | null
+  >(null);
+  useEffect(() => {
+    if (!inMarket || marketCategories !== null) return;
+    let live = true;
+    createClient()
+      .from("market_categories")
+      .select("id, name_ar, name_en")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .limit(200)
+      .then(({ data }) => {
+        if (!live) return;
+        const rows = (data ?? []) as { id: string; name_ar: string; name_en: string }[];
+        setMarketCategories(
+          rows.map((c) => ({ id: c.id, name: lang === "ar" ? c.name_ar : c.name_en || c.name_ar })),
+        );
+      });
+    return () => {
+      live = false;
+    };
+  }, [inMarket, marketCategories, lang]);
   // Entry fields only. A retired field (see AttrField.legacy) still renders on
   // the storefront from stored values, but a new product must never be able to
   // start filling it — that is how the clinic ended up with two durations.
@@ -116,6 +144,13 @@ export function ProductForm({
     // failure would only surface after the sale — refuse it here instead.
     if (isDigital && !digitalFile) {
       setError(p.digitalFileNeeded);
+      setLoading(false);
+      return;
+    }
+    // Checked BEFORE the product is written, so a missing market category
+    // never leaves a product saved without the listing the merchant asked for.
+    if (inMarket && !marketCategoryId) {
+      setError(p.marketCategoryNeeded);
       setLoading(false);
       return;
     }
@@ -241,18 +276,20 @@ export function ProductForm({
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) {
-        const priceVal = Number(form.get("price")) || 0;
-        const discountVal = Number(form.get("discount_price")) || null;
-        await supabase.from("listings").insert({
-          seller_id: user.id,
-          store_id: storeId,
-          title: String(form.get("name")),
-          description: String(form.get("description")) || null,
-          price: discountVal ?? priceVal,
-          images: [imageUrl, ...gallery].filter(Boolean),
-          status: "pending",
-        });
+      const built = user
+        ? buildCrossPostListing({
+            sellerId: user.id,
+            storeId,
+            categoryId: marketCategoryId,
+            title: String(form.get("name") ?? ""),
+            description: String(form.get("description") ?? ""),
+            price: Number(form.get("price")) || 0,
+            discountPrice: Number(form.get("discount_price")) || null,
+            images: [imageUrl, ...gallery],
+          })
+        : null;
+      if (built?.ok) {
+        await supabase.from("listings").insert(built.listing);
       }
     }
 
@@ -270,6 +307,7 @@ export function ProductForm({
     setInOffers(false);
     setInClearance(false);
     setInMarket(false);
+    setMarketCategoryId("");
     setLoading(false);
     await revalidateProduct();
     await revalidateStore(storeId);
@@ -688,6 +726,29 @@ export function ProductForm({
             </label>
           ))}
         </div>
+        {inMarket && (
+          <div className="mt-3">
+            <label className={label} htmlFor="market_category">
+              {p.marketCategory}
+            </label>
+            <p className="mt-0.5 text-xs text-muted-foreground">{p.marketCategoryHint}</p>
+            <Select
+              id="market_category"
+              className="mt-1.5"
+              value={marketCategoryId}
+              onChange={(e) => setMarketCategoryId(e.target.value)}
+              required
+              disabled={marketCategories === null}
+            >
+              <option value="">{p.marketCategoryPick}</option>
+              {(marketCategories ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
       </div>
 
       {error && <p className="text-sm font-medium text-danger">{error}</p>}
