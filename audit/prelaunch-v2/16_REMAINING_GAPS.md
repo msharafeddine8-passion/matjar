@@ -25,9 +25,15 @@
 - «انشر مشروعك» public board and job alerts: no backend; not faked.
 - Phone verification for Sunday Market: needs an SMS/OTP provider, which conflicts with zero cost.
 - Loyalty balances of the same person in the app and in the shop stay separate until phones are verified.
-- Loyalty card links (not gift cards) still cannot be replaced.
-- Owner decisions still open: real-estate "appointments coming soon" wording (P0-FEAT-12), a contact path for private Sunday Market sellers (P2-MARKET-09), a cooldown on listing renewal (P3-MARKET-12).
-- Unused pricing keys left in the dictionaries (P2-PRICE-10); `reviews.customer_id` readable by signed-in users (P3-PRIV-05) needs a code audit of "have I reviewed" lookups before any column grant.
-- The merchant dashboard sums every order in one unpaged read; past 1,000 orders the totals would stop at Supabase's default row cap.
+- Unused pricing keys left in the dictionaries (P2-PRICE-10).
+- `reviews.customer_id` / `product_reviews.customer_id` stay readable by signed-in users (P3-PRIV-05). Audited 2026-09-29: five reads FILTER on customer_id ("have I reviewed this store/product", the activity list), and the review form upserts on it, so a column revoke would break them; the fix is a small "my review" RPC first. Exposure is an opaque account id linking reviews, whose names are already public.
+- Messaging falls back to the other person's EMAIL as their display name when they have no name (conversation_peer, my_conversations). Nobody in a conversation lacks a name today (checked 2026-09-29); worth replacing with a neutral label before it matters.
+
+## Owner decisions applied (2026-09-29, branch feat/owner-decisions)
+- **Real estate:** «المواعيد قريباً» is gone — appointments were removed from the sector's bundle; viewings stay on the live lead form (P0-FEAT-12).
+- **Private Sunday Market sellers:** «راسل البائع» on an active listing without a store opens an in-app conversation (0317 `start_listing_conversation`); the thread starts with a draft naming the listing. No phone number changes hands. Rolled-back test 16/16, applied.
+- **Renew cooldown:** once every 7 days (0317 `guard_listing_write`); a sooner renew keeps the old date, the seller's button is disabled and says when it opens (`src/lib/market-renew.ts`, test pins the 7 to the migration).
+- **Loyalty card links can be replaced** (0318 `rotate_loyalty_card_link`, staff with customers): rolled-back test 12/12, applied; «رابط جديد» on each member.
+- **Merchant dashboard totals** no longer stop at 1,000 orders: counts are exact database counts, sales are summed a page at a time.
 
 Full list: `MATJAR_PRELAUNCH_ISSUES.csv` (151 rows, 0 open P0).

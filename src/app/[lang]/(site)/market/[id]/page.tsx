@@ -29,6 +29,8 @@ import { ListingReport } from "@/components/listing-report";
 import { ListingViewTracker } from "@/components/listing-view-tracker";
 import { BackButton } from "@/components/back-button";
 import { Money } from "@/components/ui/money";
+import { MessageSellerButton } from "@/components/message-seller-button";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -244,6 +246,20 @@ export default async function ListingPage({
                   </ButtonLink>
                 </div>
               )}
+
+              {/* A person's listing: no store, no public number — message the
+                  seller inside Matjar instead (0317). Not on your own listing. */}
+              {!listing.storeId &&
+                listing.status === "active" &&
+                user?.id !== listing.sellerId && (
+                  <div className="mt-3">
+                    <MessageSellerButton
+                      listingId={id}
+                      lang={l}
+                      dict={dictSlice(dict, ["messages"])}
+                    />
+                  </div>
+                )}
             </Card>
 
             {listing.description && (

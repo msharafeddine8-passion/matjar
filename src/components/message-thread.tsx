@@ -17,15 +17,19 @@ export function MessageThread({
   meId,
   initialMessages,
   dict,
+  initialText = "",
 }: {
   conversationId: string;
   meId: string;
   initialMessages: ChatMessage[];
   dict: Dictionary;
+  /** A draft to start from (never sent on its own) — e.g. the line naming the
+   *  Sunday Market listing a buyer came from. */
+  initialText?: string;
 }) {
   const t = dict.messages;
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);

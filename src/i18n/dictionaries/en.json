@@ -3871,7 +3871,11 @@
     "startPrompt": "Send the first message 👋",
     "placeholder": "Type your message…",
     "send": "Send",
-    "messageStore": "Message store"
+    "messageStore": "Message store",
+    "messageSeller": "Message the seller",
+    "messageSellerNote": "Your message reaches the seller inside Matjar; neither of you sees the other's number.",
+    "messageSellerError": "Could not open the conversation. The listing may have been sold or removed.",
+    "aboutListing": "Hi, about your listing \"{title}\": "
   },
   "mobileNav": {
     "shop": "Shop",
@@ -4450,6 +4454,7 @@
       "saving": "Saving…",
       "delete": "Delete",
       "renew": "Renew",
+      "renewOpensOn": "You can renew again on {date} (once a week)",
       "markSold": "Mark as sold",
       "markActive": "Reactivate",
       "edit": "Edit",
@@ -5939,6 +5944,9 @@
       "giveReward": "Give reward",
       "confirmReward": "Give the reward? {n} will be taken off the balance.",
       "rewardGiven": "Reward given",
+      "rotateLink": "New link",
+      "confirmRotate": "The old card link will stop working, and you send the customer the new one. Points and stamps stay the same. Continue?",
+      "rotated": "New card link created; the old one no longer opens",
       "notEnough": "Not enough for a reward.",
       "adjust": "Adjust",
       "delta": "Amount (+ or −)",

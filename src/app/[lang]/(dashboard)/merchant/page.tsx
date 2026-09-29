@@ -67,37 +67,55 @@ export default async function MerchantPage({
   const storeIds = stores.map((s) => s.id);
   let stats = { today: 0, total: 0, sales: 0, pending: 0, bookings: 0 };
   if (storeIds.length) {
-    const { data: ordersData } = await supabase
-      .from("orders")
-      .select("total, status, created_at")
-      .in("store_id", storeIds);
-    const { count: bookingCount } = await supabase
-      .from("bookings")
-      .select("id", { count: "exact", head: true })
-      .in("store_id", storeIds);
+    // Counts come from the database (count: exact, head: true), not from
+    // fetched rows: an unpaged select stops at Supabase's 1,000-row cap, so a
+    // busy store's totals used to freeze at the thousandth order.
     // Beirut's midnight; setHours(0) on the server was UTC midnight (03:00 here).
     const startOfDay = beirutToday(new Date()).start;
-    const orders = (ordersData ?? []) as {
-      total: number;
-      status: string;
-      created_at: string;
-    }[];
-    // Sales excludes cancelled and rejected. This summed every order ever
-    // placed, so a merchant's headline revenue counted the ones they refused
-    // for being out of stock — and disagreed with store_report, the accounting
-    // page and the best-sellers ranking, all of which already exclude them.
-    // Order counts deliberately still include them: a cancelled order did
-    // happen, it just did not earn anything.
-    const DEAD = new Set(["cancelled", "rejected"]);
-    stats = {
-      today: orders.filter((o) => new Date(o.created_at) >= startOfDay).length,
-      total: orders.length,
-      sales: orders
-        .filter((o) => !DEAD.has(o.status))
-        .reduce((s, o) => s + Number(o.total), 0),
-      pending: orders.filter((o) => o.status === "pending").length,
-      bookings: bookingCount ?? 0,
+    const baseCount = () =>
+      supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .in("store_id", storeIds);
+    type CountQuery = ReturnType<typeof baseCount>;
+    const countOrders = async (narrow?: (q: CountQuery) => CountQuery) => {
+      const q = baseCount();
+      const { count } = await (narrow ? narrow(q) : q);
+      return count ?? 0;
     };
+    // Sales excludes cancelled and rejected — the same rule as store_report,
+    // the accounting page and the best-sellers ranking. Order counts still
+    // include them: a cancelled order did happen, it just earned nothing.
+    // Summed a page at a time for the same row-cap reason.
+    const sumSales = async (): Promise<number> => {
+      const PAGE = 1000;
+      let sum = 0;
+      for (let from = 0; from < 200 * PAGE; from += PAGE) {
+        const { data } = await supabase
+          .from("orders")
+          .select("total")
+          .in("store_id", storeIds)
+          .not("status", "in", "(cancelled,rejected)")
+          .order("id")
+          .range(from, from + PAGE - 1);
+        const rows = (data ?? []) as { total: number }[];
+        for (const r of rows) sum += Number(r.total);
+        if (rows.length < PAGE) break;
+      }
+      return sum;
+    };
+    const [today, total, pending, sales, { count: bookingCount }] =
+      await Promise.all([
+        countOrders((q) => q.gte("created_at", startOfDay.toISOString())),
+        countOrders(),
+        countOrders((q) => q.eq("status", "pending")),
+        sumSales(),
+        supabase
+          .from("bookings")
+          .select("id", { count: "exact", head: true })
+          .in("store_id", storeIds),
+      ]);
+    stats = { today, total, sales, pending, bookings: bookingCount ?? 0 };
   }
 
   const { data: staffRows } = await supabase

@@ -14,6 +14,7 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import type { ListingCard } from "@/lib/data/market";
 import { formatUsd } from "@/lib/currency";
 import { CardList, CardRow } from "@/components/ui/card";
+import { renewOpensAt } from "@/lib/market-renew";
 
 const STATUSES = ["all", "active", "pending", "sold", "expired", "rejected", "draft"] as const;
 
@@ -42,6 +43,12 @@ export function MyListingsManager({
   const [busy, setBusy] = useState<string | null>(null);
 
   const filtered = listings.filter((l) => tab === "all" || l.status === tab);
+  const fmtDay = (d: Date) =>
+    new Intl.DateTimeFormat(lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB", {
+      day: "numeric",
+      month: "short",
+      timeZone: "Asia/Beirut",
+    }).format(d);
 
   async function patch(id: string, patch: Record<string, unknown>) {
     setBusy(id);
@@ -139,9 +146,25 @@ export function MyListingsManager({
                 </Link>
                 {l.status === "active" && (
                   <>
-                    <button disabled={busy === l.id} onClick={() => patch(l.id, { created_at: new Date().toISOString() })} title={t.form.renew} className="flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-semibold transition-colors hover:bg-surface-muted disabled:opacity-60">
-                      <RefreshCw className="h-3.5 w-3.5" />
-                    </button>
+                    {/* Once a week (0317): before that the database keeps the
+                        old date, so the button says when it opens instead. */}
+                    {(() => {
+                      const opens = renewOpensAt(l.createdAt);
+                      const label = opens
+                        ? t.form.renewOpensOn.replace("{date}", fmtDay(opens))
+                        : t.form.renew;
+                      return (
+                        <button
+                          disabled={busy === l.id || opens !== null}
+                          onClick={() => patch(l.id, { created_at: new Date().toISOString() })}
+                          title={label}
+                          aria-label={label}
+                          className="flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-semibold transition-colors hover:bg-surface-muted disabled:opacity-60"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </button>
+                      );
+                    })()}
                     <button disabled={busy === l.id} onClick={() => patch(l.id, { status: "sold" })} title={t.form.markSold} className="flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-semibold transition-colors hover:bg-surface-muted disabled:opacity-60">
                       <CircleCheck className="h-3.5 w-3.5" />
                     </button>
