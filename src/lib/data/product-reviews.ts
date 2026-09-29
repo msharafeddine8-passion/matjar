@@ -49,12 +49,12 @@ async function viewerHasReviewed(
   currentUserId: string | null,
 ): Promise<boolean> {
   if (!currentUserId) return false;
-  const { count } = await supabase
-    .from("product_reviews")
-    .select("id", { count: "exact", head: true })
-    .eq("product_id", productId)
-    .eq("customer_id", currentUserId);
-  return (count ?? 0) > 0;
+  // has_reviewed_product (0319) answers for auth.uid(): since 0320 a signed-in
+  // user cannot filter product_reviews on customer_id, even their own.
+  const { data } = await supabase.rpc("has_reviewed_product", {
+    p_product_id: productId,
+  });
+  return data === true;
 }
 
 export async function getProductReviews(

@@ -26,8 +26,10 @@
 - Phone verification for Sunday Market: needs an SMS/OTP provider, which conflicts with zero cost.
 - Loyalty balances of the same person in the app and in the shop stay separate until phones are verified.
 - Unused pricing keys left in the dictionaries (P2-PRICE-10).
-- `reviews.customer_id` / `product_reviews.customer_id` stay readable by signed-in users (P3-PRIV-05). Audited 2026-09-29: five reads FILTER on customer_id ("have I reviewed this store/product", the activity list), and the review form upserts on it, so a column revoke would break them; the fix is a small "my review" RPC first. Exposure is an opaque account id linking reviews, whose names are already public.
-- Messaging falls back to the other person's EMAIL as their display name when they have no name (conversation_peer, my_conversations). Nobody in a conversation lacks a name today (checked 2026-09-29); worth replacing with a neutral label before it matters.
+
+## Privacy follow-ups (2026-09-29, branch feat/review-privacy)
+- **Review authors are private (P3-PRIV-05).** 0319 adds `my_store_review`, `has_reviewed_product`, `my_reviewed_store_ids` and `save_store_review` (definer, caller-only; the last restates the old RLS insert rules); the app uses them instead of reading or filtering on `customer_id`. 0320 then withdraws `reviews.customer_id`, `reviews.reply_by` and `product_reviews.customer_id` from signed-in users, as anon already had. Rolled-back test of both together: 22/22. 0319 applied before the deploy, 0320 after it (the previous build filtered on the column).
+- **No email as a name.** `conversation_peer` / `my_conversations` return no name instead of the other person's email (0319), and the screens say «محادثة» (the old fallback to the store's name showed an owner their OWN shop). Review, product-review and product-question forms published `full_name ?? email`: they now publish a name or nothing (`src/lib/public-name.ts`; the card shows «زبون»). No stored name contained "@".
 
 ## Owner decisions applied (2026-09-29, branch feat/owner-decisions)
 - **Real estate:** «المواعيد قريباً» is gone — appointments were removed from the sector's bundle; viewings stay on the live lead form (P0-FEAT-12).

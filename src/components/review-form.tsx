@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { safePublicName } from "@/lib/public-name";
 
 export function ReviewForm({
   storeId,
@@ -39,19 +40,18 @@ export function ReviewForm({
       setLoading(false);
       return;
     }
-    const { error: reviewError } = await supabase.from("reviews").upsert(
-      {
-        store_id: storeId,
-        customer_id: user.id,
-        customer_name: customerName,
-        rating,
-        comment: String(form.get("comment")) || null,
-      },
-      { onConflict: "store_id,customer_id" },
-    );
+    // save_store_review (0319) writes or edits the caller's own review. The
+    // PostgREST upsert it replaces needed SELECT on reviews.customer_id for its
+    // ON CONFLICT, which 0320 takes away from signed-in users.
+    const { error: reviewError } = await supabase.rpc("save_store_review", {
+      p_store_id: storeId,
+      p_rating: rating,
+      p_comment: String(form.get("comment")) || null,
+      p_customer_name: safePublicName(customerName),
+    });
     if (reviewError) {
-      // The insert policy requires a COMPLETED order/booking and enforces an
-      // hourly cap. Both surface as the same generic RLS denial, so on the error
+      // The function requires a COMPLETED order/booking and enforces an
+      // hourly cap. Both surface as the same "not allowed", so on the error
       // path we look up whether the customer has a completed order/booking with
       // this store to pick the right message.
       const [orders, bookings] = await Promise.all([

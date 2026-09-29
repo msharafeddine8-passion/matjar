@@ -7,6 +7,7 @@ import { Star, X, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { ImageUpload } from "@/components/image-upload";
+import { safePublicName } from "@/lib/public-name";
 
 export function ProductReviewForm({
   productId,
@@ -40,8 +41,9 @@ export function ProductReviewForm({
       router.push(`/login`);
       return;
     }
-    const name =
-      (user.user_metadata?.full_name as string | undefined) ?? user.email ?? "";
+    // Published under the review: the person's name or nothing, never their
+    // email (the card shows «زبون» for an empty name).
+    const name = safePublicName(user.user_metadata?.full_name as string | undefined);
     const { error: e } = await supabase.from("product_reviews").insert({
       product_id: productId,
       customer_id: user.id,

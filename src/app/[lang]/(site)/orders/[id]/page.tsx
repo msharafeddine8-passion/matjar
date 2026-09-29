@@ -75,13 +75,12 @@ export default async function OrderDetailPage({
   // Nudge a review once the order is completed and not yet reviewed.
   let showReviewPrompt = false;
   if (order.status === "completed") {
-    const { data: existing } = await supabase
-      .from("reviews")
-      .select("id")
-      .eq("store_id", order.store_id)
-      .eq("customer_id", user.id)
-      .maybeSingle();
-    showReviewPrompt = !existing;
+    // Through my_store_review (0319): since 0320 a signed-in user cannot read,
+    // or filter on, reviews.customer_id — not even their own.
+    const { data: existing } = await supabase.rpc("my_store_review", {
+      p_store_id: order.store_id,
+    });
+    showReviewPrompt = ((existing ?? []) as unknown[]).length === 0;
   }
   const customerName =
     (user.user_metadata?.full_name as string | undefined) ??

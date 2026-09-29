@@ -66,7 +66,10 @@ export default async function MessagesPage({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate font-bold">
-                        {c.display_name || c.store_name || c.other_name || t.unknown}
+                        {/* display_name is already the store for a customer and the person
+                            for the shop (0319: never their email). No store_name
+                            fallback: for the owner that was their OWN shop's name. */}
+                        {c.display_name || t.unknown}
                       </span>
                       {c.unread && (
                         <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />

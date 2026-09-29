@@ -128,12 +128,9 @@ async function fetchCustomerActivity(lang: string): Promise<ActivityItem[]> {
       .limit(PER_KIND),
     // Store reviews are one per customer per store (no order id), so "this
     // order still wants a review" means "you have not reviewed this store".
-    supabase
-      .from("reviews")
-      .select("store_id")
-      .eq("customer_id", uid)
-      .is("deleted_at", null)
-      .limit(200),
+    // An RPC (0319): since 0320 reviews.customer_id is not readable, not even
+    // as a filter on one's own rows. Returns bare store ids.
+    supabase.rpc("my_reviewed_store_ids"),
   ]);
 
   // A failed read of one kind drops that kind, never the whole screen.
@@ -151,7 +148,11 @@ async function fetchCustomerActivity(lang: string): Promise<ActivityItem[]> {
     leads: rows(leads),
     jobs: rows(jobs),
     listings: rows(listings),
-    reviewedStoreIds: rows<{ store_id: string }>(reviews).map((r) => r.store_id),
+    // A set-returning scalar RPC: accept a bare id or PostgREST's
+    // { my_reviewed_store_ids: id } row shape.
+    reviewedStoreIds: rows<string | { my_reviewed_store_ids: string }>(reviews)
+      .map((r) => (typeof r === "string" ? r : r?.my_reviewed_store_ids))
+      .filter((v): v is string => typeof v === "string"),
   };
 
   return normaliseActivity(raw, lang, Date.now());
