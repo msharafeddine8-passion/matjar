@@ -479,18 +479,20 @@ describe("no public projection ships another person's account id", () => {
     ).toEqual([]);
   });
 
-  it("may still FILTER on the viewer's own id — that is the point", () => {
-    // The replacement for the leak is asking about yourself by name, so the
-    // filters must survive. If these vanish, ownership silently became false
-    // for everyone and the review form stops prefilling.
+  it("asks about the viewer's own review through the 0319 helpers, never by column", () => {
+    // Since 0320 a signed-in user cannot even FILTER on customer_id, their own
+    // included, so "have I reviewed this" goes through definer RPCs that only
+    // answer for auth.uid(). If these calls vanish, ownership silently became
+    // false for everyone and the review form stops prefilling.
     const store = readFileSync(
       join(process.cwd(), "src/app/[lang]/(site)/store/[id]/page.tsx"),
       "utf8",
     );
-    expect(store).toContain('.eq("customer_id", user.id)');
-    expect(sources.get("product-reviews.ts")).toContain(
-      '.eq("customer_id", currentUserId)',
-    );
+    expect(store).toContain('rpc("my_store_review"');
+    expect(store).not.toContain('.eq("customer_id", user.id)');
+    const reviews = sources.get("product-reviews.ts")!;
+    expect(reviews).toContain('rpc("has_reviewed_product"');
+    expect(reviews).not.toContain('.eq("customer_id"');
   });
 
   it("keeps the rendered row types free of any account id", () => {
@@ -525,8 +527,8 @@ describe("no public projection ships another person's account id", () => {
     const guard = reviews.indexOf("if (!currentUserId) return false;");
     expect(guard, "the viewer guard in product-reviews.ts is gone").toBeGreaterThan(-1);
     expect(
-      reviews.indexOf('.eq("customer_id", currentUserId)'),
-      "the ownership query must sit AFTER the signed-out early return",
+      reviews.indexOf('rpc("has_reviewed_product"'),
+      "the ownership question must sit AFTER the signed-out early return",
     ).toBeGreaterThan(guard);
     // product-qa no longer takes a viewer at all — there is no ownership
     // question left to answer, so there is nothing to guard.

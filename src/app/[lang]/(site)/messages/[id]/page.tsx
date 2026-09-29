@@ -52,8 +52,9 @@ export default async function ThreadPage({
     p_conversation_id: id,
   });
   const peer = (peerRows ?? [])[0] as { display_name: string | null } | undefined;
-  const header =
-    peer?.display_name?.trim() || store?.name || dict.messages.unknown;
+  // No store-name fallback: for the shop owner that was their OWN shop, shown
+  // as the other person. A nameless person reads «محادثة» (0319: never email).
+  const header = peer?.display_name?.trim() || dict.messages.unknown;
 
   const { data: msgs } = await supabase
     .from("messages")

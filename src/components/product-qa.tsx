@@ -8,6 +8,7 @@ import { CardList, CardRow } from "@/components/ui/card";
 import { notifyError } from "@/lib/notify";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import type { ProductQuestion } from "@/lib/data/product-qa";
+import { safePublicName } from "@/lib/public-name";
 
 export function ProductQA({
   productId,
@@ -44,8 +45,8 @@ export function ProductQA({
       setBusy(false);
       return;
     }
-    const name =
-      (user.user_metadata?.full_name as string | undefined) ?? user.email ?? "";
+    // Shown publicly beside the question: a name or nothing, never an email.
+    const name = safePublicName(user.user_metadata?.full_name as string | undefined);
     const { error } = await supabase.from("product_questions").insert({
       product_id: productId,
       asker_id: user.id,

@@ -438,19 +438,16 @@ export default async function StorePage({
           .then((r) => (r.data as number | null) ?? 0)
       : Promise.resolve(0),
     // MP-010: the ONE review the viewer is allowed to know the owner of — their
-    // own — asked for by their own id, instead of shipping every reviewer's id
-    // to the browser and searching there. `reviews` is unique on (store_id,
-    // customer_id), so this is at most one row. A signed-out visitor asks
-    // nothing: no round trip, and no reference to customer_id anywhere on the
-    // anonymous path.
+    // own. Since 0320 nobody signed in can read or filter on
+    // reviews.customer_id, so it comes from my_store_review (0319), which only
+    // ever answers about auth.uid(). A signed-out visitor asks nothing.
     user && realStore
       ? supabase
-          .from("reviews")
-          .select("rating, comment")
-          .eq("store_id", id)
-          .eq("customer_id", user.id)
-          .maybeSingle()
-          .then((r) => (r.data as MyReview | null) ?? null)
+          .rpc("my_store_review", { p_store_id: id })
+          .then((r) => {
+            const row = ((r.data ?? []) as { rating: number; comment: string | null }[])[0];
+            return row ? ({ rating: row.rating, comment: row.comment } as MyReview) : null;
+          })
       : Promise.resolve(null),
     // Whether THIS viewer may write a review: the same definer function the
     // reviews insert policy runs (completed order or booking, 0143), asked
