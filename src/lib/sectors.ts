@@ -259,7 +259,11 @@ export const sectorConfig: Record<CategoryKey, SectorConfig> = {
   },
   realEstate: {
     Icon: Building2,
-    features: ["listings", "appointments", "reviews", "location", "media", "messaging"],
+    // No "appointments": a viewing is requested through the lead form (0190),
+    // which is live. Declaring a clinic-style calendar here only made the
+    // storefront promise «المواعيد قريباً» for a flow nobody is building
+    // (owner decision, 2026-09-29, P0-FEAT-12).
+    features: ["listings", "reviews", "location", "media", "messaging"],
     heroTint: "from-tint-3-soft via-tint-3-soft/40 to-transparent",
     iconTint: "bg-tint-3-soft text-tint-3",
     customersNoun: "leads",

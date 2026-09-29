@@ -179,10 +179,12 @@ describe("featureStatus resolves plan and sector honestly", () => {
   });
 
   it("says coming_soon only for a directory-only sector's own pending bundle", () => {
-    // Real estate declares appointments and is held in directory-only mode.
+    // Real estate is held in directory-only mode but no longer DECLARES
+    // appointments (owner decision 2026-09-29: viewings go through the lead
+    // form), so nothing is "coming" — it is simply not offered.
     expect(featureStatus("appointments", { sector: "realEstate" })).toMatchObject({
-      status: "coming_soon",
-      reason: "sector_pending",
+      status: "disabled",
+      reason: "sector",
     });
     // …but it never had a cart, so a cart is not "coming", it is not offered.
     expect(featureStatus("orders", { sector: "realEstate" })).toMatchObject({
@@ -209,7 +211,9 @@ describe("featureStatus resolves plan and sector honestly", () => {
       if (!exp.directoryOnly) {
         expect(pending, `${sector} is live but reports pending capabilities`).toEqual([]);
       } else {
-        expect(pending.length, `${sector} is directory-only but has nothing pending`).toBeGreaterThan(0);
+        // A directory-only sector may have nothing pending (real estate since
+        // 2026-09-29) — then the store page shows no "coming soon" note at all.
+        // What it may never do is report a capability its bundle omits.
         for (const cap of pending) {
           expect(
             resolveStoreModules(sector).has(cap as never),
@@ -218,7 +222,8 @@ describe("featureStatus resolves plan and sector honestly", () => {
         }
       }
     }
-    expect(sectorPendingCapabilities("realEstate")).toEqual(["appointments"]);
+    // The storefront's «المواعيد قريباً» note is gone for real estate.
+    expect(sectorPendingCapabilities("realEstate")).toEqual([]);
   });
 });
 

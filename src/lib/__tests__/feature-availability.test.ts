@@ -217,7 +217,9 @@ describe("sector capabilities come from the registry, not from copy", () => {
     // Each of these is declared by the sector's bundle in sectors.ts and then
     // switched off by store-experience.ts. Reading the bundle alone would put
     // all four on the merchant page as if a customer could use them.
-    expect(resolveStoreModules("realEstate").has("appointments")).toBe(true);
+    // Real estate no longer declares appointments at all (2026-09-29), so it
+    // is out of both the bundle and the capabilities.
+    expect(resolveStoreModules("realEstate").has("appointments")).toBe(false);
     expect(sectorCapabilities("realEstate")).not.toContain("appointments");
 
     expect(resolveStoreModules("automotive").has("requests")).toBe(true);

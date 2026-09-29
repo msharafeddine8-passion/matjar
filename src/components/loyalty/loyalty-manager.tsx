@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, ExternalLink, Gift, MessageCircle, Plus, Search, SlidersHorizontal, Stamp, Star } from "lucide-react";
+import { Check, Copy, ExternalLink, Gift, MessageCircle, Plus, RefreshCw, Search, SlidersHorizontal, Stamp, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { notifyError, notifySuccess } from "@/lib/notify";
@@ -576,6 +576,26 @@ function MemberRow({
     router.refresh();
   }
 
+  // A card link that reached the wrong person: a fresh token (0318) makes the
+  // old /loyalty/<token> 404. The balance lives on the member, not the link.
+  async function rotateLink() {
+    const ok = await confirm({
+      message: t.members.confirmRotate,
+      confirmLabel: t.members.rotateLink,
+      cancelLabel: t.common.cancel,
+    });
+    if (!ok) return;
+    setBusy(true);
+    const { error } = await createClient().rpc("rotate_loyalty_card_link", { p_account_id: member.id });
+    setBusy(false);
+    if (error) {
+      notifyError(errorText(dict, error.message));
+      return;
+    }
+    notifySuccess(t.members.rotated);
+    router.refresh();
+  }
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(link);
@@ -669,6 +689,15 @@ function MemberRow({
           <ExternalLink className="h-3.5 w-3.5" />
           {t.members.openCard}
         </a>
+        <button
+          type="button"
+          onClick={rotateLink}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-bold hover:border-primary/40 disabled:opacity-60"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          {t.members.rotateLink}
+        </button>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}

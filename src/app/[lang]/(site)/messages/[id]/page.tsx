@@ -12,10 +12,14 @@ const UUID_RE =
 
 export default async function ThreadPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lang: string; id: string }>;
+  searchParams: Promise<{ about?: string | string[] }>;
 }) {
   const { lang, id } = await params;
+  const aboutRaw = (await searchParams).about;
+  const about = typeof aboutRaw === "string" && UUID_RE.test(aboutRaw) ? aboutRaw : null;
   if (!isLocale(lang)) notFound();
   if (!UUID_RE.test(id)) notFound();
   const dict = await getDictionary(lang);
@@ -57,6 +61,21 @@ export default async function ThreadPage({
     .eq("conversation_id", id)
     .order("created_at", { ascending: true });
 
+  // Arrived from «راسل البائع» (?about=<listing>) on an empty conversation:
+  // start the draft with a line naming the listing, so the seller knows which
+  // item this is about. Only the title of a listing the buyer can already see
+  // (RLS), and only a draft — nothing is sent until they press send.
+  let initialText = "";
+  if (about && (msgs ?? []).length === 0) {
+    const { data: listing } = await supabase
+      .from("listings")
+      .select("title")
+      .eq("id", about)
+      .maybeSingle();
+    const title = (listing as { title: string } | null)?.title?.trim();
+    if (title) initialText = dict.messages.aboutListing.replace("{title}", title);
+  }
+
   // Mark this conversation read for me.
   await supabase
     .from("conversation_participants")
@@ -90,6 +109,7 @@ export default async function ThreadPage({
             meId={user.id}
             initialMessages={(msgs ?? []) as ChatMessage[]}
             dict={dict}
+            initialText={initialText}
           />
         </div>
       </Container>
