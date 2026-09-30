@@ -16,6 +16,7 @@ import { ImageUpload } from "@/components/image-upload";
 import { fieldClass } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { UnitPricingFields } from "@/components/unit-pricing-fields";
+import { ServicePriceOptions } from "@/components/service-price-options";
 import {
   unitPricingColumns,
   PIECE_PRICED,
@@ -47,6 +48,8 @@ type VariantRow = {
   stock: string;
   color?: string | null;
   size?: string | null;
+  /** A SERVICE option's own length in minutes (0321); "" = the service's. */
+  duration?: string;
 };
 type OptionRow = { name: string; price: string };
 type ModifierGroupRow = {
@@ -162,6 +165,8 @@ export function ProductEditForm({
   // created in any sector (a boutique's alterations, a phone shop's repairs),
   // and it still needs its duration and slot rules — gating this on the sector
   // alone left those items uneditable, with the fields simply absent.
+  // 0321: a service edits its price options instead of size/colour variants.
+  const isServiceItem = initial.itemKind === "service";
   const bookable =
     sectorHasTeam(category) ||
     category === "services" ||
@@ -270,9 +275,11 @@ export function ProductEditForm({
       // Re-inserting also wrote the stock held in this form since page load,
       // reverting anything sold in between. Both are avoided by touching only
       // what changed.
-      const sourceVariants = useMatrix
-        ? variantsFromGroups(colorGroups)
-        : variants;
+      const sourceVariants: VariantRow[] = isServiceItem
+        ? variants
+        : useMatrix
+          ? variantsFromGroups(colorGroups)
+          : variants;
       const cleanVariants = sourceVariants
         .filter((v) => v.label.trim())
         .map((v, i) => ({
@@ -281,7 +288,11 @@ export function ProductEditForm({
           color: v.color ?? null,
           size: v.size ?? null,
           price: v.price.trim() === "" ? null : Number(v.price),
-          stock: v.stock.trim() === "" ? null : Number(v.stock),
+          stock: isServiceItem || v.stock.trim() === "" ? null : Number(v.stock),
+          duration_minutes:
+            isServiceItem && (v.duration ?? "").trim() !== "" && Number(v.duration) > 0
+              ? Math.min(480, Math.max(5, Math.round(Number(v.duration))))
+              : null,
           sort_order: i,
         }));
 
@@ -324,6 +335,7 @@ export function ProductEditForm({
           color: v.color,
           size: v.size,
           price: v.price,
+          duration_minutes: v.duration_minutes,
           sort_order: v.sort_order,
         };
         if (stockEdited.has(v.label)) patch.stock = v.stock;
@@ -535,6 +547,11 @@ export function ProductEditForm({
           priceInput={priceInput}
         />
       )}
+      {/* 0321: a service's several prices — its options. Goods keep the
+          size/colour variants further down. */}
+      {isServiceItem && (
+        <ServicePriceOptions rows={variants} onChange={setVariants} dict={dict} />
+      )}
       <label className="flex items-center gap-2 rounded-xl border border-border bg-surface-muted/40 p-3 text-sm font-semibold">
         <input
           type="checkbox"
@@ -653,7 +670,7 @@ export function ProductEditForm({
         </div>
       )}
 
-      {!simplified && useMatrix && (
+      {!simplified && !isServiceItem && useMatrix && (
         <div className="rounded-xl border border-border/70 p-4">
           <VariantMatrix dict={dict} groups={colorGroups} onChange={setColorGroups} />
         </div>
@@ -661,7 +678,7 @@ export function ProductEditForm({
 
       {!simplified && (
         <>
-          {!useMatrix && (
+          {!useMatrix && !isServiceItem && (
           <div className="rounded-xl border border-border/70 p-4">
             <div className="flex items-center justify-between">
               <span className={label}>{p.variantsTitle}</span>

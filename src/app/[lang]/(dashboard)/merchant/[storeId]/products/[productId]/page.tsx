@@ -83,7 +83,7 @@ export default async function EditProductPage({
     await Promise.all([
       supabase
         .from("product_variants")
-        .select("label, price, stock, color, size")
+        .select("label, price, stock, color, size, duration_minutes")
         .eq("product_id", productId)
         .order("sort_order", { ascending: true })
         .limit(FETCH_BOUNDS.productVariants),
@@ -155,6 +155,7 @@ export default async function EditProductPage({
       stock: v.stock != null ? String(v.stock) : "",
       color: (v.color as string | null) ?? null,
       size: (v.size as string | null) ?? null,
+      duration: v.duration_minutes != null ? String(v.duration_minutes) : "",
     })),
     // Flat (ungrouped) add-ons only; grouped options are carried on modGroups.
     options: (options ?? [])
