@@ -26,6 +26,7 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { formatUsd } from "@/lib/currency";
 import { Money } from "@/components/ui/money";
 import { TagSource } from "@/components/attribution/tag-source";
+import { lowestOptionPrice, type ServiceOption } from "@/lib/service-options";
 
 type Service = {
   id: string;
@@ -40,6 +41,9 @@ type Service = {
   durationMinutes?: number | null;
   bufferMinutes?: number | null;
   capacityPerSlot?: number | null;
+  /** 0321: priced options (short / long hair, 30 / 60 minutes). Empty = the
+   *  service has one price. Each option may carry its own duration. */
+  options?: ServiceOption[];
 };
 
 type BusyRange = { s: string; e: string };
@@ -123,6 +127,11 @@ export function BookingPanel({
   // Arriving from a service detail page preselects it, so the customer lands on
   // the slot picker instead of an empty dropdown they must re-navigate.
   const [serviceId, setServiceId] = useState(initialServiceId ?? "");
+  // 0321: which of the service's priced options was chosen ("" = none yet).
+  const [optionId, setOptionId] = useState(() => {
+    const opts = services.find((s) => s.id === (initialServiceId ?? ""))?.options ?? [];
+    return opts.length === 1 ? opts[0].id : "";
+  });
   // Coupon (validated against the chosen service price; discount is honored on
   // arrival — there's no online payment).
   const [couponInput, setCouponInput] = useState("");
@@ -184,6 +193,15 @@ export function BookingPanel({
     return acc;
   }, {});
 
+  // 0321: the chosen option decides the price and, when it has one, the
+  // duration — the same rule place_booking applies on the server.
+  const serviceOptions = selectedService?.options ?? [];
+  const selectedOption = serviceOptions.find((o) => o.id === optionId) ?? null;
+  const needsOption = serviceOptions.length > 0 && !selectedOption;
+  const effDuration = avail
+    ? (selectedOption?.durationMinutes ?? avail.duration)
+    : 0;
+
   // Fresha-style slot grid when the merchant configured structured hours;
   // otherwise fall back to a free time input + taken-times chips. The step is
   // the SERVICE's real duration (+buffer) on the new engine.
@@ -191,7 +209,7 @@ export function BookingPanel({
     ? daySpan(hours, new Date(`${pickedDate}T00:00:00`))
     : null;
   const engineStep =
-    avail && avail.mode ? avail.duration + avail.buffer : slotMinutes;
+    avail && avail.mode ? effDuration + avail.buffer : slotMinutes;
   const slots = hours && span ? generateSlots(span, engineStep) : null;
   const dayClosed = (!!hours && !!pickedDate && !span) || !!avail?.blocked;
 
@@ -254,9 +272,9 @@ export function BookingPanel({
     if (!engineMode || !avail) return { blocked: taken.includes(slot) };
     if (avail.blocked) return { blocked: true };
     const a = new Date(`${pickedDate}T${slot}:00`).getTime();
-    const b = a + (avail.duration + avail.buffer) * 60000;
+    const b = a + (effDuration + avail.buffer) * 60000;
     if (avail.windows) {
-      const end = addMinutes(slot, avail.duration);
+      const end = addMinutes(slot, effDuration);
       const fits = avail.windows.some(
         (w) => slot >= w.s.slice(0, 5) && end <= w.e.slice(0, 5),
       );
@@ -302,7 +320,7 @@ export function BookingPanel({
   // gates navigation only — the submit button keeps its own guard, and the DB
   // is still the authority on whether the slot is really free.
   const stepReady: Record<Step, boolean> = {
-    service: !!serviceId,
+    service: !!serviceId && !needsOption,
     provider: !!doctorId,
     date: !!pickedDate,
     time: !!time && !slotState(time).blocked,
@@ -348,7 +366,8 @@ export function BookingPanel({
       ? dict.booking.anyProvider
       : (doctors.find((d) => d.id === doctorId)?.name ?? "");
   const serviceLabel = selectedService
-    ? localized(selectedService.name, selectedService.nameEn, lang)
+    ? localized(selectedService.name, selectedService.nameEn, lang) +
+      (selectedOption ? ` — ${selectedOption.label}` : "")
     : "";
 
   async function refreshTaken(date: string, doctor: string, service: string) {
@@ -406,6 +425,9 @@ export function BookingPanel({
 
   async function onServiceChange(service: string) {
     setServiceId(service);
+    // A single option is the only choice there is; several must be picked.
+    const opts = services.find((s) => s.id === service)?.options ?? [];
+    setOptionId(opts.length === 1 ? opts[0].id : "");
     setTime("");
     // The discount is tied to the service price — reset it when the service
     // changes so a stale discount can't carry over.
@@ -424,7 +446,7 @@ export function BookingPanel({
     await refreshTaken(pickedDate, doctor, service);
   }
 
-  const selectedPrice = services.find((s) => s.id === serviceId)?.price ?? 0;
+  const selectedPrice = selectedOption?.price ?? selectedService?.price ?? 0;
 
   async function applyCoupon() {
     const code = couponInput.trim();
@@ -475,6 +497,16 @@ export function BookingPanel({
     }
     const serviceId = String(form.get("service_id"));
     const service = services.find((s) => s.id === serviceId);
+    if (needsOption) {
+      setError(dict.booking.chooseOptionFirst);
+      setLoading(false);
+      return;
+    }
+    const bookedName = service
+      ? selectedOption
+        ? `${service.name} — ${selectedOption.label}`
+        : service.name
+      : null;
     const chosenDate = String(form.get("date")) || "";
     const chosenTime = String(form.get("time")) || "";
 
@@ -500,6 +532,10 @@ export function BookingPanel({
         p_phone: phone.trim() || null,
         p_notes: String(form.get("notes")) || null,
         p_coupon: coupon?.code ?? null,
+        // 0321: optional and last, so the server keeps accepting calls
+        // without it (the old 10-argument function was dropped, not kept
+        // beside this one, so PostgREST has one candidate).
+        p_variant_id: selectedOption?.id ?? null,
       });
       const r = res as { ok?: boolean; code?: string; id?: string } | null;
       if (rpcErr || !r?.ok) {
@@ -515,7 +551,9 @@ export function BookingPanel({
                 ? dict.booking.noProviderFree
                 : code === "outside_hours"
                   ? dict.booking.outsideHours
-                  : dict.auth.errorGeneric,
+                  : code === "option_unavailable"
+                    ? dict.booking.optionUnavailable
+                    : dict.auth.errorGeneric,
         );
         if (code === "slot_taken" || code === "capacity_full") {
           await refreshTaken(chosenDate, doctorId, serviceId);
@@ -557,7 +595,11 @@ export function BookingPanel({
       store_id: storeId,
       customer_id: user.id,
       product_id: serviceId || null,
-      service_name: service?.name ?? null,
+      service_name: bookedName,
+      // The option, never a price: this path writes from the browser, so a
+      // price here would be whatever the customer sent. place_booking (the
+      // engine path) records the price server-side.
+      variant_id: selectedOption?.id ?? null,
       doctor_id: doctorId || null,
       requested_date: String(form.get("date")) || null,
       requested_time: String(form.get("time")) || null,
@@ -592,7 +634,7 @@ export function BookingPanel({
       const notes = String(form.get("notes")) || "";
       const msg = [
         `${dict.booking.waGreeting} ${storeName}`.trim(),
-        service?.name ? `• ${service.name}` : "",
+        bookedName ? `• ${bookedName}` : "",
         [date, time].filter(Boolean).join(" "),
         notes,
       ]
@@ -664,7 +706,14 @@ export function BookingPanel({
                   {attributeSummary(category, s.attributes, lang)}
                 </p>
               )}
-              <p className="mt-0.5 text-sm font-bold">{formatUsd(s.price)}</p>
+              <p className="mt-0.5 text-sm font-bold">
+                {s.options && s.options.length > 0
+                  ? dict.booking.fromPrice.replace(
+                      "{price}",
+                      formatUsd(lowestOptionPrice(s.price, s.options)),
+                    )
+                  : formatUsd(s.price)}
+              </p>
             </div>
           </div>
         ))}
@@ -831,6 +880,49 @@ export function BookingPanel({
                   </option>
                 ))}
               </select>
+              {/* 0321: a service with several prices — the customer picks
+                  which one before a slot, because the option can change the
+                  slot's length as well as the price. */}
+              {serviceOptions.length > 0 && (
+                <fieldset className="mt-3">
+                  <legend className={labelClass}>{dict.booking.chooseOption}</legend>
+                  <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+                    {serviceOptions.map((o) => {
+                      const on = o.id === optionId;
+                      return (
+                        <button
+                          key={o.id}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => {
+                            setOptionId(o.id);
+                            setTime("");
+                            setCoupon(null);
+                            setCouponError(null);
+                          }}
+                          className={`flex min-h-11 items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-start text-sm transition-colors ${
+                            on
+                              ? "border-primary bg-primary-soft font-bold text-primary"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate font-semibold">{o.label}</span>
+                            {o.durationMinutes != null && (
+                              <span className="block text-xs text-muted-foreground">
+                                {dict.booking.optionDuration.replace("{n}", String(o.durationMinutes))}
+                              </span>
+                            )}
+                          </span>
+                          <span className="shrink-0 font-bold tabular-nums">
+                            {formatUsd(o.price ?? selectedService?.price ?? 0)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              )}
             </div>
             {doctors.length > 0 && (
               <div className={stepShell("provider")}>
@@ -962,7 +1054,7 @@ export function BookingPanel({
               {engineMode && avail && (
                 <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                   <Clock className="h-3.5 w-3.5 shrink-0" />
-                  {dict.booking.durationLabel.replace("{n}", String(avail.duration))}
+                  {dict.booking.durationLabel.replace("{n}", String(effDuration))}
                 </p>
               )}
               {dayFull &&
@@ -1346,7 +1438,7 @@ export function BookingPanel({
                 {engineMode && avail && (
                   <p className="flex items-center gap-1.5 pb-3 text-xs font-semibold text-muted-foreground">
                     <Clock className="h-3.5 w-3.5 shrink-0" />
-                    {dict.booking.durationLabel.replace("{n}", String(avail.duration))}
+                    {dict.booking.durationLabel.replace("{n}", String(effDuration))}
                   </p>
                 )}
                 {slotGrid(true)}

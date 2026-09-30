@@ -77,7 +77,7 @@ async function fetchProductView(
     await Promise.all([
       supabase
         .from("product_variants")
-        .select("id, label, price, stock, is_available, color, size")
+        .select("id, label, price, stock, is_available, color, size, duration_minutes")
         .eq("product_id", id)
         .order("sort_order", { ascending: true })
         .limit(FETCH_BOUNDS.productVariants),
@@ -165,6 +165,7 @@ async function fetchProductView(
       is_available: v.is_available as boolean,
       color: (v.color as string | null) ?? null,
       size: (v.size as string | null) ?? null,
+      durationMinutes: v.duration_minutes != null ? Number(v.duration_minutes) : null,
     })),
     addons: (addons ?? []).map((a) => ({
       id: a.id as string,

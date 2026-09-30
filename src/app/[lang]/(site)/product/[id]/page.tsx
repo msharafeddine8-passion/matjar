@@ -48,6 +48,7 @@ import { ProductReviews } from "@/components/product-reviews";
 import { ProductQA } from "@/components/product-qa";
 import { RecentlyViewed } from "@/components/recently-viewed";
 import { formatUsd, formatLbp } from "@/lib/currency";
+import { lowestOptionPrice } from "@/lib/service-options";
 import { Money } from "@/components/ui/money";
 import { localized } from "@/lib/i18n-field";
 import { ProductMiniCard } from "@/components/product-mini-card";
@@ -192,6 +193,23 @@ export default async function ProductPage({
   }
 
   const basePrice = effectivePrice(product);
+  // 0321: a bookable service with several prices shows «من $X» and lists
+  // them; the customer picks one in the booking panel.
+  const serviceOptions =
+    offering.cta === "bookAppointment"
+      ? product.variants.filter((v) => v.is_available)
+      : [];
+  const fromPrice = serviceOptions.length
+    ? lowestOptionPrice(
+        basePrice,
+        serviceOptions.map((v) => ({
+          id: v.id,
+          label: v.label,
+          price: v.price,
+          durationMinutes: v.durationMinutes ?? null,
+        })),
+      )
+    : null;
   const compareAt = compareAtPrice(product);
   const flashEnd = flashEndsAt(product);
   // A service the merchant never priced says so; nothing on this page prints a
@@ -326,9 +344,13 @@ export default async function ProductPage({
           <span
             className={`text-money text-2xl font-extrabold ${flashEnd != null ? "text-warning" : "text-primary"}`}
           >
-            <Money value={basePrice} />
+            {fromPrice != null ? (
+              dict.booking.fromPrice.replace("{price}", formatUsd(fromPrice))
+            ) : (
+              <Money value={basePrice} />
+            )}
           </span>
-          {compareAt != null && (
+          {compareAt != null && fromPrice == null && (
             <span className="text-money text-lg text-muted-foreground line-through">
               <Money value={compareAt} />
             </span>
@@ -476,6 +498,25 @@ export default async function ProductPage({
           <p className="mb-3 text-sm text-muted-foreground">
             {dict.product.bookingLead}
           </p>
+          {serviceOptions.length > 0 && (
+            <ul className="mb-3 divide-y divide-border rounded-xl border border-border">
+              {serviceOptions.map((o) => (
+                <li key={o.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-sm">
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">{o.label}</span>
+                    {o.durationMinutes != null && (
+                      <span className="block text-xs text-muted-foreground">
+                        {dict.booking.optionDuration.replace("{n}", String(o.durationMinutes))}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-money shrink-0 font-bold">
+                    <Money value={o.price ?? basePrice} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
           {/* Same fact, the booking wording. `booking.payOnArrival` is the
               string the booking panel itself uses, so the promise made here and
               the one made at the moment of booking are the same sentence. */}

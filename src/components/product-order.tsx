@@ -30,6 +30,8 @@ export type Variant = {
   is_available: boolean;
   color: string | null;
   size: string | null;
+  /** A service option's own duration in minutes (0321); goods leave it null. */
+  durationMinutes?: number | null;
 };
 export type AddOn = {
   id: string;

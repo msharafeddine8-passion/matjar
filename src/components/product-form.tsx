@@ -23,6 +23,7 @@ import {
   PIECE_PRICED,
   type UnitPricingValue,
 } from "@/lib/unit-pricing";
+import { ServicePriceOptions } from "@/components/service-price-options";
 import {
   VariantMatrix,
   variantsFromGroups,
@@ -33,7 +34,8 @@ import {
 const field = `${fieldClass} mt-1.5`;
 const label = "text-sm font-semibold";
 
-type VariantRow = { label: string; price: string; stock: string };
+// duration: a SERVICE option's own length in minutes (0321), "" = the service's.
+type VariantRow = { label: string; price: string; stock: string; duration?: string };
 type OptionRow = { name: string; price: string };
 export type SectionOption = { id: string; name: string; name_en: string | null };
 
@@ -226,9 +228,8 @@ export function ProductForm({
       return;
     }
 
-    const sourceVariants = useMatrix
-      ? variantsFromGroups(colorGroups)
-      : variants;
+    const sourceVariants: (VariantRow & { color?: string | null; size?: string | null })[] =
+      isService ? variants : useMatrix ? variantsFromGroups(colorGroups) : variants;
     const cleanVariants = sourceVariants
       .filter((v) => v.label.trim())
       .map((v, i) => ({
@@ -237,7 +238,12 @@ export function ProductForm({
         color: "color" in v ? (v.color ?? null) : null,
         size: "size" in v ? (v.size ?? null) : null,
         price: v.price.trim() === "" ? null : Number(v.price),
-        stock: v.stock.trim() === "" ? null : Number(v.stock),
+        stock: isService || v.stock.trim() === "" ? null : Number(v.stock),
+        // 0321: an option may take longer than the service.
+        duration_minutes:
+          isService && (v.duration ?? "").trim() !== "" && Number(v.duration) > 0
+            ? Math.min(480, Math.max(5, Math.round(Number(v.duration))))
+            : null,
         sort_order: i,
       }));
     if (cleanVariants.length) {
@@ -520,6 +526,12 @@ export function ProductForm({
           priceInput={priceInput}
         />
       )}
+      {/* 0321: a service with several prices. Shown in every store — the
+          trimmed booking form included — because this is the one variant
+          question a service has. Goods keep the size/colour variants below. */}
+      {isService && (
+        <ServicePriceOptions rows={variants} onChange={setVariants} dict={dict} />
+      )}
       <div>
         <label className={label} htmlFor="description">
           {p.description}
@@ -581,8 +593,8 @@ export function ProductForm({
 
       {!simple && (
       <>
-      {/* Variants */}
-      {useMatrix ? (
+      {/* Variants — goods only; a service's are the price options above. */}
+      {isService ? null : useMatrix ? (
         <div className="rounded-xl border border-border/70 p-4">
           <VariantMatrix
             dict={dict}

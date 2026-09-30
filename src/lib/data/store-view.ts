@@ -5,6 +5,17 @@ import { createPublicClient } from "@/lib/supabase/public-client";
 import { toCategoryKey, type CategoryKey } from "@/lib/catalog";
 import type { StorePlan } from "@/lib/plan-tiers";
 import { FETCH_BOUNDS, fetchAllByIds, fetchAllPages, warnIfTruncated } from "./bounds";
+import type { ServiceOption } from "@/lib/service-options";
+
+type VariantRow = {
+  id: string;
+  product_id: string;
+  label: string;
+  price: number | string | null;
+  duration_minutes: number | null;
+  is_available: boolean | null;
+  sort_order: number | null;
+};
 
 // The catalogue projection, named once so the row-shape contract has something
 // to point at: every column here is read by the mapper at the bottom of
@@ -106,6 +117,10 @@ export type StoreView = {
      * the wrong stock counter. The grid sends these to the product page.
      */
     hasVariants?: boolean;
+    /** 0321: a SERVICE's priced options, available ones only, in the
+     *  merchant's order. Absent on goods (their variants live on the product
+     *  page picker) and on a service with a single price. */
+    priceOptions?: ServiceOption[];
     isBundle?: boolean;
     includes?: { name: string; nameEn: string | null; quantity: number }[];
     /**
@@ -217,28 +232,47 @@ async function fetchStoreView(
   // and the real stock both live on the variant row. The grid uses this to send
   // those products to their own page instead, where the picker exists.
   const variantProductIds = new Set<string>();
+  const serviceIds = new Set(
+    prods.filter((p) => p.item_kind === "service").map((p) => p.id as string),
+  );
+  const optionRows: Record<string, VariantRow[]> = {};
+  const priceOptionsByService: Record<string, ServiceOption[]> = {};
   if (prods.length) {
     // Truncation here is the expensive one: a product whose variant rows fell
     // past the ceiling looks variant-less, so the grid offers quick-add and
     // charges the base price instead of routing to the picker. Money, not
     // cosmetics — so this one is both chunked (the id list is the whole
     // catalogue) and paged (a store has several variants per product).
-    const vars = await fetchAllByIds<{ product_id: string }>(
+    const vars = await fetchAllByIds<VariantRow>(
       prods.map((p) => p.id as string),
       (chunk, from, to) =>
         supabase
           .from("product_variants")
-          .select("product_id")
+          .select("id, product_id, label, price, duration_minutes, is_available, sort_order")
           .in("product_id", chunk)
           .order("id", { ascending: true })
           .range(from, to) as unknown as PromiseLike<{
-          data: { product_id: string }[] | null;
+          data: VariantRow[] | null;
         }>,
       FETCH_BOUNDS.storeVariants,
       `product_variants (store ${id})`,
     );
     for (const v of vars) {
       variantProductIds.add(v.product_id);
+      // 0321: the same rows are a service's price options.
+      if (serviceIds.has(v.product_id) && v.is_available !== false) {
+        (optionRows[v.product_id] ??= []).push(v);
+      }
+    }
+    for (const [pid, rows] of Object.entries(optionRows)) {
+      priceOptionsByService[pid] = rows
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((r) => ({
+          id: r.id,
+          label: r.label,
+          price: r.price != null ? Number(r.price) : null,
+          durationMinutes: r.duration_minutes != null ? Number(r.duration_minutes) : null,
+        }));
     }
   }
 
@@ -355,6 +389,7 @@ async function fetchStoreView(
       unitMeasure: (p.unit_measure as string | null) ?? null,
       unitAmount: p.unit_amount != null ? Number(p.unit_amount) : null,
       hasVariants: variantProductIds.has(p.id as string),
+      priceOptions: priceOptionsByService[p.id as string],
       includes: includesByBundle[p.id as string] ?? undefined,
     })),
   };

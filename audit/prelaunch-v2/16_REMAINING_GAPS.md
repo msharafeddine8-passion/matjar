@@ -39,3 +39,10 @@
 - **Merchant dashboard totals** no longer stop at 1,000 orders: counts are exact database counts, sales are summed a page at a time.
 
 Full list: `MATJAR_PRELAUNCH_ISSUES.csv` (151 rows, 0 open P0).
+
+## Service price options (2026-09-30, branch feat/service-price-options)
+- Owner request: a service can have several prices. The add/edit forms show «أسعار مختلفة لنفس الخدمة» for services: each option has a name, a price and an optional duration (product_variants.duration_minutes, 0321). Goods keep the size/colour variants.
+- The booking panel shows «من $X» on such a service, asks «اختار النوع» before a slot, and uses the option's duration for the slot grid. `place_booking` gained an optional last argument `p_variant_id` (the old 10-argument function was dropped, not overloaded) and records `bookings.variant_id` and `bookings.price`. Rolled-back test 10/10, including the deployed app's exact call.
+- 0322 `bookings_price_guard`: a booking written from the browser (the legacy path) cannot state its own price or borrow another service's option — recomputed on insert, frozen on update; the engine path is untouched. Test 6/6.
+- The service page lists the options and shows «من $X».
+- Not verified on screen: the option picker sits behind sign-in and no live service has options yet.

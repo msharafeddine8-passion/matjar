@@ -172,6 +172,7 @@ export function StoreProductsSection({
                   durationMinutes: p.durationMinutes ?? null,
                   bufferMinutes: p.bufferMinutes ?? 0,
                   capacityPerSlot: p.capacityPerSlot ?? null,
+                  options: p.priceOptions,
                 }))}
             />
           ) : surface === "order" && checkout ? (
