@@ -260,7 +260,12 @@ export function ProductEditForm({
       return;
     }
 
-    if (!simplified) {
+    // A service's price options (0321) are variants too, and the trimmed
+    // booking-store form shows them — so they save whenever they are on screen.
+    // Gating this on !simplified alone (as it was) silently dropped every
+    // option a salon or clinic typed: the form showed them, the save skipped
+    // them, and the store never had anything to show.
+    if (!simplified || isServiceItem) {
       // Variants are reconciled by label, NOT replaced wholesale.
       //
       // The old code deleted every row and re-inserted. The comment beside it
@@ -352,7 +357,11 @@ export function ProductEditForm({
           return;
         }
       }
+    }
 
+    // Add-ons and modifier groups are on screen only in the full form, so a
+    // trimmed form must not rewrite them (it would wipe what it never showed).
+    if (!simplified) {
       // Options + modifier groups are replaced wholesale (order_items snapshot
       // name/price, so nothing references these rows). Delete options first
       // (they FK the groups), then groups; re-insert groups to get their ids,

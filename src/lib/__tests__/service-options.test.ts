@@ -38,3 +38,21 @@ describe("the booking engine applies the same rule (0321)", () => {
     expect(sql).toMatch(/p_coupon text default null,\s*\n\s*p_variant_id uuid default null\s*\n\)/);
   });
 });
+
+describe("the merchant forms save a service's options (regression, 2026-09-30)", () => {
+  // A salon's edit form showed the options and then skipped saving them,
+  // because the whole variants save sat behind `if (!simplified)`.
+  const edit = readFileSync(
+    join(process.cwd(), "src/components/product-edit-form.tsx"),
+    "utf8",
+  );
+  it("the edit form saves variants for a service even in the trimmed form", () => {
+    expect(edit).toContain("if (!simplified || isServiceItem) {");
+  });
+  it("and still leaves add-ons alone in the trimmed form", () => {
+    const variantsGate = edit.indexOf("if (!simplified || isServiceItem) {");
+    const addonsGate = edit.indexOf("if (!simplified) {", variantsGate);
+    expect(addonsGate).toBeGreaterThan(variantsGate);
+    expect(edit.indexOf('from("product_options").delete()')).toBeGreaterThan(addonsGate);
+  });
+});
