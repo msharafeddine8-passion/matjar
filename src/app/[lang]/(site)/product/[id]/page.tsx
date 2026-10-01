@@ -48,7 +48,7 @@ import { ProductReviews } from "@/components/product-reviews";
 import { ProductQA } from "@/components/product-qa";
 import { RecentlyViewed } from "@/components/recently-viewed";
 import { formatUsd, formatLbp } from "@/lib/currency";
-import { lowestOptionPrice } from "@/lib/service-options";
+import { servicePriceLine } from "@/lib/service-options";
 import { Money } from "@/components/ui/money";
 import { localized } from "@/lib/i18n-field";
 import { ProductMiniCard } from "@/components/product-mini-card";
@@ -199,8 +199,10 @@ export default async function ProductPage({
     offering.cta === "bookAppointment"
       ? product.variants.filter((v) => v.is_available)
       : [];
+  // «$5 · $10 · $15» (or «من $X» past four distinct prices) — the same line
+  // the booking panel prints beside the service.
   const fromPrice = serviceOptions.length
-    ? lowestOptionPrice(
+    ? servicePriceLine(
         basePrice,
         serviceOptions.map((v) => ({
           id: v.id,
@@ -208,6 +210,8 @@ export default async function ProductPage({
           price: v.price,
           durationMinutes: v.durationMinutes ?? null,
         })),
+        formatUsd,
+        dict.booking.fromPrice,
       )
     : null;
   const compareAt = compareAtPrice(product);
@@ -345,7 +349,7 @@ export default async function ProductPage({
             className={`text-money text-2xl font-extrabold ${flashEnd != null ? "text-warning" : "text-primary"}`}
           >
             {fromPrice != null ? (
-              dict.booking.fromPrice.replace("{price}", formatUsd(fromPrice))
+              fromPrice
             ) : (
               <Money value={basePrice} />
             )}

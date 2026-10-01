@@ -26,7 +26,7 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { formatUsd } from "@/lib/currency";
 import { Money } from "@/components/ui/money";
 import { TagSource } from "@/components/attribution/tag-source";
-import { lowestOptionPrice, type ServiceOption } from "@/lib/service-options";
+import { servicePriceLine, type ServiceOption } from "@/lib/service-options";
 
 type Service = {
   id: string;
@@ -683,6 +683,22 @@ export function BookingPanel({
     );
   }
 
+  // The grey line under a service's name: its attributes, then how long it
+  // takes. The length is the service's own duration (products.duration_minutes)
+  // — «45 دقيقة» — never a count of "sessions", which is what salons were
+  // reading when they typed minutes into that field.
+  function serviceFacts(s: Service): string {
+    // A clinic's retired `duration` attribute already prints «20 دقيقة»; do
+    // not say the same length twice.
+    const minutes = s.attributes?.duration ? null : (s.durationMinutes ?? null);
+    return [
+      attributeSummary(category, s.attributes, lang),
+      minutes ? dict.booking.optionDuration.replace("{n}", String(minutes)) : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
   // A section's services (or the whole flat list) rendered with the same card.
   function renderServices(list: Service[]) {
     return (
@@ -701,18 +717,13 @@ export function BookingPanel({
             )}
             <div className="min-w-0 flex-1">
               <h3 className="truncate font-bold">{localized(s.name, s.nameEn, lang)}</h3>
-              {attributeSummary(category, s.attributes, lang) && (
+              {serviceFacts(s) && (
                 <p className="truncate text-xs text-muted-foreground">
-                  {attributeSummary(category, s.attributes, lang)}
+                  {serviceFacts(s)}
                 </p>
               )}
-              <p className="mt-0.5 text-sm font-bold">
-                {s.options && s.options.length > 0
-                  ? dict.booking.fromPrice.replace(
-                      "{price}",
-                      formatUsd(lowestOptionPrice(s.price, s.options)),
-                    )
-                  : formatUsd(s.price)}
+              <p className="mt-0.5 text-sm font-bold tabular-nums">
+                {servicePriceLine(s.price, s.options, formatUsd, dict.booking.fromPrice)}
               </p>
             </div>
           </div>
