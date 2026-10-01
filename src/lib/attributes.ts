@@ -136,7 +136,10 @@ export const categoryAttributes: Partial<Record<CategoryKey, AttrField[]>> = {
         { value: "both", ar: "للجميع", en: "Everyone" },
       ],
     },
-    { key: "sessions", ar: "عدد الجلسات", en: "Sessions", type: "number", unit: { ar: "جلسة", en: "sessions" } },
+    // Retired from entry (2026-10-01): salons typed the service's MINUTES here
+    // and customers read «45 جلسة». The length of a service is
+    // products.duration_minutes («مدّة الخدمة»), shown on the card as minutes.
+    { key: "sessions", ar: "عدد الجلسات", en: "Sessions", type: "number", unit: { ar: "جلسة", en: "sessions" }, legacy: true },
     {
       key: "venue",
       ar: "مكان الخدمة",

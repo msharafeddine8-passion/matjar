@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { lowestOptionPrice, type ServiceOption } from "@/lib/service-options";
+import { lowestOptionPrice, servicePriceLine, type ServiceOption } from "@/lib/service-options";
 
 const opt = (price: number | null, durationMinutes: number | null = null): ServiceOption => ({
   id: String(Math.random()),
@@ -54,5 +54,23 @@ describe("the merchant forms save a service's options (regression, 2026-09-30)",
     const addonsGate = edit.indexOf("if (!simplified) {", variantsGate);
     expect(addonsGate).toBeGreaterThan(variantsGate);
     expect(edit.indexOf('from("product_options").delete()')).toBeGreaterThan(addonsGate);
+  });
+});
+
+describe("servicePriceLine (the line beside a service)", () => {
+  const fmt = (n: number) => `$${n}`;
+  const from = "من {price}";
+  it("one price when there are no options", () => {
+    expect(servicePriceLine(5, [], fmt, from)).toBe("$5");
+  });
+  it("every distinct price, low to high, when there are a few", () => {
+    expect(servicePriceLine(5, [opt(15), opt(5), opt(10)], fmt, from)).toBe("$5 · $10 · $15");
+  });
+  it("an option without a price counts as the service price, and duplicates collapse", () => {
+    expect(servicePriceLine(5, [opt(null), opt(5), opt(10)], fmt, from)).toBe("$5 · $10");
+    expect(servicePriceLine(5, [opt(7), opt(7)], fmt, from)).toBe("$7");
+  });
+  it("falls back to «من» past four distinct prices", () => {
+    expect(servicePriceLine(5, [opt(1), opt(2), opt(3), opt(4), opt(5)], fmt, from)).toBe("من $1");
   });
 });

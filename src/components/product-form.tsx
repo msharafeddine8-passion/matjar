@@ -529,6 +529,29 @@ export function ProductForm({
       {/* 0321: a service with several prices. Shown in every store — the
           trimmed booking form included — because this is the one variant
           question a service has. Goods keep the size/colour variants below. */}
+      {/* How long the service takes (products.duration_minutes). The save
+          already read this field, but the add form never rendered it, so every
+          new service started with no length and the card had nothing to say
+          but «عدد الجلسات», which salons filled with minutes. */}
+      {isService && (
+        <div className="max-w-xs">
+          <label className={label} htmlFor="duration_minutes">
+            {p.bookDuration}
+          </label>
+          <input
+            id="duration_minutes"
+            name="duration_minutes"
+            type="number"
+            min="5"
+            max="480"
+            step="5"
+            inputMode="numeric"
+            dir="ltr"
+            placeholder="30"
+            className={field}
+          />
+        </div>
+      )}
       {isService && (
         <ServicePriceOptions rows={variants} onChange={setVariants} dict={dict} />
       )}
