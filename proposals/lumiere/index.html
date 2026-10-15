@@ -1,0 +1,1172 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lumière Group | Lighting design and supply</title>
+<meta name="description" content="Lumière Group: architectural and decorative lighting in Lebanon and the Gulf since 1994. Lighting design, consultancy, project management and supply.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1a1612">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Manrope:wght@300;400;500;600&family=Amiri:ital,wght@0,400;1,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1a1612;
+  --ink:#efe6d8;
+  --muted:#9d9183;
+  --dim:#5e554b;
+  --line:rgba(239,230,216,.12);
+  --gold:#c9a46a;
+  --glow:214 190 152;
+  --serif:'Cormorant Garamond', 'Times New Roman', serif;
+  --sans:'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --gutter:clamp(16px, 4vw, 64px);
+}
+:lang(ar){
+  --serif:'Amiri', 'Times New Roman', serif;
+  --sans:'IBM Plex Sans Arabic', system-ui, sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:300;line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body.locked{overflow:hidden;height:100vh}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+::selection{background:rgb(var(--glow)/.35)}
+
+/* ---------- canvas & overlays ---------- */
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+.no-webgl #gl{display:none}
+.no-webgl body,.no-webgl{background:radial-gradient(60vw 60vw at 50% 20%, rgb(var(--glow)/.25), transparent 60%), var(--bg)}
+.vignette{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(120% 90% at 50% 50%, transparent 60%, rgba(0,0,0,.4) 100%)}
+#labels{position:fixed;inset:0;pointer-events:none;z-index:3}
+.city{position:absolute;left:0;top:0;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink);white-space:nowrap;opacity:0;will-change:transform,opacity}
+.city::before{content:'';display:inline-block;width:18px;height:1px;background:rgb(var(--glow));vertical-align:middle;margin-inline-end:8px}
+.city b{font-weight:500}
+.city small{display:block;color:var(--muted);font-size:9px;letter-spacing:.2em;margin-inline-start:26px}
+:lang(ar) .city{letter-spacing:0;font-size:13px}
+
+/* ---------- intro ---------- */
+#intro{position:fixed;inset:0;z-index:50;background:#0d0b09;display:grid;place-items:center;transition:opacity 1.4s ease, visibility 1.4s}
+#intro.gone{opacity:0;visibility:hidden}
+#intro .mark{position:absolute;bottom:12vh;text-align:center;color:#3b342c;letter-spacing:.6em;font-size:11px;text-transform:uppercase}
+#intro .mark .word{font-family:var(--serif);font-size:clamp(28px,4vw,44px);letter-spacing:.35em;color:#2a241e;display:block;margin-bottom:14px;text-transform:none}
+:lang(ar) #intro .mark{letter-spacing:.05em;font-size:14px}
+#cord{position:absolute;top:0;left:50%;width:120px;height:70vh;transform:translateX(-50%);touch-action:none;cursor:grab;opacity:0;transition:opacity 1s}
+#cord.ready{opacity:1}
+#cord:active{cursor:grabbing}
+#cord svg{width:100%;height:100%;overflow:visible}
+#cord .hint{position:absolute;left:50%;top:calc(var(--cy,46vh) + 34px);transform:translateX(-50%);white-space:nowrap;font-size:11px;letter-spacing:.35em;text-transform:uppercase;color:#7d7163;animation:breathe 2.4s ease-in-out infinite}
+:lang(ar) #cord .hint{letter-spacing:.02em;font-size:14px}
+@keyframes breathe{50%{opacity:.35}}
+#skipIntro{position:absolute;top:20px;inset-inline-end:var(--gutter);font-size:11px;letter-spacing:.25em;text-transform:uppercase;color:#4d453c}
+#skipIntro:hover{color:var(--ink)}
+
+/* ---------- nav ---------- */
+.nav::before{content:'';position:absolute;inset:0 0 -30px 0;background:linear-gradient(180deg,rgba(26,22,18,.85),rgba(26,22,18,0));z-index:-1;pointer-events:none}
+.nav{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:22px var(--gutter);mix-blend-mode:normal;opacity:0;transform:translateY(-10px);transition:opacity 1s .6s, transform 1s .6s}
+.ready .nav{opacity:1;transform:none}
+.logo{display:flex;flex-direction:column;line-height:1}
+.logo .w{font-family:'Cormorant Garamond',serif;font-size:24px;letter-spacing:.32em;font-weight:400}
+.logo .g{font-size:8.5px;letter-spacing:.78em;color:var(--muted);margin-top:5px;padding-inline-start:2px}
+.nav ul{display:flex;gap:clamp(14px,2.4vw,34px);list-style:none;font-size:11.5px;letter-spacing:.2em;text-transform:uppercase}
+:lang(ar) .nav ul{letter-spacing:0;font-size:14px}
+.nav ul a{color:var(--muted);transition:color .3s;position:relative}
+.nav ul a:hover,.nav ul a.on{color:var(--ink)}
+.nav ul a.on::after{content:'';position:absolute;left:0;right:0;bottom:-8px;height:1px;background:rgb(var(--glow))}
+.nav .right{display:flex;align-items:center;gap:18px}
+.lang{font-size:12px;letter-spacing:.1em;border:1px solid var(--line);border-radius:99px;padding:7px 14px;transition:border-color .3s}
+.lang:hover{border-color:rgb(var(--glow)/.6)}
+.cta-mini{font-size:11px;letter-spacing:.2em;text-transform:uppercase;padding:9px 16px;border-radius:99px;background:rgb(var(--glow));color:#120e0a;font-weight:600;box-shadow:0 0 30px rgb(var(--glow)/.35)}
+:lang(ar) .cta-mini{letter-spacing:0;font-size:13px}
+@media (max-width:980px){.nav ul{display:none}}
+@media (max-width:520px){.cta-mini{display:none}}
+
+/* ---------- content ---------- */
+main{position:relative;z-index:5}
+section{position:relative;min-height:100vh;padding:clamp(100px,14vh,160px) var(--gutter);display:flex;flex-direction:column;justify-content:center}
+.wrap{width:100%;max-width:1320px;margin:0 auto}
+.kicker{display:flex;align-items:center;gap:14px;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);margin-bottom:28px}
+:lang(ar) .kicker{letter-spacing:.02em;font-size:14px}
+.kicker::before{content:'';width:34px;height:1px;background:rgb(var(--glow))}
+h1,h2,h3{font-family:var(--serif);font-weight:300;line-height:1.02;letter-spacing:-.01em}
+h1{font-size:clamp(46px,8.6vw,138px)}
+h2{font-size:clamp(38px,5.6vw,88px)}
+h1 em,h2 em{font-style:italic;color:rgb(var(--glow));text-shadow:0 0 40px rgb(var(--glow)/.45)}
+:lang(ar) h1,:lang(ar) h2{line-height:1.3;letter-spacing:0}
+:lang(ar) h1 em,:lang(ar) h2 em{font-style:normal}
+.lede{max-width:520px;color:var(--muted);font-size:clamp(15px,1.25vw,18px);margin-top:28px}
+:lang(ar) .lede{font-size:clamp(16px,1.35vw,19px);line-height:1.9}
+.shade{text-shadow:0 2px 30px rgba(0,0,0,.9)}
+
+.reveal{opacity:0;transform:translateY(28px);transition:opacity 1.2s cubic-bezier(.2,.7,.2,1), transform 1.2s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+.reveal.d1{transition-delay:.12s}.reveal.d2{transition-delay:.24s}.reveal.d3{transition-delay:.36s}.reveal.d4{transition-delay:.48s}
+
+/* hero */
+#hero{justify-content:flex-end;padding-bottom:clamp(60px,10vh,120px)}
+#hero .wrap{display:grid;grid-template-columns:1.3fr .7fr;align-items:end;gap:40px}
+#hero .meta{justify-self:end;text-align:end;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);line-height:2.1}
+:lang(ar) #hero .meta{letter-spacing:0;font-size:14px}
+#hero .meta b{color:var(--ink);font-weight:500}
+@media (max-width:760px){#hero .wrap{grid-template-columns:1fr}#hero .meta{justify-self:start;text-align:start}}
+
+/* legacy */
+#legacy .wrap{max-width:1320px}
+.torch{position:relative;font-family:'Cormorant Garamond',serif;font-weight:300;font-size:clamp(130px,26vw,420px);line-height:.8;letter-spacing:-.04em;user-select:none;margin:10px 0 30px;margin-inline-start:-.04em}
+.torch .base{color:#15110d}
+.torch .lit{position:absolute;inset:0;color:transparent;background:linear-gradient(180deg, #fff3df 0%, rgb(var(--glow)) 45%, #8a6a3e 100%);-webkit-background-clip:text;background-clip:text;
+  -webkit-mask-image:radial-gradient(circle var(--r,220px) at var(--mx,30%) var(--my,50%), #000 0%, rgba(0,0,0,.5) 45%, transparent 100%);
+          mask-image:radial-gradient(circle var(--r,220px) at var(--mx,30%) var(--my,50%), #000 0%, rgba(0,0,0,.5) 45%, transparent 100%);
+  filter:drop-shadow(0 0 30px rgb(var(--glow)/.35))}
+.torch-hint{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--dim);margin-top:-10px;margin-bottom:50px}
+:lang(ar) .torch-hint{letter-spacing:0;font-size:13px}
+.timeline{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);max-width:980px}
+.timeline > div{padding:28px 28px 0 0;padding-inline:0 28px;position:relative}
+.timeline > div::before{content:'';position:absolute;top:-4px;inset-inline-start:0;width:7px;height:7px;border-radius:50%;background:rgb(var(--glow));box-shadow:0 0 14px 3px rgb(var(--glow)/.7)}
+.timeline .y{font-family:var(--serif);font-size:36px;line-height:1;margin-bottom:12px}
+.timeline p{color:var(--muted);font-size:14.5px;max-width:280px}
+:lang(ar) .timeline p{font-size:15.5px}
+@media (max-width:760px){.timeline{grid-template-columns:1fr;border-top:0;border-inline-start:1px solid var(--line)}.timeline > div{padding:0 0 30px 26px;padding-inline:26px 0}.timeline > div::before{top:8px;inset-inline-start:-4px}}
+
+/* services */
+#services .wrap{display:grid;grid-template-columns:1fr 1fr;gap:60px}
+#services .intro{position:sticky;top:20vh;align-self:start}
+.svc{border-top:1px solid var(--line);padding:30px 0;display:grid;grid-template-columns:60px 1fr;gap:10px;position:relative;cursor:default}
+.svc:last-child{border-bottom:1px solid var(--line)}
+.svc::after{content:'';position:absolute;top:-1px;inset-inline-start:0;height:1px;width:0;background:rgb(var(--glow));box-shadow:0 0 12px rgb(var(--glow));transition:width .9s cubic-bezier(.2,.7,.2,1)}
+.svc:hover::after{width:100%}
+.svc h3{font-size:clamp(28px,2.8vw,40px);margin-bottom:10px;transition:color .4s}
+.svc:hover h3{color:rgb(var(--glow))}
+.svc p{color:var(--muted);font-size:15px;max-width:460px}
+:lang(ar) .svc p{font-size:16px;line-height:1.9}
+@media (max-width:900px){#services .wrap{grid-template-columns:1fr}#services .intro{position:relative;top:0}}
+#services .list{background:linear-gradient(90deg, rgba(26,22,18,.0), rgba(26,22,18,.55) 30%);padding-inline-start:30px;border-radius:2px}
+[dir=rtl] #services .list{background:linear-gradient(-90deg, rgba(26,22,18,.0), rgba(26,22,18,.55) 30%)}
+
+/* studio / kelvin */
+#studio .wrap{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:end}
+#studio .controls{justify-self:end;width:min(440px,100%);background:rgba(20,17,14,.6);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:18px;padding:28px}
+.readout{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.readout .k{font-family:'Cormorant Garamond',serif;font-size:64px;line-height:1;color:rgb(var(--glow));text-shadow:0 0 30px rgb(var(--glow)/.5)}
+.readout .k small{font-size:24px;margin-inline-start:4px}
+.readout .mood{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);text-align:end}
+:lang(ar) .readout .mood{letter-spacing:0;font-size:14px}
+.ctl{margin-top:24px}
+.ctl label{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+:lang(ar) .ctl label{letter-spacing:0;font-size:13px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:3px;background:var(--track)}
+input[type=range]::-moz-range-track{height:3px;border-radius:3px;background:var(--track)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;margin-top:-9.5px;background:#fff8ee;box-shadow:0 0 0 5px rgb(var(--glow)/.25),0 0 24px rgb(var(--glow))}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:#fff8ee;box-shadow:0 0 0 5px rgb(var(--glow)/.25),0 0 24px rgb(var(--glow))}
+#kelvin{--track:linear-gradient(90deg,#ff8a2a,#ffb46b,#ffd9b0,#fff1e4,#f3f3ff,#cfdcff)}
+[dir=rtl] #kelvin{--track:linear-gradient(-90deg,#ff8a2a,#ffb46b,#ffd9b0,#fff1e4,#f3f3ff,#cfdcff)}
+#dimmer{--track:linear-gradient(90deg,#1c1612,rgb(var(--glow)))}
+[dir=rtl] #dimmer{--track:linear-gradient(-90deg,#1c1612,rgb(var(--glow)))}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.presets button{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--line);border-radius:99px;padding:8px 14px;color:var(--muted);transition:all .3s}
+:lang(ar) .presets button{letter-spacing:0;font-size:13px}
+.presets button:hover,.presets button.on{color:var(--ink);border-color:rgb(var(--glow)/.7);box-shadow:0 0 18px rgb(var(--glow)/.25)}
+@media (max-width:900px){#studio .wrap{grid-template-columns:1fr}#studio .controls{justify-self:stretch}#studio{justify-content:flex-end}}
+
+/* projects */
+#projects{min-height:150vh;justify-content:flex-start}
+#projects .head{max-width:640px;margin-bottom:12vh}
+.proj{max-width:520px;padding:34px 0;border-top:1px solid var(--line);margin-bottom:16vh;background:linear-gradient(180deg, rgba(26,22,18,.55), rgba(26,22,18,0));}
+.proj .idx{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+:lang(ar) .proj .idx{letter-spacing:0;font-size:13px}
+.proj h3{font-size:clamp(30px,3.4vw,52px);margin-bottom:12px}
+.proj p{color:var(--muted);font-size:15px}
+.proj .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.proj .tags span{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;border:1px solid var(--line);padding:6px 11px;border-radius:99px;color:var(--ink)}
+:lang(ar) .proj .tags span{letter-spacing:0;font-size:12.5px}
+
+/* brands */
+#brands{min-height:90vh;padding-inline:0;overflow:hidden}
+#brands .wrap{padding:0 var(--gutter)}
+.marquee{display:flex;white-space:nowrap;margin:8vh 0 6vh;mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.marquee .track{display:flex;flex-shrink:0;animation:marq 38s linear infinite;gap:0}
+[dir=rtl] .marquee .track{animation-direction:reverse}
+.marquee span{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:clamp(54px,9vw,150px);line-height:1.1;padding:0 .35em;color:transparent;-webkit-text-stroke:1px rgba(239,230,216,.35);transition:color .5s, -webkit-text-stroke-color .5s}
+.marquee span:hover{color:rgb(var(--glow));-webkit-text-stroke-color:transparent;text-shadow:0 0 40px rgb(var(--glow)/.5)}
+.marquee:hover .track{animation-play-state:paused}
+@keyframes marq{to{transform:translateX(-100%)}}
+.exclusive{display:flex;gap:40px;flex-wrap:wrap;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:30px}
+.exclusive p{max-width:560px;color:var(--muted)}
+.exclusive strong{color:var(--ink);font-weight:500}
+:lang(ar) 
+/* presence */
+#presence{min-height:130vh;justify-content:space-between}
+#presence .head{max-width:620px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;border-top:1px solid var(--line);padding-top:26px;background:linear-gradient(0deg, rgba(26,22,18,.85), rgba(26,22,18,0))}
+.stat .v{font-family:'Cormorant Garamond',serif;font-size:clamp(44px,5vw,76px);line-height:1;color:var(--ink)}
+.stat .l{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-top:10px}
+:lang(ar) .stat .l{letter-spacing:0;font-size:13.5px}
+@media (max-width:760px){.stats{grid-template-columns:1fr 1fr;row-gap:30px}}
+
+/* contact */
+#contact .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:60px;align-items:center}
+form.consult{background:rgba(20,17,14,.6);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:18px;padding:30px;display:grid;gap:16px}
+.field{display:grid;gap:6px}
+.field span{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+:lang(ar) .field span{letter-spacing:0;font-size:13px}
+.field input,.field select,.field textarea{font:inherit;color:var(--ink);background:transparent;border:0;border-bottom:1px solid var(--line);padding:10px 0;outline:none;transition:border-color .3s;border-radius:0}
+.field select option{background:#120f0c}
+.field textarea{resize:vertical;min-height:70px}
+.field input:focus,.field select:focus,.field textarea:focus{border-bottom-color:rgb(var(--glow))}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:12px;padding:16px 26px;border-radius:99px;background:rgb(var(--glow));color:#120e0a;font-weight:600;font-size:12px;letter-spacing:.2em;text-transform:uppercase;box-shadow:0 0 40px rgb(var(--glow)/.35);transition:transform .3s, box-shadow .3s}
+:lang(ar) .btn{letter-spacing:0;font-size:14px}
+.btn:hover{transform:translateY(-2px);box-shadow:0 0 60px rgb(var(--glow)/.55)}
+.showrooms{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:50px}
+.showrooms h4{font-family:var(--serif);font-weight:400;font-size:26px;margin-bottom:6px}
+.showrooms p{font-size:13.5px;color:var(--muted);line-height:1.7}
+:lang(ar) .showrooms p{font-size:15px}
+@media (max-width:900px){#contact .wrap{grid-template-columns:1fr}.showrooms{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.row2{grid-template-columns:1fr}.showrooms{grid-template-columns:1fr}}
+.sent{display:none;color:rgb(var(--glow));font-size:14px}
+form.done .sent{display:block}
+
+footer{position:relative;z-index:5;padding:30px var(--gutter);border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);background:var(--bg)}
+:lang(ar) footer{letter-spacing:0;font-size:13px}
+@media (prefers-reduced-motion:reduce){.marquee .track{animation:none}.reveal{transition:none;opacity:1;transform:none}}
+
+/* ---------- restrained finish ---------- */
+@media (max-aspect-ratio:1/1){#studio{padding-top:38vh}#hero{padding-top:40vh}.city small{display:none}}
+.kicker{font-size:12px;letter-spacing:.14em;margin-bottom:22px;color:var(--muted)}
+.kicker::before{display:none}
+:lang(ar) .kicker{font-size:14px;letter-spacing:0}
+h1{font-size:clamp(40px,5.8vw,88px);line-height:1.04;max-width:15ch}
+h2{font-size:clamp(34px,4.2vw,62px);line-height:1.06}
+:lang(ar) h1{font-size:clamp(36px,5vw,76px);line-height:1.35}
+:lang(ar) h2{font-size:clamp(30px,3.8vw,56px);line-height:1.35}
+h1 em,h2 em{color:inherit;text-shadow:none}
+.lede{color:#b3a797}
+.lede.big{font-size:clamp(18px,1.6vw,23px);max-width:680px;color:var(--ink);margin:0 0 56px;line-height:1.55}
+:lang(ar) .lede.big{line-height:1.9}
+.links{display:flex;gap:32px;flex-wrap:wrap;margin-top:36px}
+.arrow{display:inline-block;font-size:14px;color:var(--ink);border-bottom:1px solid rgba(239,230,216,.35);padding-bottom:4px;transition:border-color .3s}
+.arrow::after{content:'  →'}
+[dir=rtl] .arrow::after{content:'  ←'}
+.arrow:hover{border-bottom-color:var(--ink)}
+#hero .meta{font-size:12px;letter-spacing:.14em;line-height:2}
+.cta-mini{background:transparent;color:var(--ink);border:1px solid rgba(239,230,216,.4);border-radius:0;box-shadow:none;font-weight:500;letter-spacing:.12em}
+.cta-mini:hover{background:var(--ink);color:#1a1612}
+.lang{border-radius:0}
+.nav ul a.on::after{background:var(--ink);bottom:-6px}
+.timeline > div::before{width:5px;height:5px;top:-3px;background:var(--ink);box-shadow:none}
+.timeline .y{font-size:30px}
+.svc{grid-template-columns:1fr;padding:28px 0}
+.svc::after{background:var(--ink);box-shadow:none}
+.svc:hover h3{color:var(--ink)}
+.svc h3{font-size:clamp(24px,2.2vw,32px)}
+#studio .controls{border-radius:2px;background:rgba(20,17,14,.72)}
+.readout .k{color:var(--k,#ffd6a8);text-shadow:none;font-size:58px}
+.readout .mood{letter-spacing:.1em;line-height:1.7}
+.readout .mood b{color:var(--ink);font-weight:500;letter-spacing:.04em;text-transform:none;font-size:14px}
+input[type=range]::-webkit-slider-thumb{width:16px;height:16px;margin-top:-6.5px;background:#f4ece0;box-shadow:0 1px 4px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;background:#f4ece0;box-shadow:0 1px 4px rgba(0,0,0,.6)}
+#dimmer{--track:linear-gradient(90deg,#2a241e,#d9cdb8)}
+[dir=rtl] #dimmer{--track:linear-gradient(-90deg,#2a241e,#d9cdb8)}
+.presets button{border-radius:0;letter-spacing:.06em}
+.presets button:hover,.presets button.on{border-color:var(--ink);box-shadow:none}
+.proj{margin-bottom:12vh}
+.proj .idx{letter-spacing:.12em}
+.proj .tags span{border-radius:0;letter-spacing:.1em}
+.marquee span{color:rgba(239,230,216,.22);-webkit-text-stroke:0;font-size:clamp(44px,7vw,108px);padding:0 .45em}
+.marquee span:hover{color:var(--ink);text-shadow:none}
+.exclusive{justify-content:flex-start}
+.stat .v{font-size:clamp(40px,4.4vw,64px)}
+.stat .l{letter-spacing:.12em}
+form.consult{border-radius:2px;background:rgba(20,17,14,.72)}
+.btn{border-radius:0;background:var(--ink);color:#1a1612;box-shadow:none;letter-spacing:.14em}
+.btn:hover{transform:none;box-shadow:none;background:#fff}
+.sent{color:var(--ink)}
+.torch .lit{filter:none}
+#intro .mark .word{letter-spacing:.3em}
+#hero{padding-bottom:clamp(70px,12vh,140px)}
+</style>
+</head>
+<body class="locked">
+
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="vignette"></div>
+<div id="labels" aria-hidden="true"></div>
+
+<div id="intro" role="dialog" aria-label="Intro">
+  <button id="skipIntro" data-i18n="skip">Skip</button>
+  <div id="cord" aria-label="Pull the cord to turn on the light" role="button" tabindex="0">
+    <svg viewBox="0 0 120 1000" preserveAspectRatio="none" aria-hidden="true">
+      <line id="cordLine" x1="60" y1="0" x2="60" y2="460" stroke="#6f5b40" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+    </svg>
+    <div id="bead" style="position:absolute;left:50%;top:46vh;width:14px;height:24px;margin-left:-7px;border-radius:7px;background:linear-gradient(180deg,#d8bd92,#7b5f38)"></div>
+    <div class="hint" data-i18n="pull">Pull</div>
+  </div>
+  <div class="mark"><span class="word">LUMIÈRE</span></div>
+</div>
+
+<header class="nav">
+  <a href="#hero" class="logo" aria-label="Lumière Group"><span class="w">LUMIÈRE</span><span class="g">GROUP</span></a>
+  <ul>
+    <li><a href="#legacy" data-i18n="n1">About</a></li>
+    <li><a href="#services" data-i18n="n2">Services</a></li>
+    <li><a href="#projects" data-i18n="n4">Projects</a></li>
+    <li><a href="#brands" data-i18n="n5">Brands</a></li>
+    <li><a href="#presence" data-i18n="n6">Showrooms</a></li>
+  </ul>
+  <div class="right">
+    <button class="lang" id="langBtn" aria-label="Switch language">عربي</button>
+    <a href="#contact" class="cta-mini" data-i18n="cta">Contact</a>
+  </div>
+</header>
+
+<main>
+  <section id="hero" data-scene="0">
+    <div class="wrap">
+      <div>
+        <h1 class="shade reveal" data-i18n="heroH">Architectural and decorative lighting, since 1994.</h1>
+        <p class="lede shade reveal d1" data-i18n="heroP">We work with architects, interior designers and developers in Lebanon and the Gulf, from the first lighting plan to the final focusing on site.</p>
+        <div class="links reveal d2"><a href="#projects" class="arrow" data-i18n="heroL1">See our projects</a><a href="#presence" class="arrow" data-i18n="heroL2">Visit a showroom</a></div>
+      </div>
+      <div class="meta reveal d3" data-i18n="heroM">Beirut<br>Jeddah<br>Riyadh</div>
+    </div>
+  </section>
+
+  <section id="legacy" data-scene="1">
+    <div class="wrap">
+      <div class="kicker reveal" data-i18n="legK">About us</div>
+      <div class="torch" id="torch" aria-label="1923"><span class="base">1923</span><span class="lit" aria-hidden="true">1923</span></div>
+      <p class="lede big reveal" data-i18n="legP">The Ariss family has been in the lighting business since 1923. The third generation founded Lumière Group in Beirut in 1994, starting with a handful of people.</p>
+      <div class="timeline">
+        <div class="reveal"><div class="y">1923</div><p data-i18n="t1">The family opens its first lighting business.</p></div>
+        <div class="reveal d1"><div class="y">1994</div><p data-i18n="t2">Lumière Group is founded in Beirut.</p></div>
+        <div class="reveal d2"><div class="y" data-i18n="t3y">Today</div><p data-i18n="t3">Over 150 employees in Lebanon, Saudi Arabia and Jordan, with offices in Qatar, Kuwait and the UAE.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="services" data-scene="2">
+    <div class="wrap">
+      <div class="intro">
+        <div class="kicker reveal" data-i18n="svcK">Services</div>
+        <h2 class="shade reveal d1" data-i18n="svcH">One team for the whole project.</h2>
+        <p class="lede shade reveal d2" data-i18n="svcP">Most of our clients come to us with drawings and leave with a building that is lit, focused and handed over. Some only need one part of that, which is fine too.</p>
+      </div>
+      <div class="list">
+        <div class="svc reveal"><div><h3 data-i18n="s1">Lighting design</h3><p data-i18n="s1p">Concepts, lux calculations, fixture schedules and control strategies, presented with renders before anything is ordered.</p></div></div>
+        <div class="svc reveal d1"><div><h3 data-i18n="s2">Technical consultancy</h3><p data-i18n="s2p">Specification reviews, glare and energy studies, and on-site mock-ups for client approval.</p></div></div>
+        <div class="svc reveal d2"><div><h3 data-i18n="s3">Project management</h3><p data-i18n="s3p">Coordination with contractors, delivery schedules, installation supervision, commissioning and focusing.</p></div></div>
+        <div class="svc reveal d3"><div><h3 data-i18n="s4">Supply and after-sales</h3><p data-i18n="s4p">European brands supplied from stock or to order, with local warranty and service.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="studio" data-scene="3">
+    <div class="wrap">
+      <div>
+        <div class="kicker reveal" data-i18n="stK">Colour temperature</div>
+        <h2 class="shade reveal d1" data-i18n="stH">2700K or 4000K?</h2>
+        <p class="lede shade reveal d2" data-i18n="stP">It is one of the first questions we ask on any project. Move the slider to see how the same fixture changes.</p>
+      </div>
+      <div class="controls reveal d2">
+        <div class="readout"><div class="k"><span id="kVal">2700</span><small>K</small></div><div class="mood"><span data-i18n="use">Typical use</span><br><b id="mood">Residential, hospitality</b></div></div>
+        <div class="ctl">
+          <label for="kelvin"><span data-i18n="temp">Colour temperature</span><span>2200–6500K</span></label>
+          <input id="kelvin" type="range" min="2200" max="6500" step="50" value="2700">
+        </div>
+        <div class="ctl">
+          <label for="dimmer"><span data-i18n="dim">Dimming</span><span id="dVal">100%</span></label>
+          <input id="dimmer" type="range" min="5" max="100" step="1" value="100">
+        </div>
+        <div class="presets" role="group" aria-label="Presets">
+          <button data-k="2300" data-d="70" data-i18n="p1">Majlis</button>
+          <button data-k="2700" data-d="100" data-i18n="p2" class="on">Hotel lobby</button>
+          <button data-k="4000" data-d="100" data-i18n="p3">Gallery</button>
+          <button data-k="5000" data-d="100" data-i18n="p4">Office</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="projects" data-scene="4">
+    <div class="wrap">
+      <div class="head">
+        <div class="kicker reveal" data-i18n="prK">Projects</div>
+        <h2 class="shade reveal d1" data-i18n="prH">Selected projects</h2>
+      </div>
+      <article class="proj reveal">
+        <div class="idx"><span data-i18n="pr1c">Riyadh, Saudi Arabia</span></div>
+        <h3 data-i18n="pr1">National Dialogue Forum</h3>
+        <p data-i18n="pr1p">Façade and interior lighting for the venue that hosted the first National Dialogue Forum.</p>
+        <div class="tags"><span data-i18n="tg1">Façade</span><span data-i18n="tg2">Interior</span></div>
+      </article>
+      <article class="proj reveal">
+        <div class="idx"><span data-i18n="pr2c">Beirut, Lebanon</span></div>
+        <h3 data-i18n="pr2">MEA Cedar Lounge and Training Center</h3>
+        <p data-i18n="pr2p">Interior lighting for Middle East Airlines' Cedar Lounge and its training center.</p>
+        <div class="tags"><span data-i18n="tg4">Hospitality</span><span data-i18n="tg5">Aviation</span></div>
+      </article>
+      <article class="proj reveal">
+        <div class="idx"><span data-i18n="pr3c">Beirut, Lebanon</span></div>
+        <h3 data-i18n="pr3">Beit Beirut</h3>
+        <p data-i18n="pr3p">Museum and cultural center in the restored Barakat building, Sodeco.</p>
+        <div class="tags"><span data-i18n="tg6">Heritage</span><span data-i18n="tg7">Museum</span></div>
+      </article>
+      <a href="#contact" class="arrow reveal" data-i18n="prAll">Ask for our full project list</a>
+    </div>
+  </section>
+
+  <section id="brands" data-scene="5">
+    <div class="wrap">
+      <div class="kicker reveal" data-i18n="brK">Brands</div>
+      <h2 class="shade reveal d1" data-i18n="brH">Brands we represent</h2>
+    </div>
+    <div class="marquee" aria-label="Viabizzuno, Flos, Delta Light, Louis Poulsen, Vibia">
+      <div class="track"><span>Viabizzuno</span><span>Flos</span><span>Delta Light</span><span>Louis Poulsen</span><span>Vibia</span></div>
+      <div class="track" aria-hidden="true"><span>Viabizzuno</span><span>Flos</span><span>Delta Light</span><span>Louis Poulsen</span><span>Vibia</span></div>
+    </div>
+    <div class="wrap">
+      <div class="exclusive reveal">
+        <p data-i18n="brP">Lumière Group set up <strong>Viabizzuno Middle East</strong> and is the brand's exclusive agent in the region. Product catalogues and samples are available at our showrooms.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="presence" data-scene="6">
+    <div class="wrap head">
+      <div class="kicker reveal" data-i18n="psK">Showrooms and offices</div>
+      <h2 class="shade reveal d1" data-i18n="psH">Where to find us</h2>
+      <p class="lede shade reveal d2" data-i18n="psP">Two showrooms in Beirut, a showroom in Jeddah, and offices in Riyadh, Amman, Doha, Kuwait City and Dubai.</p>
+    </div>
+    <div class="wrap">
+      <div class="stats">
+        <div class="stat reveal"><div class="v" data-count="1923">1923</div><div class="l" data-i18n="st1">In lighting since</div></div>
+        <div class="stat reveal d1"><div class="v" data-count="1994">1994</div><div class="l" data-i18n="st2">Founded in Beirut</div></div>
+        <div class="stat reveal d2"><div class="v"><span data-count="150">150</span>+</div><div class="l" data-i18n="st3">Employees</div></div>
+        <div class="stat reveal d3"><div class="v"><span data-count="6">6</span></div><div class="l" data-i18n="st4">Countries</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" data-scene="7">
+    <div class="wrap">
+      <div>
+        <div class="kicker reveal" data-i18n="ctK">Contact</div>
+        <h2 class="shade reveal d1" data-i18n="ctH">Tell us about your project.</h2>
+        <p class="lede shade reveal d2" data-i18n="ctP">Send us a short brief or your drawings and the team closest to you will get in touch.</p>
+        <div class="showrooms reveal d3">
+          <div><h4 data-i18n="c1">Beirut</h4><p data-i18n="c1p">Showrooms in Ghobeiry and Sin El Fil</p></div>
+          <div><h4 data-i18n="c2">Jeddah</h4><p data-i18n="c2p">Villa 28, Al Shuhada Street, Al-Hamra</p></div>
+          <div><h4 data-i18n="c3">Riyadh</h4><p data-i18n="c3p">Al Sulaimaniah</p></div>
+        </div>
+      </div>
+      <form class="consult reveal d2" id="consult" novalidate>
+        <label class="field"><span data-i18n="f1">Name</span><input name="name" autocomplete="name"></label>
+        <div class="row2">
+          <label class="field"><span data-i18n="f2">Project type</span>
+            <select name="type">
+              <option data-i18n="o1">Residential</option><option data-i18n="o2">Hospitality</option><option data-i18n="o3">Retail</option><option data-i18n="o4">Office</option><option data-i18n="o5">Façade and landscape</option>
+            </select></label>
+          <label class="field"><span data-i18n="f3">City</span><input name="city"></label>
+        </div>
+        <label class="field"><span data-i18n="f5">Email or phone</span><input name="contact"></label>
+        <label class="field"><span data-i18n="f4">Message</span><textarea name="msg"></textarea></label>
+        <button class="btn" type="submit" data-i18n="send">Send</button>
+        <div class="sent" data-i18n="sent">This form is not connected yet.</div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span data-i18n="foot">Design proposal for Lumière Group</span>
+  <span><a href="https://www.linkedin.com/company/ariss-lumiere-group" target="_blank" rel="noopener">LinkedIn</a> &nbsp;·&nbsp; <a href="https://www.facebook.com/lumieregroupksa/" target="_blank" rel="noopener">Facebook</a></span>
+</footer>
+
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* =========================================================
+   i18n
+   ========================================================= */
+const AR = {
+  skip:'تخطّي', pull:'اسحب',
+  n1:'من نحن', n2:'خدماتنا', n4:'المشاريع', n5:'العلامات', n6:'صالات العرض', cta:'تواصل معنا',
+  heroH:'إضاءة معمارية وديكورية، منذ ١٩٩٤.',
+  heroP:'نعمل مع المعماريين ومصممي الديكور والمطوّرين في لبنان والخليج، من أول مخطط إضاءة حتى الضبط النهائي في الموقع.',
+  heroL1:'شاهد مشاريعنا', heroL2:'زر إحدى صالات العرض', heroM:'بيروت<br>جدة<br>الرياض',
+  legK:'من نحن',
+  legP:'تعمل عائلة عريس في مجال الإضاءة منذ عام ١٩٢٣. وفي عام ١٩٩٤ أسّس الجيل الثالث مجموعة لوميير في بيروت، وبدأت بعدد قليل من الموظفين.',
+  t1:'تفتتح العائلة أول عمل لها في الإضاءة.', t2:'تأسيس مجموعة لوميير في بيروت.',
+  t3y:'اليوم', t3:'أكثر من ١٥٠ موظفاً في لبنان والسعودية والأردن، ومكاتب في قطر والكويت والإمارات.',
+  svcK:'خدماتنا', svcH:'فريق واحد للمشروع كاملاً.',
+  svcP:'معظم عملائنا يأتون إلينا بالمخططات ويستلمون مبنى مُضاءً ومضبوطاً وجاهزاً. وبعضهم يحتاج جزءاً واحداً فقط من ذلك، وهذا أيضاً ممكن.',
+  s1:'تصميم الإضاءة', s1p:'مفاهيم، حسابات شدة الإضاءة، جداول الوحدات وأنظمة التحكم، مع صور توضيحية قبل طلب أي قطعة.',
+  s2:'الاستشارات التقنية', s2p:'مراجعة المواصفات، دراسات الوهج والطاقة، ونماذج تجريبية في الموقع لموافقة العميل.',
+  s3:'إدارة المشاريع', s3p:'التنسيق مع المقاولين، جداول التوريد، الإشراف على التركيب، التشغيل والضبط.',
+  s4:'التوريد وخدمة ما بعد البيع', s4p:'علامات أوروبية من المخزون أو حسب الطلب، مع كفالة وصيانة محلية.',
+  stK:'حرارة اللون', stH:'٢٧٠٠ أم ٤٠٠٠ كلفن؟',
+  stP:'من أول الأسئلة التي نطرحها في أي مشروع. حرّك المؤشر لترى كيف تتغيّر الوحدة نفسها.',
+  use:'الاستخدام المعتاد', temp:'حرارة اللون', dim:'التعتيم', p1:'مجلس', p2:'ردهة فندق', p3:'معرض', p4:'مكتب',
+  prK:'المشاريع', prH:'مشاريع مختارة',
+  pr1c:'الرياض، السعودية', pr1:'منتدى الحوار الوطني', pr1p:'إضاءة الواجهة والداخل للمقر الذي استضاف أول منتدى للحوار الوطني.',
+  pr2c:'بيروت، لبنان', pr2:'صالة الأرز ومركز التدريب لطيران الشرق الأوسط', pr2p:'الإضاءة الداخلية لصالة الأرز التابعة لطيران الشرق الأوسط ومركز التدريب.',
+  pr3c:'بيروت، لبنان', pr3:'بيت بيروت', pr3p:'متحف ومركز ثقافي في مبنى بركات المرمَّم، السوديكو.',
+  tg1:'واجهة', tg2:'داخلي', tg4:'ضيافة', tg5:'طيران', tg6:'تراث', tg7:'متحف', prAll:'اطلب لائحة مشاريعنا الكاملة',
+  brK:'العلامات', brH:'العلامات التي نمثّلها',
+  brP:'أسّست مجموعة لوميير <strong>فيابيتسونو الشرق الأوسط</strong>، وهي الوكيل الحصري للعلامة في المنطقة. الكتالوجات والعيّنات متوفرة في صالات العرض.',
+  psK:'صالات العرض والمكاتب', psH:'أين تجدنا', psP:'صالتا عرض في بيروت، صالة عرض في جدة، ومكاتب في الرياض وعمّان والدوحة والكويت ودبي.',
+  st1:'في الإضاءة منذ', st2:'التأسيس في بيروت', st3:'موظف', st4:'دول',
+  ctK:'تواصل معنا', ctH:'أخبرنا عن مشروعك.', ctP:'أرسل لنا وصفاً مختصراً أو المخططات، وسيتواصل معك الفريق الأقرب إليك.',
+  c1:'بيروت', c1p:'صالتا عرض في الغبيري وسن الفيل', c2:'جدة', c2p:'فيلا ٢٨، شارع الشهداء، الحمراء', c3:'الرياض', c3p:'السليمانية',
+  f1:'الاسم', f2:'نوع المشروع', f3:'المدينة', f5:'البريد الإلكتروني أو الهاتف', f4:'الرسالة',
+  o1:'سكني', o2:'ضيافة', o3:'تجزئة', o4:'مكاتب', o5:'واجهات وحدائق',
+  send:'إرسال', sent:'هذا النموذج غير موصول بعد.', foot:'مقترح تصميم لمجموعة لوميير'
+};
+const EN = {};
+document.querySelectorAll('[data-i18n]').forEach(el => { EN[el.dataset.i18n] = el.innerHTML; });
+let lang = 'en';
+const MOODS = {
+  en:[[2500,'Decorative, candlelight'],[3000,'Residential, hospitality'],[3500,'Residential, retail'],[4500,'Galleries, offices'],[5500,'Retail, healthcare'],[99999,'Industrial, task lighting']],
+  ar:[[2500,'ديكوري، ضوء الشموع'],[3000,'سكني، ضيافة'],[3500,'سكني، تجزئة'],[4500,'معارض، مكاتب'],[5500,'تجزئة، رعاية صحية'],[99999,'صناعي، إضاءة عمل']]
+};
+const CITY_NAMES = {
+  en:{beirut:['Beirut','Head office'],amman:['Amman','Branch'],jeddah:['Jeddah','Showroom'],riyadh:['Riyadh','Office'],kuwait:['Kuwait City','Office'],doha:['Doha','Office'],dubai:['Dubai','Office']},
+  ar:{beirut:['بيروت','المكتب الرئيسي'],amman:['عمّان','فرع'],jeddah:['جدة','صالة عرض'],riyadh:['الرياض','مكتب'],kuwait:['الكويت','مكتب'],doha:['الدوحة','مكتب'],dubai:['دبي','مكتب']}
+};
+function setLang(l){
+  lang = l;
+  const dict = l === 'ar' ? AR : EN;
+  document.documentElement.lang = l;
+  document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+  document.querySelectorAll('[data-i18n]').forEach(el => { const v = dict[el.dataset.i18n]; if (v != null) el.innerHTML = v; });
+  document.getElementById('langBtn').textContent = l === 'ar' ? 'EN' : 'عربي';
+  updateMood();
+  buildLabels();
+  side = l === 'ar' ? -1 : 1;
+}
+document.getElementById('langBtn').addEventListener('click', () => setLang(lang === 'en' ? 'ar' : 'en'));
+
+/* =========================================================
+   Environment
+   ========================================================= */
+const isMobile = matchMedia('(max-width: 760px)').matches || matchMedia('(pointer: coarse)').matches;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let side = 1;
+
+function kelvinToRGB(k){
+  const t = k / 100; let r, g, b;
+  if (t <= 66){ r = 255; g = 99.4708025861 * Math.log(t) - 161.1195681661; b = t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307; }
+  else { r = 329.698727446 * Math.pow(t - 60, -0.1332047592); g = 288.1221695283 * Math.pow(t - 60, -0.0755148492); b = 255; }
+  const c = v => Math.min(255, Math.max(0, v)) / 255;
+  return [c(r), c(g), c(b)];
+}
+
+/* =========================================================
+   UI state: kelvin + dimmer
+   ========================================================= */
+const ui = { kelvin: 2700, dimmer: 1 };
+const kIn = document.getElementById('kelvin'), dIn = document.getElementById('dimmer');
+const kVal = document.getElementById('kVal'), dVal = document.getElementById('dVal'), moodEl = document.getElementById('mood');
+function updateMood(){
+  const m = MOODS[lang].find(([max]) => ui.kelvin < max);
+  moodEl.textContent = m[1];
+}
+function applyUI(){
+  ui.kelvin = +kIn.value; ui.dimmer = +dIn.value / 100;
+  kVal.textContent = ui.kelvin; dVal.textContent = dIn.value + '%';
+  updateMood();
+  const [r,g,b] = kelvinToRGB(ui.kelvin);
+  document.documentElement.style.setProperty('--k', `rgb(${Math.round(r*255)} ${Math.round(g*245)} ${Math.round(b*235)})`);
+}
+kIn.addEventListener('input', () => { applyUI(); document.querySelectorAll('.presets button').forEach(b => b.classList.remove('on')); });
+dIn.addEventListener('input', applyUI);
+document.querySelectorAll('.presets button').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.presets button').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  animateRange(kIn, +btn.dataset.k); animateRange(dIn, +btn.dataset.d);
+}));
+function animateRange(input, to){
+  const from = +input.value, t0 = performance.now(), dur = 900;
+  (function step(now){
+    const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+    input.value = from + (to - from) * e; applyUI();
+    if (p < 1) requestAnimationFrame(step);
+  })(t0);
+}
+applyUI();
+
+/* =========================================================
+   Three.js scene
+   ========================================================= */
+const canvas = document.getElementById('gl');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile, powerPreference: 'high-performance' });
+} catch (e) {
+  document.documentElement.classList.add('no-webgl');
+}
+
+const world = {};
+if (renderer) buildWorld();
+
+function buildWorld(){
+  renderer.setPixelRatio(Math.min(devicePixelRatio, isMobile ? 1.5 : 1.75));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a1612);
+  scene.fog = new THREE.FogExp2(0x1a1612, 0.02);
+  const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 220);
+  camera.position.set(0, 0.4, 8);
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+
+  const hemi = new THREE.HemisphereLight(0x5a4a3a, 0x15110d, 0.45);
+  scene.add(hemi);
+
+  /* ---- Pendant lamp ---- */
+  const pivot = new THREE.Group(); pivot.position.y = 7; scene.add(pivot);
+  const lamp = new THREE.Group(); lamp.position.y = -7; pivot.add(lamp);
+
+  const brass = new THREE.MeshStandardMaterial({ color: 0xc29a5b, metalness: 0.9, roughness: 0.28, envMapIntensity: 0.9, side: THREE.BackSide });
+  const innerMat = new THREE.MeshStandardMaterial({ color: 0xf1e4cf, metalness: 0, roughness: 0.85, side: THREE.FrontSide, emissive: 0xffcf99, emissiveIntensity: 0.5 });
+
+  function shellGeo(R, H, a0){
+    const pts = [];
+    const n = 40;
+    for (let i = 0; i <= n; i++){
+      const a = a0 + (Math.PI / 2 - a0) * (i / n);
+      pts.push(new THREE.Vector2(R * Math.sin(a), H * Math.cos(a)));
+    }
+    // rolled lip
+    pts.push(new THREE.Vector2(R * 1.015, -0.012));
+    return new THREE.LatheGeometry(pts, isMobile ? 64 : 96);
+  }
+  const shellDefs = [
+    { R: 0.44, H: 0.36, a0: 0.10, y: 0.60, ex: 1.25, rz: 0.22 },
+    { R: 0.86, H: 0.44, a0: 0.42, y: 0.20, ex: 0.45, rz: -0.14 },
+    { R: 1.30, H: 0.40, a0: 0.62, y: -0.30, ex: -0.55, rz: 0.10 },
+  ];
+  const shells = shellDefs.map(d => {
+    const g = shellGeo(d.R, d.H, d.a0);
+    const grp = new THREE.Group();
+    const outer = new THREE.Mesh(g, brass); outer.castShadow = true;
+    const inner = new THREE.Mesh(g, innerMat);
+    grp.add(outer, inner);
+    grp.position.y = d.y;
+    lamp.add(grp);
+    return { grp, d };
+  });
+  // ribs connecting shells (thin rods)
+  const rodMat = new THREE.MeshStandardMaterial({ color: 0x8c6f45, metalness: 1, roughness: 0.35 });
+  const rods = new THREE.Group(); lamp.add(rods);
+  for (let i = 0; i < 3; i++){
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 1.2, 6), rodMat);
+    const a = i / 3 * Math.PI * 2;
+    rod.position.set(Math.cos(a) * 0.3, 0.2, Math.sin(a) * 0.3);
+    rods.add(rod);
+  }
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.22, 24), brass);
+  cap.position.y = 1.05; lamp.add(cap);
+  const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 14, 6), new THREE.MeshBasicMaterial({ color: 0x1b1814 }));
+  cable.position.y = 1.15 + 7; lamp.add(cable);
+
+  const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 32, 16), bulbMat);
+  bulb.position.y = 0.08; lamp.add(bulb);
+
+  const bulbLight = new THREE.PointLight(0xffd7a0, 6, 14, 2);
+  bulbLight.position.y = 0.05; lamp.add(bulbLight);
+
+  const spot = new THREE.SpotLight(0xffd7a0, 60, 30, Math.PI * 0.27, 0.65, 1.7);
+  spot.position.set(0, -0.1, 0);
+  spot.castShadow = true;
+  spot.shadow.mapSize.set(isMobile ? 512 : 1024, isMobile ? 512 : 1024);
+  spot.shadow.bias = -0.0004;
+  spot.shadow.camera.near = 0.2; spot.shadow.camera.far = 20;
+  lamp.add(spot);
+  const spotTarget = new THREE.Object3D(); spotTarget.position.set(0, -5, 0); lamp.add(spotTarget);
+  spot.target = spotTarget;
+
+  // volumetric cone
+  const coneH = 4.0;
+  const coneGeo = new THREE.CylinderGeometry(1.25, 3.4, coneH, 72, 1, true);
+  coneGeo.translate(0, -coneH / 2, 0);
+  const coneMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    uniforms: { uColor: { value: new THREE.Color(1, .8, .6) }, uOpacity: { value: 0.0 }, uH: { value: coneH } },
+    vertexShader: `varying vec3 vN; varying vec3 vV; varying float vY;
+      void main(){ vec4 wp = modelMatrix*vec4(position,1.); vN = normalize(mat3(modelMatrix)*normal);
+      vV = normalize(cameraPosition - wp.xyz); vY = position.y; gl_Position = projectionMatrix*viewMatrix*wp; }`,
+    fragmentShader: `uniform vec3 uColor; uniform float uOpacity; uniform float uH; varying vec3 vN; varying vec3 vV; varying float vY;
+      void main(){ float f = abs(dot(normalize(vN), normalize(vV))); f = pow(f, 2.2);
+      float h = clamp(1. + vY/uH, 0., 1.); float a = f * pow(h, 1.6) * uOpacity;
+      gl_FragColor = vec4(uColor*a, a); }`
+  });
+  const cone = new THREE.Mesh(coneGeo, coneMat);
+  cone.position.y = -0.3; lamp.add(cone);
+
+  /* ---- dust in the beam ---- */
+  const N = isMobile ? 380 : 900;
+  const dPos = new Float32Array(N * 3), dSeed = new Float32Array(N);
+  for (let i = 0; i < N; i++){
+    const r = Math.sqrt(Math.random()) * 3.6, a = Math.random() * Math.PI * 2;
+    dPos[i*3] = Math.cos(a) * r; dPos[i*3+1] = -4 + Math.random() * 4.6; dPos[i*3+2] = Math.sin(a) * r;
+    dSeed[i] = Math.random();
+  }
+  const dGeo = new THREE.BufferGeometry();
+  dGeo.setAttribute('position', new THREE.BufferAttribute(dPos, 3));
+  dGeo.setAttribute('aSeed', new THREE.BufferAttribute(dSeed, 1));
+  const dustMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(1, .85, .7) }, uLevel: { value: 0 }, uPixel: { value: renderer.getPixelRatio() } },
+    vertexShader: `attribute float aSeed; uniform float uTime; uniform float uPixel; varying float vA;
+      void main(){ vec3 p = position;
+        p.y = mod(p.y + 4.0 + uTime*0.04*(0.4+aSeed), 4.6) - 4.0;
+        p.x += sin(uTime*0.3 + aSeed*40.0)*0.18; p.z += cos(uTime*0.23 + aSeed*17.0)*0.18;
+        float t = clamp(-(p.y+0.3)/4.0, 0., 1.); float coneR = mix(1.25, 3.4, t);
+        float r = length(p.xz); vA = (1.0 - smoothstep(coneR*0.55, coneR, r)) * (0.35 + 0.65*fract(aSeed*7.13));
+        vA *= smoothstep(0.35, -0.2, p.y);
+        vec4 mv = modelViewMatrix*vec4(p,1.); gl_Position = projectionMatrix*mv;
+        gl_PointSize = (1.5 + aSeed*3.0) * uPixel * (7.0 / -mv.z); }`,
+    fragmentShader: `uniform vec3 uColor; uniform float uLevel; varying float vA;
+      void main(){ vec2 c = gl_PointCoord-0.5; float d = length(c); if(d>0.5) discard;
+        float a = smoothstep(0.5, 0.0, d) * vA * uLevel; gl_FragColor = vec4(uColor*a*1.6, a); }`
+  });
+  const dust = new THREE.Points(dGeo, dustMat); scene.add(dust);
+
+  /* ---- floor ---- */
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x2a241e, roughness: 0.55, metalness: 0.15, envMapIntensity: 0.2 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), floorMat);
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -4; floor.receiveShadow = true;
+  scene.add(floor);
+
+  /* ---- Façade (projects) ---- */
+  const facade = new THREE.Group(); facade.position.set(15, -4, -7); facade.rotation.y = -0.35; scene.add(facade);
+  const stone = new THREE.MeshStandardMaterial({ color: 0x3a3229, roughness: 0.92, metalness: 0, envMapIntensity: 0.2 });
+  const FW = 8, FH = 9.5, FD = 3;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(FW, FH, FD), stone);
+  body.position.y = FH / 2; body.castShadow = true; body.receiveShadow = true; facade.add(body);
+  const cornice = new THREE.Mesh(new THREE.BoxGeometry(FW + 0.5, 0.25, FD + 0.4), stone);
+  cornice.position.y = FH + 0.12; facade.add(cornice);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(FW + 0.3, 0.5, FD + 0.3), stone);
+  base.position.y = 0.25; facade.add(base);
+  // arched windows (Levantine triple-arch rhythm)
+  function archShape(w, h){
+    const s = new THREE.Shape(); const r = w / 2;
+    s.moveTo(-r, -h / 2); s.lineTo(r, -h / 2); s.lineTo(r, h / 2 - r);
+    s.absarc(0, h / 2 - r, r, 0, Math.PI, false); s.lineTo(-r, -h / 2);
+    return s;
+  }
+  const winGeo = new THREE.ShapeGeometry(archShape(0.7, 1.35), 12);
+  const cols = 7, rows = 4;
+  const winMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const windows = new THREE.InstancedMesh(winGeo, winMat, cols * rows);
+  const winData = [];
+  const m4 = new THREE.Matrix4();
+  let wi = 0;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++){
+    const x = (c - (cols - 1) / 2) * 1.05;
+    const y = 1.6 + r * 2.0;
+    m4.makeTranslation(x, y, FD / 2 + 0.005);
+    windows.setMatrixAt(wi, m4);
+    winData.push({ th: Math.random() * 0.85, warm: 0.85 + Math.random() * 0.3, flick: Math.random() });
+    windows.setColorAt(wi, new THREE.Color(0x1c1814));
+    wi++;
+  }
+  facade.add(windows);
+  // grazing uplight wash
+  const washMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uWash: { value: 0 }, uColor: { value: new THREE.Color(1, .8, .6) } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+    fragmentShader: `uniform float uWash; uniform vec3 uColor; varying vec2 vUv;
+      void main(){ float beams = 0.;
+        for(int i=0;i<8;i++){ float cx = (float(i)+0.5)/8.; float w = 10.0 + vUv.y*6.0; beams += exp(-pow((vUv.x-cx)*w*1.6, 2.)); }
+        float vert = pow(1.0 - vUv.y, 1.7);
+        float top = exp(-pow((vUv.y-0.985)*40., 2.)) * 0.8;
+        float a = (beams*vert*0.75 + top) * uWash;
+        gl_FragColor = vec4(uColor*a, a); }`
+  });
+  const wash = new THREE.Mesh(new THREE.PlaneGeometry(FW, FH), washMat);
+  wash.position.set(0, FH / 2, FD / 2 + 0.02); facade.add(wash);
+  const fixMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  const fixtures = [];
+  for (let i = 0; i < 8; i++){
+    const f = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.28), fixMat);
+    f.position.set((i + 0.5) / 8 * FW - FW / 2, 0.04, FD / 2 + 0.45);
+    facade.add(f); fixtures.push(f);
+  }
+  const facadeGlow = new THREE.PointLight(0xffc890, 0, 22, 1.6);
+  facadeGlow.position.set(0, 1.5, FD / 2 + 3); facade.add(facadeGlow);
+
+  /* ---- Presence map ---- */
+  const map = new THREE.Group(); map.position.set(0, -3.97, 34); scene.add(map);
+  const K = 1.15;
+  const CITIES = [
+    ['beirut', 33.89, 35.50, 1.0], ['amman', 31.95, 35.93, 0.7], ['jeddah', 21.54, 39.17, 0.85],
+    ['riyadh', 24.71, 46.68, 0.85], ['kuwait', 29.37, 47.98, 0.6], ['doha', 25.29, 51.53, 0.6], ['dubai', 25.20, 55.27, 0.65]
+  ].map(([id, lat, lon, w]) => ({ id, w, x: (lon - 45.5) * K, z: -(lat - 27.5) * K }));
+  const gx = 120, gz = 90, sp = 0.27;
+  const mPos = new Float32Array(gx * gz * 3), mSeed = new Float32Array(gx * gz);
+  let mi = 0;
+  for (let i = 0; i < gx; i++) for (let j = 0; j < gz; j++){
+    mPos[mi*3] = (i - gx / 2) * sp; mPos[mi*3+1] = 0; mPos[mi*3+2] = (j - gz / 2) * sp; mSeed[mi] = Math.random(); mi++;
+  }
+  const mGeo = new THREE.BufferGeometry();
+  mGeo.setAttribute('position', new THREE.BufferAttribute(mPos, 3));
+  mGeo.setAttribute('aSeed', new THREE.BufferAttribute(mSeed, 1));
+  const cityU = CITIES.map(c => new THREE.Vector4(c.x, c.z, c.w, c.id === 'beirut' ? 5.5 : 3.2));
+  const mapMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uCities: { value: cityU }, uOn: { value: 0 }, uTime: { value: 0 }, uPixel: { value: renderer.getPixelRatio() }, uColor: { value: new THREE.Color(1, .8, .6) } },
+    vertexShader: `attribute float aSeed; uniform vec4 uCities[7]; uniform float uOn; uniform float uTime; uniform float uPixel; varying float vB;
+      void main(){ vec3 p = position; float b = 0.0;
+        for(int i=0;i<7;i++){ vec2 d = p.xz - uCities[i].xy; b += uCities[i].z * exp(-dot(d,d)/uCities[i].w); }
+        float dB = length(p.xz - uCities[0].xy);
+        float rv = 1.0 - smoothstep(uOn*34.0 - 5.0, uOn*34.0, dB);
+        float tw = 0.75 + 0.25*sin(uTime*1.7 + aSeed*40.0);
+        vB = (0.05 + b) * rv * tw;
+        vec4 mv = modelViewMatrix*vec4(p,1.); gl_Position = projectionMatrix*mv;
+        gl_PointSize = (1.4 + min(b,1.5)*3.0) * uPixel * (18.0 / -mv.z); }`,
+    fragmentShader: `uniform vec3 uColor; varying float vB;
+      void main(){ vec2 c = gl_PointCoord-0.5; float d = length(c); if(d>0.5) discard;
+        float a = smoothstep(0.5, 0.1, d) * clamp(vB, 0.0, 1.6);
+        vec3 col = mix(vec3(0.35,0.3,0.25), uColor*1.8, clamp(vB*1.2,0.,1.));
+        gl_FragColor = vec4(col*a, a); }`
+  });
+  map.add(new THREE.Points(mGeo, mapMat));
+  // arcs from Beirut
+  const arcMats = [];
+  const beirut = CITIES[0];
+  CITIES.slice(1).forEach((c, i) => {
+    const a = new THREE.Vector3(beirut.x, 0, beirut.z), b = new THREE.Vector3(c.x, 0, c.z);
+    const mid = a.clone().lerp(b, 0.5); mid.y = a.distanceTo(b) * 0.32;
+    const curve = new THREE.QuadraticBezierCurve3(a, mid, b);
+    const mat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      uniforms: { uOn: { value: 0 }, uTime: { value: 0 }, uOff: { value: i * 0.17 }, uColor: { value: new THREE.Color(1, .8, .6) } },
+      vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+      fragmentShader: `uniform float uOn; uniform float uTime; uniform float uOff; uniform vec3 uColor; varying vec2 vUv;
+        void main(){ float grow = smoothstep(0.0, 1.0, (uOn - 0.35)*2.2);
+          if (vUv.x > grow) discard;
+          float head = fract(uTime*0.22 + uOff); float d = vUv.x - head;
+          float pulse = exp(-pow(d*14.0, 2.0));
+          float a = (0.22 + pulse*2.5) * clamp(uOn*1.5, 0., 1.);
+          gl_FragColor = vec4(uColor*a, a); }`
+    });
+    arcMats.push(mat);
+    map.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 90, 0.035, 6, false), mat));
+  });
+  const markerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true });
+  CITIES.forEach(c => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(c.id === 'beirut' ? 0.2 : 0.13, 16, 8), markerMat);
+    m.position.set(c.x, 0.12, c.z); map.add(m);
+  });
+
+  /* ---- post ---- */
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.45, 0.92);
+  composer.addPass(bloom);
+  composer.addPass(new OutputPass());
+
+  Object.assign(world, { scene, camera, composer, bloom, pivot, lamp, shells, rods, bulb, bulbMat, bulbLight, spot, coneMat, dustMat, innerMat,
+    windows, winData, washMat, fixMat, facadeGlow, facade, map, mapMat, arcMats, markerMat, CITIES });
+
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+    measure();
+  });
+}
+
+/* =========================================================
+   Scroll choreography — one keyframe per section
+   ========================================================= */
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const KEYS = [
+  /* hero     */ { cam: V(0, 0.2, 8.2),   tgt: V(-1.0, 0.15, 0), explode: 0,  facade: 0,   wash: 0,  map: 0, level: 1,   mirror: true, portraitTop: true },
+  /* legacy   */ { cam: V(4.2, 1.2, 6.4), tgt: V(-2.7, 0.3, 0), explode: 1,   facade: 0,   wash: 0,  map: 0, level: 1,   mirror: true },
+  /* services */ { cam: V(0, -2.6, 13), tgt: V(0, -2.4, 0), explode: 0.25,facade: 0,   wash: 0,  map: 0, level: 1,   mirror: true, liftOut: true },
+  /* studio   */ { cam: V(0, -0.9, 7.4),  tgt: V(-1.4,-1.3, 0), explode: 0,   facade: 0,   wash: 0,  map: 0, level: 1,   mirror: true, portraitTop: true },
+  /* projects */ { cam: V(4.5, 1.2, 9),   tgt: V(13, 3.0, -7),  explode: 0,   facade: 0.6, wash: 1,  map: 0, level: 0.5, mirror: 15 },
+  /* brands   */ { cam: V(3, 2.5, 14),    tgt: V(10.5, 3.4, -7),  explode: 0,   facade: 1,   wash: 1,  map: 0, level: 0.4, mirror: 15 },
+  /* presence */ { cam: V(0, 22, 47.5),   tgt: V(0, -4, 35.5),explode: 0,   facade: 1,   wash: 1,  map: 1, level: 0.3, mirror: false, wide: true },
+  /* contact  */ { cam: V(0, 0.6, 8.6),   tgt: V(-1.6, 0.1, 0), explode: 0,   facade: 0.3, wash: 0,  map: 0, level: 0.85, mirror: true },
+];
+const sections = [...document.querySelectorAll('[data-scene]')];
+let anchors = [];
+function measure(){ anchors = sections.map(s => s.offsetTop + s.offsetHeight * 0.5); }
+measure(); addEventListener('load', measure);
+
+const cur = { cam: KEYS[0].cam.clone(), tgt: KEYS[0].tgt.clone(), explode: 0, facade: 0, wash: 0, map: 0, level: 1, lift: 0 };
+const goal = { cam: new THREE.Vector3(), tgt: new THREE.Vector3(), explode: 0, facade: 0, wash: 0, map: 0, level: 1, lift: 0 };
+const ease = t => t * t * (3 - 2 * t);
+let activeIdx = 0;
+
+function computeGoal(){
+  const mid = scrollY + innerHeight * 0.5;
+  let i = 0, f = 0;
+  if (mid <= anchors[0]) { i = 0; f = 0; }
+  else if (mid >= anchors[anchors.length - 1]) { i = anchors.length - 1; f = 0; }
+  else { for (i = 0; i < anchors.length - 1; i++) if (mid < anchors[i + 1]) break; f = (mid - anchors[i]) / (anchors[i + 1] - anchors[i]); }
+  const A = KEYS[i], B = KEYS[Math.min(i + 1, KEYS.length - 1)], e = ease(Math.min(1, Math.max(0, f)));
+  const aspect = innerWidth / innerHeight;
+  const fit = aspect < 1.2 ? 1 + (1.2 - aspect) * 1.1 : 1;
+  const place = (K) => {
+    const cam = K.cam.clone(), tgt = K.tgt.clone();
+    // mirror the framing for RTL so 3D never sits under the text column
+    const c0 = typeof K.mirror === 'number' ? K.mirror : 0;
+    if (K.mirror !== false && side < 0){ cam.x = 2 * c0 - cam.x; tgt.x = 2 * c0 - tgt.x; }
+    // portrait screens: the pendant hangs centred at the top; in text-heavy scenes it lifts out of frame (see lift)
+    if (aspect < 1 && K.mirror === true){ tgt.set(0, -3.6, 0); cam.set(K.cam.x * 0.3, 0.6, K.cam.z); }
+    const f = K.wide && aspect < 1.2 ? Math.max(fit, 1.45 / aspect) : fit;
+    cam.sub(tgt).multiplyScalar(f).add(tgt);
+    return { cam, tgt };
+  };
+  const pa = place(A), pb = place(B);
+  goal.cam.copy(pa.cam).lerp(pb.cam, e);
+  goal.tgt.copy(pa.tgt).lerp(pb.tgt, e);
+  for (const k of ['explode', 'facade', 'wash', 'map', 'level']) goal[k] = A[k] + (B[k] - A[k]) * e;
+  const lift = K => (K.liftOut || (aspect < 1 && K.mirror === true && !K.portraitTop)) ? 1 : 0;
+  goal.lift = lift(A) + (lift(B) - lift(A)) * e;
+  const idx = f > 0.5 ? Math.min(i + 1, KEYS.length - 1) : i;
+  if (idx !== activeIdx){ activeIdx = idx; onSection(idx); }
+}
+const navLinks = [...document.querySelectorAll('.nav ul a')];
+function onSection(idx){
+  const id = sections[idx].id;
+  navLinks.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + id));
+}
+
+/* =========================================================
+   Pointer
+   ========================================================= */
+const mouse = { x: 0, y: 0, px: innerWidth / 2, py: innerHeight / 2 };
+addEventListener('pointermove', e => {
+  mouse.px = e.clientX; mouse.py = e.clientY;
+  mouse.x = e.clientX / innerWidth * 2 - 1; mouse.y = -(e.clientY / innerHeight * 2 - 1);
+});
+
+// flashlight over "1923"
+const torch = document.getElementById('torch');
+let torchManual = 0;
+torch.addEventListener('pointermove', e => {
+  const r = torch.getBoundingClientRect();
+  torch.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+  torch.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  torchManual = performance.now();
+});
+
+/* =========================================================
+   City labels (projected from 3D)
+   ========================================================= */
+const labelsEl = document.getElementById('labels');
+let labelEls = [];
+function buildLabels(){
+  labelsEl.innerHTML = '';
+  if (!world.CITIES) return;
+  labelEls = world.CITIES.map(c => {
+    const d = document.createElement('div'); d.className = 'city';
+    const [n, s] = CITY_NAMES[lang][c.id];
+    d.innerHTML = `<b>${n}</b><small>${s}</small>`;
+    labelsEl.appendChild(d); return d;
+  });
+}
+buildLabels();
+
+/* =========================================================
+   Intro: pull the cord
+   ========================================================= */
+const intro = document.getElementById('intro'), cordEl = document.getElementById('cord'), bead = document.getElementById('bead'), cordLine = document.getElementById('cordLine');
+let power = 0, powerTarget = 0, lit = false, flickering = false;
+const baseY = () => innerHeight * 0.46;
+function setCord(dy){
+  const y = baseY() + dy;
+  bead.style.top = y + 'px';
+  cordEl.style.setProperty('--cy', y + 'px');
+  cordLine.setAttribute('y2', (y / (innerHeight * 0.7)) * 1000);
+}
+setCord(0);
+let drag = null;
+cordEl.addEventListener('pointerdown', e => { if (lit) return; drag = { y0: e.clientY }; cordEl.setPointerCapture(e.pointerId); });
+cordEl.addEventListener('pointermove', e => { if (!drag) return; const dy = Math.max(0, Math.min(140, e.clientY - drag.y0)); drag.dy = dy; setCord(dy); });
+const release = () => {
+  if (!drag) return;
+  const pulled = (drag.dy || 0) > 50 || (drag.dy || 0) < 4; // a tap also works
+  drag = null; springBack();
+  if (pulled) ignite();
+};
+cordEl.addEventListener('pointerup', release);
+cordEl.addEventListener('pointercancel', release);
+cordEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ignite(); } });
+addEventListener('keydown', e => { if (!lit && e.key === 'Enter') ignite(); });
+document.getElementById('skipIntro').addEventListener('click', () => ignite(true));
+function springBack(){
+  const from = parseFloat(bead.style.top) - baseY(), t0 = performance.now();
+  (function s(now){
+    const t = (now - t0) / 700; const v = from * Math.exp(-t * 5) * Math.cos(t * 14);
+    setCord(Math.max(-30, v)); if (t < 1.4) requestAnimationFrame(s); else setCord(0);
+  })(t0);
+}
+function ignite(instant){
+  if (lit) return; lit = true;
+  const seq = (reduced || instant) ? [[0, 1]] : [[0, .55], [70, .04], [190, .8], [250, .12], [330, .25], [420, .06], [560, 1]];
+  flickering = true;
+  seq.forEach(([t, v]) => setTimeout(() => { power = v; powerTarget = v; }, t));
+  const end = seq[seq.length - 1][0];
+  setTimeout(() => {
+    flickering = false;
+    intro.classList.add('gone');
+    document.body.classList.remove('locked');
+    document.documentElement.classList.add('ready');
+    document.body.classList.add('ready');
+    document.querySelectorAll('#hero .reveal').forEach(el => el.classList.add('in'));
+    measure();
+  }, end + 250);
+}
+setTimeout(() => cordEl.classList.add('ready'), 300);
+
+/* reveal-on-scroll */
+const io = new IntersectionObserver(entries => entries.forEach(en => {
+  if (en.isIntersecting && document.body.classList.contains('ready')) { en.target.classList.add('in'); countUp(en.target); }
+}), { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+function countUp(el){
+  el.querySelectorAll('[data-count]').forEach(n => {
+    if (n.dataset.done) return; n.dataset.done = 1;
+    const to = +n.dataset.count, from = to > 1000 ? 1850 : 0, t0 = performance.now(), dur = 1600;
+    const fmt = v => lang === 'ar' ? Math.round(v).toLocaleString('ar-EG', { useGrouping: false }) : String(Math.round(v));
+    (function s(now){ const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 4);
+      n.textContent = fmt(from + (to - from) * e); if (p < 1) requestAnimationFrame(s); })(t0);
+  });
+}
+
+document.getElementById('consult').addEventListener('submit', e => { e.preventDefault(); e.target.classList.add('done'); });
+
+/* =========================================================
+   Render loop
+   ========================================================= */
+const clock = new THREE.Clock();
+const tmpC = new THREE.Color(), dark = new THREE.Color(0x1c1814), proj = new THREE.Vector3();
+let swayX = 0, swayZ = 0, vX = 0, vZ = 0;
+
+function tick(){
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  computeGoal();
+  const k = 1 - Math.exp(-dt * (reduced ? 6 : 2.6));
+  cur.cam.lerp(goal.cam, k); cur.tgt.lerp(goal.tgt, k);
+  for (const key of ['explode', 'facade', 'wash', 'map', 'level', 'lift']) cur[key] += (goal[key] - cur[key]) * k;
+  if (!flickering) power += (powerTarget - power) * (1 - Math.exp(-dt * 4));
+
+
+  // auto-wander the torch when idle (touch devices)
+  if (performance.now() - torchManual > 2500){
+    const r = torch.getBoundingClientRect();
+    torch.style.setProperty('--mx', (r.width * (0.5 + 0.42 * Math.sin(t * 0.45))) + 'px');
+    torch.style.setProperty('--my', (r.height * (0.5 + 0.25 * Math.sin(t * 0.8))) + 'px');
+  }
+
+  if (renderer){
+    const w = world;
+    const [r, g, b] = kelvinToRGB(ui.kelvin);
+    const lightC = tmpC.setRGB(r, g, b, THREE.SRGBColorSpace);
+    const L = power * ui.dimmer * cur.level;
+
+    // pendulum sway: spring toward pointer + gentle idle
+    const targetX = reduced ? 0 : mouse.y * 0.035, targetZ = reduced ? 0 : -mouse.x * 0.06 + Math.sin(t * 0.6) * 0.015;
+    vX += (targetX - swayX) * dt * 6; vZ += (targetZ - swayZ) * dt * 6;
+    vX *= 0.96; vZ *= 0.96; swayX += vX * dt * 2.2; swayZ += vZ * dt * 2.2;
+    w.pivot.rotation.x = swayX; w.pivot.rotation.z = swayZ;
+    w.pivot.position.y = 7 + cur.lift * 7;
+    w.lamp.rotation.y = t * 0.08;
+
+    // explode shells
+    w.shells.forEach(({ grp, d }) => {
+      grp.position.y = d.y + d.ex * cur.explode;
+      grp.rotation.z = d.rz * cur.explode;
+      grp.rotation.x = d.rz * 0.6 * cur.explode;
+    });
+    w.rods.scale.y = 1 + cur.explode * 1.8; w.rods.visible = cur.explode > 0.05;
+
+    // light
+    w.bulbMat.color.copy(lightC).multiplyScalar(0.06 + L * 3.2);
+    w.bulbLight.color.copy(lightC); w.bulbLight.intensity = L * 4;
+    w.spot.color.copy(lightC); w.spot.intensity = L * 45;
+    w.innerMat.emissive.copy(lightC); w.innerMat.emissiveIntensity = L * 0.18;
+    w.coneMat.uniforms.uColor.value.copy(lightC); w.coneMat.uniforms.uOpacity.value = L * 0.11;
+    w.dustMat.uniforms.uColor.value.copy(lightC); w.dustMat.uniforms.uLevel.value = L; w.dustMat.uniforms.uTime.value = t;
+
+    // façade
+    const fOn = cur.facade * power;
+    w.facade.visible = cur.facade > 0.02;
+    for (let i = 0; i < w.winData.length; i++){
+      const wd = w.winData[i];
+      const on = Math.min(1, Math.max(0, (fOn - wd.th) / 0.12));
+      const fl = 0.92 + 0.08 * Math.sin(t * 2 + wd.flick * 30);
+      const c = dark.clone().lerp(new THREE.Color().copy(lightC).multiplyScalar(1.15 * wd.warm * fl), on);
+      w.windows.setColorAt(i, c);
+    }
+    w.windows.instanceColor.needsUpdate = true;
+    w.washMat.uniforms.uWash.value = cur.wash * power * Math.min(1, cur.facade * 3);
+    w.washMat.uniforms.uColor.value.copy(lightC);
+    w.fixMat.color.copy(lightC).multiplyScalar(3 * w.washMat.uniforms.uWash.value);
+    w.facadeGlow.color.copy(lightC); w.facadeGlow.intensity = 14 * w.washMat.uniforms.uWash.value;
+
+    // map
+    const mOn = cur.map;
+    w.map.visible = mOn > 0.01;
+    w.mapMat.uniforms.uOn.value = mOn; w.mapMat.uniforms.uTime.value = t; w.mapMat.uniforms.uColor.value.copy(lightC);
+    w.arcMats.forEach(m => { m.uniforms.uOn.value = mOn; m.uniforms.uTime.value = t; m.uniforms.uColor.value.copy(lightC); });
+    w.markerMat.color.copy(lightC).multiplyScalar(4); w.markerMat.opacity = Math.min(1, mOn * 2);
+
+    w.bloom.strength = 0.25 + 0.3 * power;
+
+    // camera
+    w.camera.position.copy(cur.cam);
+    w.camera.position.x += mouse.x * 0.25; w.camera.position.y += mouse.y * 0.15;
+    w.camera.lookAt(cur.tgt);
+
+    // labels
+    if (labelEls.length){
+      const op = Math.max(0, (mOn - 0.6) / 0.4);
+      w.CITIES.forEach((c, i) => {
+        const el = labelEls[i];
+        if (op <= 0){ el.style.opacity = 0; return; }
+        proj.set(c.x, 0.2, c.z).add(w.map.position).project(w.camera);
+        const x = (proj.x + 1) / 2 * innerWidth, y = (1 - proj.y) / 2 * innerHeight;
+        el.style.transform = `translate(${x}px, ${y - 7}px)`;
+        el.style.opacity = op;
+      });
+    }
+
+    w.composer.render();
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
