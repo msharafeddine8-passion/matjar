@@ -23,7 +23,6 @@ export function safeRedirectPath(
 ): string {
   if (!next) return fallback;
   // C0 controls (tab, CR, LF …), DEL, and backslashes.
-  // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001f\u007f\\]/.test(next)) return fallback;
   // A same-site path is all this ever needs to accept. Absolute URLs and
   // protocol-relative ones are refused outright rather than parsed.
