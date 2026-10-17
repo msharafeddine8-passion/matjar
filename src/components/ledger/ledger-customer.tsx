@@ -38,6 +38,7 @@ import {
   nonZeroBalances,
   statementUrl,
   withRunningBalance,
+  type LedgerCurrency,
   type LedgerEntry,
 } from "@/lib/ledger";
 import type { Locale } from "@/i18n/config";
@@ -68,6 +69,8 @@ export function LedgerCustomer({
   reminderBodies,
   reminderLastSent = null,
   waT,
+  serverBalances = null,
+  truncatedAt = null,
 }: {
   storeId: string;
   storeName: string;
@@ -84,6 +87,12 @@ export function LedgerCustomer({
   /** Latest reminder tap for this customer (wa_action_log), if any. */
   reminderLastSent?: string | null;
   waT: WaT;
+  /** The database's balance over EVERY line (ledger_balances). Passed when
+   *  `entries` is only the newest page, so the headline, the reminder and the
+   *  running column are not computed from a partial list. */
+  serverBalances?: Record<LedgerCurrency, number> | null;
+  /** How many lines `entries` was cut to, when it was cut. */
+  truncatedAt?: number | null;
 }) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -107,10 +116,26 @@ export function LedgerCustomer({
     () => "",
   );
 
-  const balances = useMemo(() => balancesByCurrency(entries), [entries]);
+  const listed = useMemo(() => balancesByCurrency(entries), [entries]);
+  const balances = serverBalances ?? listed;
   const shown = nonZeroBalances(balances);
   const owes = shown.some((b) => b.balance > 0);
-  const rows = useMemo(() => withRunningBalance(entries).reverse(), [entries]);
+  // When the list is the newest page only, every running figure is short by
+  // whatever the unlisted older lines add up to: shift it by exactly that.
+  const rows = useMemo(() => {
+    const opening: Record<LedgerCurrency, number> = serverBalances
+      ? {
+          USD: Math.round((serverBalances.USD - listed.USD) * 100) / 100,
+          LBP: Math.round((serverBalances.LBP - listed.LBP) * 100) / 100,
+        }
+      : { USD: 0, LBP: 0 };
+    return withRunningBalance(entries)
+      .map((e) => ({
+        ...e,
+        running: Math.round((e.running + opening[e.currency]) * 100) / 100,
+      }))
+      .reverse();
+  }, [entries, serverBalances, listed]);
   const link = token && origin ? statementUrl(origin, lang, token.token) : null;
   const canWhatsApp = waLink(customer.phone) !== null;
   // The message language: the merchant's WhatsApp-language choice, which
@@ -444,6 +469,11 @@ export function LedgerCustomer({
       {/* Entries, newest first, each with the running balance of its currency. */}
       <section className="mt-6">
         <h2 className="text-base font-extrabold">{t.entries}</h2>
+        {truncatedAt != null && (
+          <p className="mt-1 text-xs font-semibold text-muted-foreground">
+            {t.truncated.replace("{n}", String(truncatedAt))}
+          </p>
+        )}
         {rows.length === 0 ? (
           <p className="mt-3 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             {t.noEntries}
