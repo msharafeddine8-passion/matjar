@@ -11,7 +11,7 @@ import {
   DEFAULT_WA_TEMPLATES,
   WA_LOCALES,
   WA_SAMPLE_VALUES,
-  WA_TEMPLATE_KEYS,
+  WA_STORED_KEYS,
   WA_TEMPLATE_VARS,
   composeWaMessage,
   previewSegments,
@@ -63,7 +63,7 @@ export function WaTemplateEditor({
           {e.notReady}
         </p>
       )}
-      {WA_TEMPLATE_KEYS.map((key) => (
+      {WA_STORED_KEYS.map((key) => (
         <KeyCard
           key={key}
           templateKey={key}

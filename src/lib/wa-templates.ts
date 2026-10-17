@@ -78,8 +78,28 @@ export const WA_TEMPLATE_KEYS = [
   "booking_confirmation",
   "booking_reminder",
   "debt_reminder",
+  "booking_declined",
+  "booking_rescheduled",
 ] as const;
 export type WaTemplateKey = (typeof WA_TEMPLATE_KEYS)[number];
+
+/** The keys public.store_wa_templates and public.wa_action_log accept (0309
+ *  CHECK constraints). booking_declined / booking_rescheduled are default-
+ *  wording only until a migration widens those checks: the editor does not
+ *  offer them and their taps are not logged (the insert would be refused). */
+export const WA_STORED_KEYS = [
+  "order_confirmation",
+  "order_status",
+  "review_request",
+  "abandoned_cart",
+  "booking_confirmation",
+  "booking_reminder",
+  "debt_reminder",
+] as const satisfies readonly WaTemplateKey[];
+
+export function isWaStoredKey(v: string): boolean {
+  return (WA_STORED_KEYS as readonly string[]).includes(v);
+}
 
 export function isWaTemplateKey(v: unknown): v is WaTemplateKey {
   return typeof v === "string" && (WA_TEMPLATE_KEYS as readonly string[]).includes(v);
@@ -123,6 +143,8 @@ export const WA_TEMPLATE_VARS: Record<WaTemplateKey, readonly WaVar[]> = {
   booking_confirmation: ["customer_name", "store_name", "service", "date", "time", "link"],
   booking_reminder: ["customer_name", "store_name", "service", "date", "time", "link"],
   debt_reminder: ["customer_name", "store_name", "balance", "link"],
+  booking_declined: ["customer_name", "store_name", "service", "date", "time"],
+  booking_rescheduled: ["customer_name", "store_name", "service", "date", "time", "link"],
 };
 
 /** Which kind of record a template is about — the wa_action_log target_type. */
@@ -136,6 +158,8 @@ export const WA_TEMPLATE_TARGET: Record<WaTemplateKey, WaTargetType> = {
   booking_confirmation: "booking",
   booking_reminder: "booking",
   debt_reminder: "ledger_customer",
+  booking_declined: "booking",
+  booking_rescheduled: "booking",
 };
 
 /** Variables that empty quietly instead of dropping their line. */
@@ -253,6 +277,46 @@ export const DEFAULT_WA_TEMPLATES: Record<WaTemplateKey, Record<WaLocale, string
   debt_reminder: {
     ar: "مرحبا {customer_name}، معك {store_name}. حبّينا نذكّرك إنو المبلغ المسجّل عالدفتر: {balance}. فيك تشوف كشف حسابك هون: {link}\nشكراً إلك.",
     en: "Hello {customer_name}, this is {store_name}. A friendly reminder that the amount on your account is {balance}. You can see your statement here: {link}\nThank you.",
+  },
+  // Sent after the merchant rejects or cancels — a guest has no account and
+  // gets no in-app notification, so this is the only way they hear.
+  booking_declined: {
+    ar: [
+      "مرحبا {customer_name}،",
+      "معك {store_name}. للأسف ما منقدر نثبّت موعدك:",
+      "{service}",
+      "التاريخ: {date}",
+      "الساعة: {time}",
+      "منعتذر منك — احكينا إذا بدّك نلاقيلك وقت تاني.",
+    ].join("\n"),
+    en: [
+      "Hi {customer_name},",
+      "This is {store_name}. Unfortunately we can't keep your appointment:",
+      "{service}",
+      "Date: {date}",
+      "Time: {time}",
+      "We're sorry — message us if you'd like another time.",
+    ].join("\n"),
+  },
+  booking_rescheduled: {
+    ar: [
+      "مرحبا {customer_name}،",
+      "معك {store_name}. تغيّر وقت موعدك، صار:",
+      "{service}",
+      "التاريخ: {date}",
+      "الساعة: {time}",
+      "تفاصيل الموعد: {link}",
+      "إذا الوقت ما بيناسبك، خبّرنا.",
+    ].join("\n"),
+    en: [
+      "Hi {customer_name},",
+      "This is {store_name}. Your appointment has moved to:",
+      "{service}",
+      "Date: {date}",
+      "Time: {time}",
+      "Details: {link}",
+      "If the new time doesn't suit you, let us know.",
+    ].join("\n"),
   },
 };
 
@@ -522,6 +586,42 @@ export function composeWaMessage(input: ComposeInput): Composed {
  * cannot be dialled (the button is then disabled, never pointed at a dead
  * page). +961 normalisation is the shared helper's (src/lib/phone.ts).
  */
+/**
+ * A prefilled wa.me link for one booking message in the default wording —
+ * what the merchant screens hand a guest (no account, so no in-app
+ * notification) right after a status change or a reschedule. Null when the
+ * phone can't be dialled.
+ */
+export function bookingWaHref(
+  key: "booking_confirmation" | "booking_declined" | "booking_rescheduled",
+  b: {
+    phone: string | null | undefined;
+    customerName: string | null | undefined;
+    storeName: string;
+    service: string | null | undefined;
+    date: string | null | undefined;
+    time: string | null | undefined;
+  },
+  locale: WaLocale,
+): string | null {
+  const body = DEFAULT_WA_TEMPLATES[key][locale];
+  return (
+    waActionHref(b.phone, {
+      body,
+      fallbackBody: body,
+      values: {
+        customer_name: b.customerName ?? null,
+        store_name: b.storeName,
+        service: b.service ?? null,
+        date: formatWaDate(b.date, locale),
+        time: formatWaTime(b.time),
+        link: null,
+      },
+      locale,
+    })?.href ?? null
+  );
+}
+
 export function waActionHref(
   phone: string | null | undefined,
   input: Omit<ComposeInput, "digits">,

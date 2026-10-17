@@ -3933,7 +3933,8 @@
       "confirm": "Confirm new time",
       "done": "Time changed ✓",
       "slotTaken": "That slot is taken — try another time.",
-      "outsideHours": "That time is outside the provider's hours."
+      "outsideHours": "That time is outside the provider's hours.",
+      "past": "That time has already passed — pick a time ahead."
     },
     "attendance": {
       "action": "Confirm attendance",
@@ -3949,6 +3950,20 @@
       "already": "You're already on the waitlist for this day."
     },
     "noBookings": "You don't have any bookings yet.",
+    "statusControl": {
+      "confirm": "Change this booking to “{status}”?",
+      "confirmYes": "Yes, change it",
+      "classFull": "The class is full that day — there's no seat for this booking.",
+      "conflict": "Another booking already holds this time. Change the time first."
+    },
+    "list": {
+      "upcoming": "Upcoming bookings",
+      "past": "Past",
+      "loadMore": "Show older",
+      "guestChip": "Guest — no account",
+      "guestNotify": "This customer is a guest with no account, so they get no notification. Message them on WhatsApp:",
+      "guestNotifyAction": "Send on WhatsApp"
+    },
     "booking": "Booking",
     "status": {
       "pending": "Pending",
@@ -5662,7 +5677,9 @@
       "abandoned_cart": "Cart reminder",
       "booking_confirmation": "Confirm booking",
       "booking_reminder": "Day-before reminder",
-      "debt_reminder": "Debt reminder"
+      "debt_reminder": "Debt reminder",
+      "booking_declined": "Tell them it's not confirmed",
+      "booking_rescheduled": "Send the new time"
     },
     "keyHints": {
       "order_confirmation": "Send when you accept an order: items, total, and delivery time when it is known.",
@@ -5671,7 +5688,9 @@
       "abandoned_cart": "For a customer who tapped \"Confirm order\" but no order came through.",
       "booking_confirmation": "Confirms the booking with service, date and time.",
       "booking_reminder": "A reminder of the appointment, best the day before.",
-      "debt_reminder": "The amount on the account with a link to the statement."
+      "debt_reminder": "The amount on the account with a link to the statement.",
+      "booking_declined": "After you reject or cancel: an apology with the booking's details.",
+      "booking_rescheduled": "After you move a booking: the new date and time."
     },
     "sectionTitle": "WhatsApp messages",
     "lastSent": "Last sent: {when}",

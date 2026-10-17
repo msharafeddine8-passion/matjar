@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { notifyError, notifySuccess } from "@/lib/notify";
+import { notifyError, notifySuccess, notifyWithLink } from "@/lib/notify";
+import { bookingWaHref } from "@/lib/wa-templates";
+import type { GuestNotice } from "@/components/booking-status-control";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { beirutYmd } from "@/lib/quick-panel";
 
@@ -15,11 +17,14 @@ export function BookingReschedule({
   dict,
   initialDate,
   initialTime,
+  guest,
 }: {
   bookingId: string;
   dict: Dictionary;
   initialDate?: string | null;
   initialTime?: string | null;
+  /** Guest booking: after the move, offer the new time on WhatsApp. */
+  guest?: GuestNotice | null;
 }) {
   const router = useRouter();
   const t = dict.booking.reschedule;
@@ -45,11 +50,20 @@ export function BookingReschedule({
           ? t.slotTaken
           : code === "outside_hours"
             ? t.outsideHours
-            : dict.common.actionFailed,
+            : code === "past"
+              ? t.past
+              : dict.common.actionFailed,
       );
       return;
     }
-    notifySuccess(t.done);
+    const href = guest
+      ? bookingWaHref("booking_rescheduled", { ...guest, date, time }, guest.locale)
+      : null;
+    if (guest && href) {
+      notifyWithLink(`${t.done} ${guest.message}`, { href, label: guest.action });
+    } else {
+      notifySuccess(t.done);
+    }
     setOpen(false);
     router.refresh();
   }
