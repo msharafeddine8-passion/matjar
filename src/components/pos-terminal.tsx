@@ -16,6 +16,13 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { formatUsd } from "@/lib/currency";
+import { Money } from "@/components/ui/money";
+import {
+  canAddOne,
+  clampPosQty,
+  overStockNames,
+  posErrorKind,
+} from "@/lib/pos";
 import {
   PosExtrasFields,
   PosExtrasResult,
@@ -89,24 +96,81 @@ export function PosTerminal({
     (p) => !q || p.name.toLowerCase().includes(q),
   );
 
+  // The ticket never holds more than the shelf this screen last saw. The RPC
+  // still has the final word (another till may have sold the last one), but a
+  // cashier tapping a tile five times on a product with three left now sees
+  // the ceiling instead of a generic failure at the end.
   function addToCart(p: PosProduct) {
     setSuccess(false);
+    const line = cart.find((l) => l.product.id === p.id);
+    if (line && !canAddOne(line.qty, p.stock)) {
+      notifyError(t.maxStock.replace("{n}", String(p.stock ?? 0)));
+      return;
+    }
     setCart((c) => {
-      const line = c.find((l) => l.product.id === p.id);
-      if (line)
+      const cur = c.find((l) => l.product.id === p.id);
+      if (cur)
         return c.map((l) =>
-          l.product.id === p.id ? { ...l, qty: l.qty + 1 } : l,
+          l.product.id === p.id
+            ? { ...l, qty: clampPosQty(l.qty + 1, p.stock) }
+            : l,
         );
       return [...c, { product: p, qty: 1 }];
     });
   }
 
   function setQty(id: string, qty: number) {
-    setCart((c) =>
-      qty <= 0
+    setCart((c) => {
+      const line = c.find((l) => l.product.id === id);
+      const next = line ? clampPosQty(qty, line.product.stock) : qty;
+      return next <= 0
         ? c.filter((l) => l.product.id !== id)
-        : c.map((l) => (l.product.id === id ? { ...l, qty } : l)),
-    );
+        : c.map((l) => (l.product.id === id ? { ...l, qty: next } : l));
+    });
+  }
+
+  async function saleErrorText(message: string | undefined): Promise<string> {
+    switch (posErrorKind(message)) {
+      case "insufficientStock": {
+        // The RPC does not say which line ran out (the ticket is already
+        // capped at the stock this screen loaded, so something sold in the
+        // meantime). Re-read the shelf for the ticket's products and name the
+        // ones that no longer cover their quantity.
+        const ids = cart.map((l) => l.product.id);
+        const { data } = await createClient()
+          .from("products")
+          .select("id, stock")
+          .in("id", ids);
+        const fresh = new Map(
+          ((data ?? []) as { id: string; stock: number | null }[]).map((r) => [
+            r.id,
+            r.stock,
+          ]),
+        );
+        const names = overStockNames(
+          cart.map((l) => ({
+            qty: l.qty,
+            product: {
+              name: l.product.name,
+              stock: fresh.has(l.product.id)
+                ? (fresh.get(l.product.id) ?? null)
+                : l.product.stock,
+            },
+          })),
+        );
+        return names.length
+          ? t.errInsufficientStock.replace("{items}", names.join(" · "))
+          : t.errInsufficientStockGeneric;
+      }
+      case "invalidDiscount":
+        return t.errInvalidDiscount;
+      case "invalidQuantity":
+        return t.errInvalidQuantity;
+      case "productGone":
+        return t.errProductGone;
+      default:
+        return dict.auth.errorGeneric;
+    }
   }
 
   const subtotal = cart.reduce((s, l) => s + eff(l.product) * l.qty, 0);
@@ -130,11 +194,15 @@ export function PosTerminal({
       !error && saleId && extras
         ? await applyPosExtras({ saleId: saleId as string, value: extrasValue, config: extras, dict })
         : [];
-    setBusy(false);
     if (error) {
-      notifyError(dict.auth.errorGeneric);
+      const msg = await saleErrorText(error.message);
+      setBusy(false);
+      notifyError(msg);
+      // Stock moved under us: bring the tiles' "out" badges up to date.
+      if (posErrorKind(error.message) === "insufficientStock") router.refresh();
       return;
     }
+    setBusy(false);
     setExtrasResult(extrasLines);
     setExtrasValue({ phone: "", giftCode: "" });
     setCart([]);
@@ -268,17 +336,19 @@ export function PosTerminal({
                         {fmt(eff(l.product))} × {l.qty}
                       </span>
                     </span>
+                    {/* 40px targets: a till is tapped fast, often with a wet
+                        or gloved finger. */}
                     <div className="flex shrink-0 items-center gap-1">
                       <button
                         type="button"
                         onClick={() => setQty(l.product.id, l.qty - 1)}
-                        aria-label="-"
-                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-border transition-colors hover:bg-surface-muted"
+                        aria-label={l.qty === 1 ? t.remove : t.decrease}
+                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-border transition-colors hover:bg-surface-muted"
                       >
                         {l.qty === 1 ? (
-                          <Trash2 className="h-3.5 w-3.5 text-danger" />
+                          <Trash2 className="h-4 w-4 text-danger" />
                         ) : (
-                          <Minus className="h-3.5 w-3.5" />
+                          <Minus className="h-4 w-4" />
                         )}
                       </button>
                       <span className="w-7 text-center text-sm font-extrabold tabular-nums">
@@ -287,10 +357,16 @@ export function PosTerminal({
                       <button
                         type="button"
                         onClick={() => setQty(l.product.id, l.qty + 1)}
-                        aria-label="+"
-                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-border transition-colors hover:bg-surface-muted"
+                        disabled={!canAddOne(l.qty, l.product.stock)}
+                        aria-label={t.increase}
+                        title={
+                          canAddOne(l.qty, l.product.stock)
+                            ? undefined
+                            : t.maxStock.replace("{n}", String(l.product.stock))
+                        }
+                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-border transition-colors hover:bg-surface-muted disabled:opacity-40"
                       >
-                        <Plus className="h-3.5 w-3.5" />
+                        <Plus className="h-4 w-4" />
                       </button>
                     </div>
                     <span className="w-16 shrink-0 text-end text-sm font-extrabold tabular-nums">
@@ -314,8 +390,16 @@ export function PosTerminal({
                       step="0.01"
                       value={discount}
                       onChange={(e) => setDiscount(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary"
+                      aria-invalid={Number(discount) > subtotal || undefined}
+                      className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary aria-[invalid=true]:border-danger"
                     />
+                    {/* The total silently capped the discount at the subtotal;
+                        say so instead of charging a number nobody typed. */}
+                    {Number(discount) > subtotal && (
+                      <span className="mt-1 block text-xs font-semibold text-danger">
+                        {t.errInvalidDiscount}
+                      </span>
+                    )}
                   </label>
                   {customers.length > 0 && (
                     <label className="block text-sm">
@@ -355,7 +439,7 @@ export function PosTerminal({
                   {disc > 0 && (
                     <div className="flex justify-between text-danger">
                       <span>{t.discount}</span>
-                      <span className="tabular-nums">-{fmt(disc)}</span>
+                      <Money value={disc} cents prefix="−" />
                     </div>
                   )}
                   <div className="flex items-baseline justify-between pt-1">
@@ -379,6 +463,41 @@ export function PosTerminal({
           </div>
         </div>
       </div>
+
+      {/* Below lg the ticket sits under the whole product grid, so the total
+          and the charge button scrolled out of reach while the cashier was
+          still tapping products. This bar keeps both under the thumb; the
+          full ticket (discount, customer, loyalty) stays where it was. */}
+      {cart.length > 0 && (
+        <>
+          <div aria-hidden className="h-20 lg:hidden" />
+          <div className="fixed inset-x-0 bottom-[var(--m-tabbar-h)] z-40 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden print:hidden">
+            <div className="mx-auto flex max-w-3xl items-center justify-between gap-[var(--m-sticky-gap)] px-[var(--m-page-x)] py-2.5">
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-muted-foreground">
+                  {t.itemsCount.replace(
+                    "{n}",
+                    String(cart.reduce((s, l) => s + l.qty, 0)),
+                  )}
+                </p>
+                <Money
+                  value={total}
+                  cents
+                  className="text-xl font-extrabold text-primary"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={charge}
+                disabled={busy}
+                className="min-h-12 shrink-0 rounded-xl bg-primary px-5 text-base font-extrabold text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-60"
+              >
+                {busy ? t.charging : t.charge}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
