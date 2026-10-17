@@ -4405,6 +4405,8 @@
   "share": {
     "title": "Share your store",
     "subtitle": "Print the code or share the link — customers scan and land on your store.",
+    "whatsapp": "Share on WhatsApp",
+    "waText": "Check out my store on Matjar:",
     "copy": "Copy",
     "copied": "Copied ✓",
     "download": "Download QR code",

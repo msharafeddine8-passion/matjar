@@ -1192,7 +1192,7 @@ export default async function StoreOsHomePage({
                 </span>
               ) : (
                 <Link
-                  href={`/${lang}/store/${storeId}`}
+                  href={s.slug ? `/${lang}/${s.slug}` : `/${lang}/store/${storeId}`}
                   className="flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-surface/80 px-4 py-2 text-sm font-bold backdrop-blur transition-colors hover:border-primary hover:text-primary"
                 >
                   <ExternalLink className="h-4 w-4" />
@@ -1274,7 +1274,7 @@ export default async function StoreOsHomePage({
                   </p>
                 </div>
               ) : (
-                <StoreShareCard code={s.short_code} baseUrl={SITE_URL} dict={dict} />
+                <StoreShareCard code={s.short_code} slug={s.slug} baseUrl={SITE_URL} dict={dict} />
               )}
             </div>
           )}

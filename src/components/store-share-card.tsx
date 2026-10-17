@@ -2,22 +2,27 @@
 
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { Copy, Check, Download, QrCode as QrIcon } from "lucide-react";
+import { Copy, Check, Download, MessageCircle, QrCode as QrIcon } from "lucide-react";
 import type { Dictionary } from "@/i18n/get-dictionary";
 
 // Merchant acquisition/marketing tool: a short store link + printable QR the
 // merchant can put on their storefront, receipt, or Instagram story.
 export function StoreShareCard({
   code,
+  slug,
   baseUrl,
   dict,
 }: {
   code: string;
+  /** The store's vanity handle (stores.slug): matjarlb.com/<slug> is the link
+   *  a merchant would actually say out loud. Falls back to /s/<code>. */
+  slug?: string | null;
   baseUrl: string;
   dict: Dictionary;
 }) {
   const t = dict.share;
-  const shortUrl = `${baseUrl}/s/${code}`;
+  const shortUrl = slug ? `${baseUrl}/${slug}` : `${baseUrl}/s/${code}`;
+  const waShare = `https://wa.me/?text=${encodeURIComponent(`${t.waText} ${shortUrl}`)}`;
   const [qr, setQr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -74,16 +79,27 @@ export function StoreShareCard({
               {copied ? t.copied : t.copy}
             </button>
           </div>
-          {qr && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <a
-              href={qr}
-              download={`matjar-${code}.png`}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover"
+              href={waShare}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-success/40 bg-success-soft px-4 py-2 text-sm font-bold text-success transition-colors hover:border-success"
             >
-              <Download className="h-4 w-4" />
-              {t.download}
+              <MessageCircle className="h-4 w-4" aria-hidden />
+              {t.whatsapp}
             </a>
-          )}
+            {qr && (
+              <a
+                href={qr}
+                download={`matjar-${slug || code}.png`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover"
+              >
+                <Download className="h-4 w-4" />
+                {t.download}
+              </a>
+            )}
+          </div>
         </div>
       </div>
     </div>
