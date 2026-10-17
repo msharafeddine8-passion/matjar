@@ -181,7 +181,10 @@ const fetchActiveStores = unstable_cache(
   },
   // v2: entries now carry hoursKnown + facts; an older cached entry has neither.
   ["active-stores-listing-v2"],
-  { revalidate: 60, tags: ["stores"] },
+  // 5 min, not 60 s: every merchant write busts the "stores" tag
+  // (cache-actions.ts), so this only bounds staleness from other paths. At 60 s
+  // these rollups were a quarter of all SSR requests (~6,100/day).
+  { revalidate: 300, tags: ["stores"] },
 );
 
 // Attaches the active branch locations of each store (one query, scoped to

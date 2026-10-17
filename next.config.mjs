@@ -128,6 +128,11 @@ const nextConfig = {
     // See src/lib/image-loader.ts for the 402 that made this necessary.
     loader: "custom",
     loaderFile: "./src/lib/image-loader.ts",
+    // The defaults are 16 widths up to 3840: ~77-105 KB of srcset per page and
+    // ~900 cold Supabase renditions a day (the only 429s were at 3840). Phones
+    // and laptops here never need more than these.
+    deviceSizes: [640, 828, 1080, 1600],
+    imageSizes: [64, 128, 256, 384],
     remotePatterns: [
       {
         protocol: "https",
