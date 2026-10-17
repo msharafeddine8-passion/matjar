@@ -70,6 +70,7 @@ import {
 } from "@/components/store/store-fulfillment";
 import { StoreHours } from "@/components/store/store-hours";
 import { StoreProductsSection } from "@/components/store/store-products-section";
+import { StoreEmptyOfferings } from "@/components/store/store-empty-offerings";
 import { StoreHealthcareInfo } from "@/components/store/store-healthcare-info";
 import { StoreDoctors, type DoctorView } from "@/components/store/store-doctors";
 import {
@@ -724,6 +725,24 @@ export default async function StorePage({
   );
   const present = profile.present;
 
+  // A real store with nothing a customer can browse yet: no catalogue row and
+  // none of the other inventories (bookable resources, plans, classes,
+  // courses, portfolio, rental fleet, tickets, rooms). The engine omits each
+  // empty module, which left these pages blank between header and footer —
+  // so the catalogue's slot gets a plain «nothing listed yet» with the follow
+  // and message actions instead (StoreEmptyOfferings).
+  const showEmptyOfferings =
+    store.isReal &&
+    store.products.length === 0 &&
+    resources.length === 0 &&
+    membershipPlans.length === 0 &&
+    classes.length === 0 &&
+    courses.length === 0 &&
+    portfolio.length === 0 &&
+    rentalVehicles === 0 &&
+    ticketTypes === 0 &&
+    !experience.showStay;
+
   // Every public section, keyed — composition lives in the sector registry
   // (resolveProfileOrder) instead of in the shape of this JSX. A clinic can lead
   // with its doctors and a salon with its portfolio without either page forking;
@@ -787,7 +806,9 @@ export default async function StorePage({
     // about any of the rest. Gated on `orders`, so sectors that never sell a
     // basket (a clinic) never see it, and the component itself returns null
     // when the merchant recorded nothing.
-    delivery: store.isReal && enabledModules.has("orders") && (
+    // Nothing to deliver → no delivery terms (the engine's `present.delivery`
+    // says the same: lib/profile-engine.ts).
+    delivery: store.isReal && enabledModules.has("orders") && goods.length > 0 && (
       <StoreFulfillment
         acceptsDelivery={store.acceptsDelivery ?? true}
         acceptsPickup={store.acceptsPickup ?? true}
@@ -905,7 +926,14 @@ export default async function StorePage({
       <StorePortfolio items={portfolio} dict={dict} lang={lang} />
     ),
 
-    catalog: (
+    catalog: showEmptyOfferings ? (
+      <StoreEmptyOfferings
+        storeId={id}
+        lang={lang}
+        dict={dict}
+        isFollowing={isFollowing}
+      />
+    ) : (
       <StoreProductsSection
         sectionTitle={sectionTitle}
         store={store}
@@ -997,9 +1025,13 @@ export default async function StorePage({
   // edge, so they render outside <Container> as they always have. Both lead every
   // sector's order, so pulling them out of the mapped list changes nothing about
   // the sequence the customer sees; everything from `header` down is ordered.
-  const contained = profile.modules.filter(
-    (key) => key !== "announcement" && key !== "hero",
-  );
+  // An empty store keeps the catalogue's slot (at its place in the sector's
+  // order) for the empty state; everything else is the engine's list as is.
+  const contained = (
+    showEmptyOfferings
+      ? profile.order.filter((key) => present[key] || key === "catalog")
+      : profile.modules
+  ).filter((key) => key !== "announcement" && key !== "hero");
   // The list StoreProductsSection gates its own content on.
   // (catalogPrimaryCount in the engine is the count of exactly this list.)
   const catalogPrimary =
@@ -1018,6 +1050,8 @@ export default async function StorePage({
   };
   const sectionTabs: StoreSectionTab[] = contained
     .filter((key) => key !== "header" && key !== "summary")
+    // The empty state is not a destination: no chip that scrolls to it.
+    .filter((key) => !(showEmptyOfferings && key === "catalog"))
     .map((key) => ({
       key,
       // Both overrides exist for the same reason: a chip must say what the

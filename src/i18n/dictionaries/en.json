@@ -1552,6 +1552,10 @@
     "from": "From",
     "noProducts": "No products listed yet.",
     "productsForSale": "Products for sale",
+    "emptyOfferings": {
+      "title": "This business is still adding what it offers",
+      "body": "Nothing is listed here yet. Message them, or follow to hear as soon as something goes up."
+    },
     "comingSoonNote": "This section is browse & contact only for now — direct booking and purchase are coming soon. To ask or book, contact the store.",
     "contactCta": "Ask on WhatsApp",
     "inquiryGreeting": "Hi, I'd like to ask about",

@@ -238,10 +238,13 @@ function presence(
     header: true,
     summary,
     branches: f.branches > 1,
-    // Mirrors StoreFulfillment's own null test.
+    // Mirrors StoreFulfillment's own null test — and needs something to
+    // deliver: a store with no goods listed showed «توصيل · استلام» terms
+    // over an empty page (9 of 21 live stores at the time).
     delivery:
       f.isReal &&
       f.enabledModules.has("orders") &&
+      f.goods > 0 &&
       (d.acceptsDelivery ||
         d.acceptsPickup ||
         d.minOrder > 0 ||

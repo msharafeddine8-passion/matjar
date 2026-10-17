@@ -155,6 +155,23 @@ describe("per-sector composition", () => {
     expect(p.modules).toContain("reservations");
   });
 
+  it("no goods listed → no delivery/pickup terms over an empty page", () => {
+    const p = resolveBusinessProfile(
+      "retail",
+      facts("retail", {
+        goods: 0,
+        fulfilment: {
+          ...facts("retail").fulfilment,
+          acceptsDelivery: true,
+          acceptsPickup: true,
+        },
+      }),
+    );
+    expect(p.present.delivery).toBe(false);
+    expect(p.modules).not.toContain("delivery");
+    expect(p.present.catalog).toBe(false);
+  });
+
   it("healthcare: summary, people, services, then the visit terms", () => {
     const f = facts("healthcare", {
       services: 3,
