@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { supportWaLink } from "@/lib/support";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import type { SubDict } from "@/lib/dict-slice";
 
 const REASONS = ["violating", "duplicate", "misleading", "images", "fraud"] as const;
 
@@ -17,7 +18,7 @@ export function ListingReport({
 }: {
   listingId: string;
   lang: Locale;
-  dict: Pick<Dictionary, "auth" | "market" | "reportContent">;
+  dict: Pick<Dictionary, "market"> & SubDict<"auth", "errorGeneric">;
 }) {
   const router = useRouter();
   const t = dict.market;
@@ -136,7 +137,7 @@ export function ContentReport({
   entityType: ReportableEntity;
   entityId: string;
   lang: Locale;
-  dict: Pick<Dictionary, "auth" | "market" | "reportContent">;
+  dict: Pick<Dictionary, "reportContent"> & SubDict<"auth", "errorGeneric">;
 }) {
   const router = useRouter();
   const t = dict.reportContent;

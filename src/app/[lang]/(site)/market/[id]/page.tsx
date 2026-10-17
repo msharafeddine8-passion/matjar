@@ -30,7 +30,7 @@ import { ListingViewTracker } from "@/components/listing-view-tracker";
 import { BackButton } from "@/components/back-button";
 import { Money } from "@/components/ui/money";
 import { MessageSellerButton } from "@/components/message-seller-button";
-import { dictSlice } from "@/lib/dict-slice";
+import { dictSlice, subDict } from "@/lib/dict-slice";
 import { countLabel } from "@/lib/plural";
 
 const UUID_RE =
@@ -286,7 +286,7 @@ export default async function ListingPage({
                 lang={lang}
                 dict={dictSlice(dict, ["market"])}
               />
-              <ListingReport listingId={id} lang={lang} dict={dictSlice(dict, ["auth", "market", "reportContent"])} />
+              <ListingReport listingId={id} lang={lang} dict={{ ...dictSlice(dict, ["market"]), ...subDict(dict, "auth", ["errorGeneric"]) }} />
             </div>
           </div>
         </div>

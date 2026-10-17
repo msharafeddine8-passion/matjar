@@ -25,7 +25,6 @@ import {
   LogIn,
 } from "lucide-react";
 import type { Locale } from "@/i18n/config";
-import type { Dictionary } from "@/i18n/get-dictionary";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { LogoutButton } from "@/components/logout-button";

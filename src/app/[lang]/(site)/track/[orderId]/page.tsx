@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import { PackageSearch } from "lucide-react";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
+import { subDict } from "@/lib/dict-slice";
 import { Container } from "@/components/ui/container";
 import { GuestOrderTracker } from "@/components/guest-order-tracker";
-import { dictSlice } from "@/lib/dict-slice";
 
 // Guest order tracking page. Reached from the order confirmation link; the
 // order id is in the URL, the guest confirms with their phone.
@@ -30,7 +30,7 @@ export default async function TrackOrderPage({
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{t.subtitle}</p>
         </div>
-        <GuestOrderTracker orderId={orderId} lang={lang as Locale} dict={dictSlice(dict, ["orders", "os"])} />
+        <GuestOrderTracker orderId={orderId} lang={lang as Locale} dict={{ ...subDict(dict, "orders", ["status"]), ...subDict(dict, "os", ["track"]) }} />
       </Container>
     </div>
   );

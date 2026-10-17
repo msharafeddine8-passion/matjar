@@ -96,7 +96,7 @@ import {
   StaySearch,
   TimeslotBooking,
 } from "@/components/store/lazy-engines";
-import { dictSlice } from "@/lib/dict-slice";
+import { dictSlice, subDict } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -847,7 +847,7 @@ export default async function StorePage({
         <ServiceRequestForm
           storeId={id}
           lang={lang}
-          dict={dictSlice(dict, ["common", "os"])}
+          dict={{ ...dictSlice(dict, ["common"]), ...subDict(dict, "os", ["requestForm", "requests"]) }}
           examples={store.products
             .filter((p) => p.itemKind === "service")
             .map((p) => p.name)}
@@ -1234,7 +1234,7 @@ export default async function StorePage({
               entityType="store"
               entityId={id}
               lang={lang}
-              dict={dictSlice(dict, ["auth", "market", "reportContent"])}
+              dict={{ ...dictSlice(dict, ["reportContent"]), ...subDict(dict, "auth", ["errorGeneric"]) }}
             />
           </div>
         )}

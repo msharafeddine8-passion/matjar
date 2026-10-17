@@ -8,6 +8,7 @@ import { ShoppingCart, MessageCircle } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import type { CheckoutDict } from "@/lib/checkout-dict";
 import { categoryStyles, type CategoryKey } from "@/lib/catalog";
 import { attributeSummary } from "@/lib/attributes";
 import { effectivePrice } from "@/lib/pricing";
@@ -140,7 +141,7 @@ export function StoreProducts({
   hours = null,
 }: {
   lang: Locale;
-  dict: Pick<Dictionary, "account" | "auth" | "common" | "loyaltyCards" | "offering" | "orders" | "os" | "store">;
+  dict: Pick<Dictionary, "common" | "offering"> & CheckoutDict;
   category: CategoryKey;
   isBooking: boolean;
   products: Product[];

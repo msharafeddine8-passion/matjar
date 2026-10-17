@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Dictionary } from "@/i18n/get-dictionary";
+import type { SubDict } from "@/lib/dict-slice";
 import { formatUsd } from "@/lib/currency";
 import {
   formatGiftAmount,
@@ -35,7 +35,7 @@ export function CheckoutGiftCard({
   code,
   onCode,
 }: {
-  dict: Pick<Dictionary, "loyaltyCards">;
+  dict: SubDict<"loyaltyCards", "checkout" | "gift">;
   lang: string;
   storeId: string;
   /** The checked code (normalised), or null. */
@@ -131,7 +131,7 @@ export async function redeemGiftCardForOrder({
 }: {
   orderId: string;
   code: string;
-  dict: Pick<Dictionary, "loyaltyCards">;
+  dict: SubDict<"loyaltyCards", "checkout" | "gift">;
 }): Promise<string> {
   const t = dict.loyaltyCards.checkout;
   try {

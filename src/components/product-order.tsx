@@ -16,6 +16,7 @@ import { countLabel, type CountForms } from "@/lib/plural";
 import { noteHintKey } from "@/lib/note-hint";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import type { CheckoutDict } from "@/lib/checkout-dict";
 import { formatLbp } from "@/lib/currency";
 import { Money } from "@/components/ui/money";
 import {
@@ -85,7 +86,7 @@ export function ProductOrder({
   soldOutLabel,
 }: {
   lang: Locale;
-  dict: Pick<Dictionary, "account" | "auth" | "loyaltyCards" | "offering" | "orders" | "os" | "product" | "store">;
+  dict: Pick<Dictionary, "offering" | "product"> & CheckoutDict;
   productId: string;
   /** The line name on the order summary and in the WhatsApp message. */
   productName: string;

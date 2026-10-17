@@ -5,7 +5,7 @@ import { Check, MessageCircle, Store as StoreIcon } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Money } from "@/components/ui/money";
 import type { Locale } from "@/i18n/config";
-import type { Dictionary } from "@/i18n/get-dictionary";
+import type { CheckoutDict } from "@/lib/checkout-dict";
 import type { PlacedOrder } from "@/components/checkout/checkout-form";
 import { TagSource } from "@/components/attribution/tag-source";
 
@@ -26,7 +26,7 @@ export function OrderPlaced({
   storeName = null,
 }: {
   lang: Locale;
-  dict: Pick<Dictionary, "orders" | "os" | "store">;
+  dict: CheckoutDict;
   order: PlacedOrder;
   loggedIn: boolean;
   /** WHO the order went to. §28 asks a success screen for reference, merchant,

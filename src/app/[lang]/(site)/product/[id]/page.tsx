@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
+import { checkoutDict } from "@/lib/checkout-dict";
 import { createClient } from "@/lib/supabase/server";
 import { displayTitle, localeAlternates, shareImages, SITE_URL } from "@/lib/site";
 import { offeringJsonLd, jsonLdScript } from "@/lib/jsonld";
@@ -71,7 +72,7 @@ import {
   resolveOffering,
   type OfferingSectionKey,
 } from "@/lib/offering";
-import { dictSlice } from "@/lib/dict-slice";
+import { dictSlice, subDict } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -596,7 +597,7 @@ export default async function ProductPage({
         <>
           <ProductOrder
             lang={lang}
-            dict={dictSlice(dict, ["account", "auth", "loyaltyCards", "offering", "orders", "os", "product", "store"])}
+            dict={{ ...dictSlice(dict, ["offering", "product"]), ...checkoutDict(dict) }}
             productId={product.id}
             productName={name}
             checkout={checkout}
@@ -903,7 +904,7 @@ export default async function ProductPage({
               entityType="product"
               entityId={product.id}
               lang={lang}
-              dict={dictSlice(dict, ["auth", "market", "reportContent"])}
+              dict={{ ...dictSlice(dict, ["reportContent"]), ...subDict(dict, "auth", ["errorGeneric"]) }}
             />
           </div>
         )}

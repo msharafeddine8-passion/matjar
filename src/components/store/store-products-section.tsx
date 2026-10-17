@@ -4,6 +4,7 @@ import { MessageCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { checkoutDict } from "@/lib/checkout-dict";
 import type { StoreView } from "@/lib/data/store-view";
 import type { ItemSurface } from "@/lib/store-experience";
 import { attributeSummary } from "@/lib/attributes";
@@ -180,7 +181,7 @@ export function StoreProductsSection({
           ) : surface === "order" && checkout ? (
             <StoreProducts
               lang={lang}
-              dict={dictSlice(dict, ["account", "auth", "common", "loyaltyCards", "offering", "orders", "os", "store"])}
+              dict={{ ...dictSlice(dict, ["common", "offering"]), ...checkoutDict(dict) }}
               category={store.category}
               isBooking={false}
               checkout={checkout}
@@ -321,7 +322,7 @@ export function StoreProductsSection({
           </h2>
           <StoreProducts
             lang={lang}
-            dict={dictSlice(dict, ["account", "auth", "common", "loyaltyCards", "offering", "orders", "os", "store"])}
+            dict={{ ...dictSlice(dict, ["common", "offering"]), ...checkoutDict(dict) }}
             category={store.category}
             isBooking={false}
             checkout={checkout}
