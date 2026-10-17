@@ -155,8 +155,7 @@ export const OS_MODULE_META: Record<
   vehicles: { Icon: Car, path: "vehicles", perm: "products" },
   rentals: { Icon: CalendarRange, path: "rentals", perm: "bookings" },
   tickets: { Icon: Ticket, path: "tickets", perm: "products" },
-  // store_memberships / course_enrollments reads check the customers
-  // permission (names + phones of members), so the menu and page follow it.
+  // Names + phones of members/enrolees: the customers permission (0334).
   members: { Icon: Users, path: "members", perm: "customers" },
   items: { Icon: Package, path: "items", perm: "products" },
   doctors: { Icon: Stethoscope, path: "doctors", perm: "bookings", minPlan: "pro" },
