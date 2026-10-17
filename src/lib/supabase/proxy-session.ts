@@ -7,6 +7,13 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/config";
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  // No Supabase auth cookie = nobody to refresh. Skipping the round-trip for
+  // signed-out visitors and bots removes most /auth/v1/user calls (2,009 a day,
+  // nearly all of them for requests that had no session at all).
+  if (!request.cookies.getAll().some((c) => c.name.startsWith("sb-"))) {
+    return response;
+  }
+
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       cookies: {
         getAll() {
