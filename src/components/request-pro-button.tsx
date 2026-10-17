@@ -23,13 +23,9 @@ export type UpgradeOption = {
 // Pro, so a Basic store could not ask for Business and a Pro store had no path
 // up at all. The page now hands over every tier above the current one.
 //
-// Carrying the requested tier: request_pro_upgrade(p_store_id, p_phone) has no
-// tier parameter and no note field. The call below sends p_requested_plan
-// first; until the RPC accepts it PostgREST answers PGRST202 (no function with
-// that signature), and the call falls back to the two-argument form with the
-// tier written next to the phone — the only free-text field the admin's
-// notification already shows. When the RPC gains the parameter the first call
-// simply succeeds and the fallback stops running.
+// The requested tier travels as p_requested_plan (0331), which the RPC checks
+// is a real plan above the store's current one and puts in the admin's
+// notification and push.
 export function RequestProButton({
   storeId,
   options,
@@ -65,20 +61,11 @@ export function RequestProButton({
     setState("busy");
     const supabase = createClient();
     const typed = phone.trim() || null;
-    let { error } = await supabase.rpc("request_pro_upgrade", {
+    const { error } = await supabase.rpc("request_pro_upgrade", {
       p_store_id: storeId,
       p_phone: typed,
       p_requested_plan: chosen.tier,
     });
-    if (error?.code === "PGRST202") {
-      // Two-argument RPC: put the tier where the admin will read it. With no
-      // typed phone it is left null so the RPC still falls back to the owner's
-      // profile phone — being reachable matters more than the label.
-      ({ error } = await supabase.rpc("request_pro_upgrade", {
-        p_store_id: storeId,
-        p_phone: typed ? `${typed} · ${chosen.name}` : null,
-      }));
-    }
     if (error) {
       console.error("[request-upgrade] request_pro_upgrade failed", error);
       setState("idle");

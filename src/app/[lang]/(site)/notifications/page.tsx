@@ -40,6 +40,7 @@ type Notif = {
     /** Why a store was suspended or rejected (0282). Absent means no reason was
      *  recorded — the surfaces say so rather than printing nothing. */
     reason?: string;
+    requested_plan?: string | null;
   } | null;
   is_read: boolean;
   created_at: string;
@@ -54,6 +55,12 @@ const ADMIN_SCOPE_TYPES = new Set([
   "pro_request",
   "leader_submission",
 ]);
+
+// 0331: an upgrade request names its plan; requests from before that were
+// always for Pro.
+function requestedPlanName(plan: unknown): string {
+  return plan === "basic" ? "Basic" : plan === "business" ? "Business" : "Pro";
+}
 
 // Relative time ("5 minutes ago" / "منذ ٥ دقائق"). Timezone-independent since
 // it's a delta, so it's always correct regardless of server/client TZ.
@@ -117,10 +124,9 @@ export default async function NotificationsPage({
         .replace("{price}", String(n.data?.new_price ?? ""));
     }
     if (t === "pro_request") {
-      return dict.notifications.proRequest.replace(
-        "{store}",
-        n.data?.store_name ?? "",
-      );
+      return dict.notifications.proRequest
+        .replace("{store}", n.data?.store_name ?? "")
+        .replace("{plan}", requestedPlanName(n.data?.requested_plan));
     }
     // Merchant marketing campaign: the merchant authored the title/body; fall
     // back to a generic label when no title was given.
@@ -262,7 +268,7 @@ export default async function NotificationsPage({
                       : t === "store_new"
                         ? dict.notifications.storeNew
                         : t === "pro_request"
-                          ? `${dict.notifications.proRequestAdmin}${n.data?.store_name ? " · " + n.data.store_name : ""}`
+                          ? `${dict.notifications.proRequestAdmin.replace("{plan}", requestedPlanName(n.data?.requested_plan))}${n.data?.store_name ? " · " + n.data.store_name : ""}`
                           : t === "leader_submission"
                             ? `${dict.notifications.leaderSubmission}${n.data?.name ? " · " + n.data.name : ""}`
                             : t;
