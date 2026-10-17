@@ -105,7 +105,9 @@ export function StoreCouriersManager({
           <Truck className="h-5 w-5 text-primary" />
           <h2 className="font-bold">{t.title}</h2>
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">{t.noneAvailable}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {loadFailed ? dict.common.loadError : t.noneAvailable}
+        </p>
       </div>
     );
   }
