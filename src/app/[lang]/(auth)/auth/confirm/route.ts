@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isLocale } from "@/i18n/config";
 import { createClient } from "@/lib/supabase/server";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 // Where an email link becomes a session.
 //
@@ -35,11 +36,9 @@ export async function GET(
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next");
   // Only same-origin paths, so a crafted link cannot bounce a freshly
-  // authenticated visitor off to somebody else's site.
-  const dest =
-    next && next.startsWith("/") && !next.startsWith("//")
-      ? next
-      : `/${locale}`;
+  // authenticated visitor off to somebody else's site. A prefix check here was
+  // bypassable (`next=/%09/evil.com`); see lib/safe-redirect.ts.
+  const dest = safeRedirectPath(next, url.origin, `/${locale}`);
 
   const supabase = await createClient();
 
