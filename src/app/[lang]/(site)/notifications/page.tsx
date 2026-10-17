@@ -41,6 +41,11 @@ type Notif = {
      *  recorded — the surfaces say so rather than printing nothing. */
     reason?: string;
     requested_plan?: string | null;
+    /** Order status changes (0333): which order, its new status, the short
+     *  reference the customer sees. */
+    order_id?: string;
+    status?: string;
+    ref?: string;
   } | null;
   is_read: boolean;
   created_at: string;
@@ -191,8 +196,32 @@ export default async function NotificationsPage({
     if (t === "order_placed") return dict.notifications.orderPlaced;
     if (t === "booking_status_merchant")
       return dict.notifications.bookingStatusMerchant;
-    if (t === "order_status_merchant")
-      return dict.notifications.orderStatusMerchant;
+    // Order status changes say WHICH order and WHAT it became (0333 carries
+    // status / ref / customer_name / store_name). Rows from before 0333 have
+    // none of that and keep the generic line.
+    if (t === "order_status_merchant" || t === "order_status") {
+      const statusLabel = n.data?.status
+        ? (dict.orders.status as Record<string, string>)[n.data.status]
+        : undefined;
+      const ref = n.data?.ref?.trim();
+      if (!statusLabel || !ref) {
+        return t === "order_status"
+          ? dict.notifications.orderStatus
+          : dict.notifications.orderStatusMerchant;
+      }
+      const head = (
+        t === "order_status"
+          ? dict.notifications.orderStatusCustomerTo
+          : dict.notifications.orderStatusMerchantTo
+      )
+        .replace("{ref}", ref)
+        .replace("{status}", statusLabel);
+      const who =
+        t === "order_status_merchant"
+          ? n.data?.customer_name?.trim()
+          : n.data?.store_name?.trim();
+      return who ? `${head} · ${who}` : head;
+    }
     // New booking/order for a merchant: name the store (they may own several)
     // and, for bookings, the service.
     if (t === "booking_new")
@@ -357,6 +386,8 @@ export default async function NotificationsPage({
               n.type === "booking_attendance_confirmed" ||
               n.type === "store_transferred"
             ? `/${lang}/merchant`
+            : n.type === "order_status" && n.data?.order_id
+              ? `/${lang}/orders/${n.data.order_id}`
             : n.type === "order_status" || n.type === "order_placed"
               ? `/${lang}/orders`
               : n.type === "booking_status" ||
