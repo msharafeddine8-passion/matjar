@@ -15,6 +15,10 @@ const TARGET_BYTES = 1_000_000; // ~1 MB
 // low-end phone. This is a "too big to process" wall, not the size budget.
 const MAX_RAW_BYTES = 25_000_000; // 25 MB
 
+// Folders anyone signed in may upload to (not tied to a store); their paths
+// are `<folder>/<user id>/<random>` — see uploadFile.
+const USER_FOLDERS = new Set(["gigs", "listings", "reviews", "wholesale"]);
+
 function encode(
   canvas: HTMLCanvasElement,
   type: string,
@@ -154,7 +158,22 @@ export function ImageUpload({
     const file = await downscaleImage(rawFile);
     const supabase = createClient();
     const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+    // Public user-content folders carry the uploader's id as the second
+    // segment, so storage can tell whose file it is (can_write_store_asset,
+    // 0330). Store folders already lead with the store id.
+    let prefix = folder;
+    if (USER_FOLDERS.has(folder)) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setError(failedMsg);
+        setUploading(false);
+        return;
+      }
+      prefix = `${folder}/${user.id}`;
+    }
+    const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
     if (privateBucket) {
       const { error: privErr } = await supabase.storage
         .from(privateBucket)
