@@ -105,3 +105,57 @@ export function progressPercent(p: OrderProgress): number {
   const atLast = p.reached === p.total;
   return Math.round(((complete + (atLast ? 1 : 0.5)) / p.total) * 100);
 }
+
+// ---------------------------------------------------------------------------
+// What a merchant may move an order to
+// ---------------------------------------------------------------------------
+
+/** The statuses an order never leaves: `completed` since 0246, `cancelled` and
+ *  `rejected` since 0333 (stock, loyalty and the gift card were already given
+ *  back — reopening one re-awarded points and drove stock negative). */
+const FINAL_ORDER_STATUSES: ReadonlySet<string> = new Set([
+  "completed",
+  "cancelled",
+  "rejected",
+]);
+
+export function isFinalOrderStatus(status: string): boolean {
+  return FINAL_ORDER_STATUSES.has(status);
+}
+
+/**
+ * The statuses the merchant's status control offers, current one first.
+ *
+ * - A final status offers nothing: the control renders read-only.
+ * - Otherwise every LATER step of the order's own journey — skipping ahead is
+ *   fine (a walk-in pickup can go straight to completed), going back is not —
+ *   plus the two exits, cancelled and rejected.
+ * - A pickup order is never offered out_for_delivery: no van is coming.
+ * - Legacy data (a pickup already sitting at out_for_delivery) can still move
+ *   forward to completed rather than being stuck.
+ */
+export function nextOrderStatuses(
+  status: string,
+  fulfillment: string,
+): OrderStatus[] {
+  if (isFinalOrderStatus(status)) return [];
+  const flow =
+    fulfillment === "pickup" ? ORDER_FLOW.pickup : ORDER_FLOW.delivery;
+  const idx = flow.indexOf(status as OrderStatus);
+  if (idx >= 0) return [...flow.slice(idx), "cancelled", "rejected"];
+  if (status === "out_for_delivery") {
+    return ["out_for_delivery", "completed", "cancelled", "rejected"];
+  }
+  // An unknown status: the only safe moves are the exits.
+  return ["cancelled", "rejected"];
+}
+
+/** The database's refusal codes for moving a finished order, as UI kinds. */
+export function orderStatusErrorKind(
+  message: string | null | undefined,
+): "closed" | "completed" | null {
+  const m = message ?? "";
+  if (m.includes("order_closed_is_final")) return "closed";
+  if (m.includes("order_completed_is_final")) return "completed";
+  return null;
+}

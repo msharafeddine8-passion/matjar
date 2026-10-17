@@ -156,6 +156,7 @@ export default async function StoreHrPage({
             employees={employees}
             runs={runs}
             labels={{ ...t, error: dict.common.actionFailed, save: t.save }}
+            lang={lang}
           />
         </div>
       </Container>

@@ -28,6 +28,7 @@ import {
   loadWaTemplates,
 } from "@/lib/wa-actions-server";
 import { requireModuleAccess } from "@/lib/staff-access";
+import { LoadError } from "@/components/load-error";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -68,6 +69,7 @@ type OrderRow = {
   assigned_to: string | null;
   tags: string[] | null;
   delivery_fee: number | null;
+  discount: number | null;
   change_for: number | null;
   delivery_instructions: string | null;
   custom_fields: Record<string, string> | null;
@@ -106,17 +108,20 @@ export default async function StoreOrdersPage({
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
 
-  const { data } = await supabase
+  const { data, error: ordersError } = await supabase
     .from("orders")
     .select(
       // The nested products() join is READ-ONLY and additive: it carries the
       // three descriptive unit-pricing columns (0299) so a butcher's line can
       // read "2 كيلو" instead of "2×". Nothing computes a total from them —
       // no deployed function can even see them — so no money moves.
-      "id, status, total, fulfillment, address, phone, customer_name, customer_note, store_note, created_at, location_id, assigned_to, tags, delivery_fee, change_for, delivery_instructions, custom_fields, scheduled_for, customer_id, delivery_zone_id, order_items(name, quantity, unit_price, note, products(sold_by, unit_measure, unit_amount))",
+      "id, status, total, discount, fulfillment, address, phone, customer_name, customer_note, store_note, created_at, location_id, assigned_to, tags, delivery_fee, change_for, delivery_instructions, custom_fields, scheduled_for, customer_id, delivery_zone_id, order_items(name, quantity, unit_price, note, products(sold_by, unit_measure, unit_amount))",
     )
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });
+  if (ordersError) {
+    console.error("[orders] list failed", ordersError.message);
+  }
   // The internal note lives in order_staff_notes from 0314 (the ordering
   // customer could read orders.store_note through the API). store_note stays
   // in the select as the pre-0314 source; after 0314 it is always NULL.
@@ -334,6 +339,12 @@ export default async function StoreOrdersPage({
                     accepting: dict.merchant.mobile.accepting,
                     call: dict.merchant.mobile.callCustomer,
                     noPhone: dict.merchant.mobile.noPhone,
+                    reject: dict.merchant.mobile.rejectOrder,
+                    rejecting: dict.merchant.mobile.rejecting,
+                    confirmReject: dict.orders.ops.confirmReject,
+                    confirmRejectCta: dict.orders.ops.confirmRejectCta,
+                    cancel: dict.common.cancel,
+                    closedError: dict.orders.ops.errClosedIsFinal,
                     error: dict.common.actionFailed,
                     customerFallback: dict.os.dashboard.customerFallback,
                   }}
@@ -343,7 +354,17 @@ export default async function StoreOrdersPage({
           </section>
         )}
 
-        {orders.length ? (
+        {ordersError ? (
+          // A failed read is not "no orders yet": the onboarding empty state
+          // here told a merchant with a full day's orders to go get their
+          // first one.
+          <LoadError
+            title={dict.orders.ops.loadFailedTitle}
+            body={dict.orders.ops.loadFailedBody}
+            retryLabel={dict.orders.ops.retry}
+            className="mt-8"
+          />
+        ) : orders.length ? (
           <OrdersFilter
             orders={cards}
             dict={dict}

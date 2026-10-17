@@ -28,6 +28,9 @@ const alexandria = Alexandria({
   subsets: ["arabic", "latin"],
   weight: ["500", "600", "700", "800"],
   variable: "--font-alexandria",
+  // Headings only: not worth preloading 4 more files ahead of the CSS on a
+  // slow phone (10 font files were preloaded on every page).
+  preload: false,
 });
 
 const SITE_DESCRIPTION =

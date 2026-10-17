@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { toCategoryKey, type RegionKey } from "@/lib/catalog";
@@ -82,6 +81,9 @@ export function ForYouStrip({
   useEffect(() => {
     let active = true;
     (async () => {
+      // Loaded on first use: a static import put supabase-js (~60 KB brotli) in
+      // the first load of every page that shows this, signed in or not.
+      const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
 
       // Ask only when there is somebody to recommend to. `recommended_stores`

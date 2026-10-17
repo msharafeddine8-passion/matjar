@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heart, Check } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/analytics";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -31,6 +30,9 @@ export function FollowButton({
   async function toggle() {
     if (busy) return;
     setBusy(true);
+    // Loaded on first use: a static import put supabase-js (~60 KB brotli) in
+    // the first load of every page that shows this, signed in or not.
+    const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
     const {
       data: { user },

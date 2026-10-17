@@ -1,5 +1,6 @@
 import { Check, Clock, X } from "lucide-react";
 import { ORDER_FLOW } from "@/lib/order-progress";
+import { formatBeirutDateTime } from "@/lib/datetime";
 
 export type OrderEvent = { to_status: string; created_at: string };
 
@@ -33,13 +34,9 @@ export function OrderTimeline({
   for (const e of events) if (!eventAt.has(e.to_status)) eventAt.set(e.to_status, e.created_at);
   const reachedIdx = flow.indexOf(status);
 
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleString(lang === "ar" ? "ar" : "en", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  // Beirut wall-clock, Western digits — this renders on the server, which runs
+  // in UTC, so without the zone every step read three hours early.
+  const fmt = (iso: string) => formatBeirutDateTime(iso, lang);
 
   // On cancellation, show only the steps that actually happened + a red end.
   const steps = terminated
@@ -104,7 +101,7 @@ export function OrderTimeline({
       })}
       {terminated && (
         <li className="relative flex gap-3">
-          <span className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-danger bg-danger text-white">
+          <span className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-danger-strong bg-danger-strong text-danger-strong-foreground">
             <X className="h-3.5 w-3.5" />
           </span>
           <span className="min-w-0 pt-0.5">

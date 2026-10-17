@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Phone } from "lucide-react";
+import { Check, Phone, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { notifyError } from "@/lib/notify";
 import { Money } from "@/components/ui/money";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { waNumber } from "@/lib/phone";
+import { formatBeirutDateTime } from "@/lib/datetime";
+import { orderStatusErrorKind } from "@/lib/order-progress";
 import {
   formatQuantityMeasure,
   unitPricingOf,
@@ -84,22 +87,45 @@ export function MerchantOrderCard({
     accepting: string;
     call: string;
     noPhone: string;
+    reject: string;
+    rejecting: string;
+    confirmReject: string;
+    confirmRejectCta: string;
+    cancel: string;
+    /** The customer cancelled while the card was on screen (0333). */
+    closedError: string;
     error: string;
     customerFallback: string;
   };
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
+  const [busy, setBusy] = useState<"accepted" | "rejected" | null>(null);
 
-  async function accept() {
-    setBusy(true);
+  // Same write as the status <select>, for the two answers a pending order
+  // can get. Rejecting gives the stock back and tells the customer, so it
+  // asks first; accepting stays one tap.
+  async function move(next: "accepted" | "rejected") {
+    if (
+      next === "rejected" &&
+      !(await confirm({
+        message: labels.confirmReject,
+        confirmLabel: labels.confirmRejectCta,
+        cancelLabel: labels.cancel,
+        danger: true,
+      }))
+    )
+      return;
+    setBusy(next);
     const { error } = await createClient()
       .from("orders")
-      .update({ status: "accepted" })
+      .update({ status: next })
       .eq("id", order.id);
-    setBusy(false);
+    setBusy(null);
     if (error) {
-      notifyError(labels.error);
+      const kind = orderStatusErrorKind(error.message);
+      notifyError(kind ? labels.closedError : labels.error);
+      if (kind) router.refresh();
       return;
     }
     router.refresh();
@@ -123,10 +149,7 @@ export function MerchantOrderCard({
           {labels.order} #{order.id.slice(0, 8)}
         </span>
         <span className="ms-auto text-xs font-semibold text-muted-foreground">
-          {new Date(order.createdAt).toLocaleTimeString(
-            lang === "ar" ? "ar" : "en",
-            { hour: "2-digit", minute: "2-digit" },
-          )}
+          <bdi dir="ltr">{formatBeirutDateTime(order.createdAt, lang, "time")}</bdi>
         </span>
       </header>
 
@@ -172,18 +195,20 @@ export function MerchantOrderCard({
         </p>
       )}
 
-      {/* h-12 = 48px tall and half the card wide: hittable with a thumb while
-          holding the phone, without looking at it. */}
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      {/* h-12 = 48px tall: hittable with a thumb while holding the phone,
+          without looking at it. Accept and call share the width; reject is the
+          narrow third target, behind a confirm, so it is there when the item
+          is out but cannot be hit by accident. */}
+      <div className="mt-4 grid grid-cols-[1fr_1fr_auto] gap-2">
         <button
           type="button"
-          onClick={accept}
-          disabled={busy}
+          onClick={() => move("accepted")}
+          disabled={busy !== null}
           className="flex h-12 items-center justify-center gap-2 rounded-xl bg-success-strong px-3 text-sm font-bold text-success-strong-foreground shadow-sm transition-[transform,box-shadow] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-55"
         >
           <Check className="h-5 w-5 shrink-0" aria-hidden />
           <span className="min-w-0 truncate">
-            {busy ? labels.accepting : labels.accept}
+            {busy === "accepted" ? labels.accepting : labels.accept}
           </span>
         </button>
         {dial ? (
@@ -200,6 +225,17 @@ export function MerchantOrderCard({
             <span className="min-w-0 truncate">{labels.noPhone}</span>
           </span>
         )}
+        <button
+          type="button"
+          onClick={() => move("rejected")}
+          disabled={busy !== null}
+          className="flex h-12 items-center justify-center gap-1.5 rounded-xl border border-danger/30 bg-surface px-3 text-sm font-bold text-danger transition-[transform,box-shadow] active:scale-[0.97] hover:bg-danger-soft disabled:pointer-events-none disabled:opacity-55"
+        >
+          <X className="h-5 w-5 shrink-0" aria-hidden />
+          <span className="min-w-0 truncate">
+            {busy === "rejected" ? labels.rejecting : labels.reject}
+          </span>
+        </button>
       </div>
     </article>
   );

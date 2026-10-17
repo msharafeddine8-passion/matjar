@@ -11,6 +11,10 @@ import { Truck, Copy, Check, Lock, MessageCircle, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { notifyError } from "@/lib/notify";
 import { waLink } from "@/lib/whatsapp";
+import { waNumber } from "@/lib/phone";
+import { formatUsd } from "@/lib/currency";
+import { dispatchErrorKey } from "@/lib/dispatch-errors";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { Dictionary } from "@/i18n/get-dictionary";
 
 export type DispatchCourier = {
@@ -37,6 +41,7 @@ export function OrderDispatch({
   storeId,
   storeName,
   customerName,
+  customerPhone = null,
   address,
   couriers,
   request,
@@ -48,6 +53,8 @@ export function OrderDispatch({
   storeId: string;
   storeName: string;
   customerName: string | null;
+  /** Where «ابعت للزبون» sends the tracking link. */
+  customerPhone?: string | null;
   address: string | null;
   couriers: DispatchCourier[];
   request: DeliveryRequest | null;
@@ -55,7 +62,16 @@ export function OrderDispatch({
   dict: Dictionary;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const t = dict.merchant.dispatch;
+  // The RPCs refuse in developer English; say it in the merchant's words.
+  const errorText = (message: string | undefined) => {
+    const key = dispatchErrorKey(message);
+    return key ? t[key] : dict.auth.errorGeneric;
+  };
+  // Without a number the old link opened WhatsApp with no recipient, leaving
+  // the merchant to hunt for the customer in their contacts.
+  const customerWa = waNumber(customerPhone);
   const [companyId, setCompanyId] = useState(couriers[0]?.id ?? "");
   const [fee, setFee] = useState("");
   const [busy, setBusy] = useState(false);
@@ -82,14 +98,23 @@ export function OrderDispatch({
     });
     setBusy(false);
     if (error) {
-      notifyError(error.message || dict.auth.errorGeneric);
+      notifyError(errorText(error.message));
       return;
     }
     router.refresh();
   }
 
   async function advance(status: string) {
-    if (status === "cancelled" && !confirm(t.cancelConfirm)) return;
+    if (
+      status === "cancelled" &&
+      !(await confirm({
+        message: t.cancelConfirm,
+        confirmLabel: t.cancel,
+        cancelLabel: dict.common.cancel,
+        danger: true,
+      }))
+    )
+      return;
     setBusy(true);
     const supabase = createClient();
     const { error } = await supabase.rpc("update_delivery_status", {
@@ -98,7 +123,9 @@ export function OrderDispatch({
     });
     setBusy(false);
     if (error) {
-      notifyError(error.message || dict.auth.errorGeneric);
+      notifyError(errorText(error.message));
+      // A stale step (someone else advanced or cancelled it) — show the truth.
+      if (dispatchErrorKey(error.message)) router.refresh();
       return;
     }
     router.refresh();
@@ -209,20 +236,27 @@ export function OrderDispatch({
             {copied ? t.copied : t.copyLink}
           </button>
 
-          <a
-            href={waLink(
-              "",
-              t.waCustomer
-                .replace("{store}", storeName)
-                .replace("{link}", trackUrl),
-            )}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm font-semibold transition-colors hover:bg-muted/40"
-          >
-            <MessageCircle className="h-3.5 w-3.5" />
-            {t.sendCustomer}
-          </a>
+          {customerWa ? (
+            <a
+              href={waLink(
+                customerWa,
+                t.waCustomer
+                  .replace("{store}", storeName)
+                  .replace("{link}", trackUrl),
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm font-semibold transition-colors hover:bg-muted/40"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              {t.sendCustomer}
+            </a>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-border px-3 py-2 text-sm font-semibold text-muted-foreground">
+              <MessageCircle className="h-3.5 w-3.5" />
+              {t.noCustomerPhone}
+            </span>
+          )}
 
           {courier?.whatsapp && (
             <a
@@ -232,7 +266,7 @@ export function OrderDispatch({
                   .replace("{store}", storeName)
                   .replace("{customer}", customerName ?? "—")
                   .replace("{address}", address ?? "—")
-                  .replace("{fee}", `$${request.fee}`)
+                  .replace("{fee}", formatUsd(Number(request.fee), { cents: true }))
                   .replace("{ref}", request.tracking_ref),
               )}
               target="_blank"
@@ -278,7 +312,9 @@ export function OrderDispatch({
             {couriers.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
-                {c.price != null ? ` — $${c.price}` : ""}
+                {c.price != null
+                  ? ` — ${formatUsd(Number(c.price), { cents: true })}`
+                  : ""}
               </option>
             ))}
           </select>

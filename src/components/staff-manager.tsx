@@ -178,8 +178,11 @@ export function StaffManager({
                   <button
                     onClick={() => remove(s.id)}
                     disabled={busy}
-                    aria-label="remove"
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-60"
+                    aria-label={dict.merchant.staffRemoveLabel.replace(
+                      "{email}",
+                      s.email ?? "",
+                    )}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-60"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

@@ -228,7 +228,10 @@ const fetchCatalogFacts = unstable_cache(
   // Key bumped with the shape: an entry cached before the service/price
   // rollups existed would otherwise be served for a minute without them.
   ["discovery-catalog-facts-v2"],
-  { revalidate: 60, tags: ["stores"] },
+  // 5 min, not 60 s: every merchant write busts the "stores" tag
+  // (cache-actions.ts), so this only bounds staleness from other paths. At 60 s
+  // these rollups were a quarter of all SSR requests (~6,100/day).
+  { revalidate: 300, tags: ["stores"] },
 );
 
 /** Practitioner rows (doctors, and the newer service_providers roster) per
@@ -256,7 +259,10 @@ const fetchProviderCounts = unstable_cache(
     return out;
   },
   ["discovery-provider-counts"],
-  { revalidate: 60, tags: ["stores"] },
+  // 5 min, not 60 s: every merchant write busts the "stores" tag
+  // (cache-actions.ts), so this only bounds staleness from other paths. At 60 s
+  // these rollups were a quarter of all SSR requests (~6,100/day).
+  { revalidate: 300, tags: ["stores"] },
 );
 
 type ZoneFact = {
@@ -308,7 +314,10 @@ const fetchZoneFacts = unstable_cache(
     return out;
   },
   ["discovery-zone-facts"],
-  { revalidate: 60, tags: ["stores"] },
+  // 5 min, not 60 s: every merchant write busts the "stores" tag
+  // (cache-actions.ts), so this only bounds staleness from other paths. At 60 s
+  // these rollups were a quarter of all SSR requests (~6,100/day).
+  { revalidate: 300, tags: ["stores"] },
 );
 
 /**
@@ -460,7 +469,10 @@ export const getDiscoveryCoverage = unstable_cache(
   },
   // v2: the shape gained delivery / pickup / priced counts and bySectorCounts.
   ["discovery-coverage-v2"],
-  { revalidate: 60, tags: ["stores"] },
+  // 5 min, not 60 s: every merchant write busts the "stores" tag
+  // (cache-actions.ts), so this only bounds staleness from other paths. At 60 s
+  // these rollups were a quarter of all SSR requests (~6,100/day).
+  { revalidate: 300, tags: ["stores"] },
 );
 
 // ---------------------------------------------------------------------------
