@@ -17,6 +17,7 @@ import {
 } from "@/components/crm-manager";
 import { NextStepEmpty } from "@/components/os-dashboard/next-step-empty";
 import { requireModuleAccess } from "@/lib/staff-access";
+import { mergeCrmRows, type CrmRow } from "@/lib/crm-merge";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -95,10 +96,13 @@ export default async function StoreCustomersPage({
     supabase.rpc("store_customer_order_totals", { p_store_id: storeId }),
     // Booking customers too — a padel/clinic customer who only booked (never
     // ordered) must still appear here with their name + phone.
+    // A cancelled or rejected booking is not a visit: counting it made a
+    // customer who booked and cancelled twice look like a regular.
     supabase
       .from("bookings")
       .select("customer_id, customer_name, phone, created_at")
-      .eq("store_id", storeId),
+      .eq("store_id", storeId)
+      .not("status", "in", "(cancelled,rejected)"),
     // Available loyalty points per registered customer (RLS-safe reader).
     supabase.rpc("store_customer_loyalty", { p_store_id: storeId }),
   ]);
@@ -109,45 +113,36 @@ export default async function StoreCustomersPage({
     balances[r.uid] = Number(r.balance);
   });
 
-  // One row per customer, already grouped and summed by the RPC.
-  const map = new Map<string, DerivedCustomer>();
-  ((ordersData ?? []) as CustomerTotals[]).forEach((r) => {
-    map.set(r.customer_key, {
+  // The RPC groups a guest on the phone text exactly as typed, so «03 123456»
+  // and «+9613123456» arrive as two customers. Order rows first (they carry
+  // the spend), then booking customers (no revenue, but real people with a
+  // name + phone), all folded by account id or canonical phone.
+  const rows: CrmRow[] = [
+    ...((ordersData ?? []) as CustomerTotals[]).map((r) => ({
       name: r.customer_name,
       phone: r.phone,
       count: r.order_count,
       total: Number(r.total_spent),
       customerId: r.customer_id,
       lastOrder: r.last_order,
-    });
-  });
-  // Fold booking customers into the same map (no order revenue, but they're
-  // real customers with a name + phone the merchant needs).
-  ((bookingsData ?? []) as {
-    customer_id: string | null;
-    customer_name: string | null;
-    phone: string | null;
-    created_at: string;
-  }[]).forEach((b) => {
-    const key = b.customer_id ?? b.phone ?? "anon";
-    const c =
-      map.get(key) ??
-      {
-        name: null,
-        phone: null,
-        count: 0,
-        total: 0,
-        customerId: null,
-        lastOrder: null,
-      };
-    c.count += 1;
-    if (!c.name && b.customer_name) c.name = b.customer_name;
-    if (!c.phone && b.phone) c.phone = b.phone;
-    if (!c.customerId && b.customer_id) c.customerId = b.customer_id;
-    if (!c.lastOrder || b.created_at > c.lastOrder) c.lastOrder = b.created_at;
-    map.set(key, c);
-  });
-  const derived = [...map.values()].sort((a, b) => b.total - a.total);
+    })),
+    ...((bookingsData ?? []) as {
+      customer_id: string | null;
+      customer_name: string | null;
+      phone: string | null;
+      created_at: string;
+    }[]).map((b) => ({
+      name: b.customer_name,
+      phone: b.phone,
+      count: 1,
+      total: 0,
+      customerId: b.customer_id,
+      lastOrder: b.created_at,
+    })),
+  ];
+  const derived: DerivedCustomer[] = mergeCrmRows(rows).sort(
+    (a, b) => b.total - a.total,
+  );
 
   return (
     <div className="py-10">
