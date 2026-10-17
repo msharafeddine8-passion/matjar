@@ -119,3 +119,30 @@ export const getClearance = unstable_cache(
   ["clearance"],
   { revalidate: 120, tags: ["products"] },
 );
+
+// How many flash sales are running right now — the same window and row
+// predicate /flash itself lists (flash_price set, flash_start <= now <
+// flash_end, active + available + not deleted; the anon client's RLS adds
+// "store active"). Read by the sitemap and by /flash's own robots tag, so the
+// two cannot disagree about whether the page has anything on it.
+export const countLiveFlashSales = unstable_cache(
+  async (): Promise<number> => {
+    const supabase = createPublicClient();
+    const nowIso = new Date().toISOString();
+    const { count, error } = await supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .not("flash_price", "is", null)
+      .lte("flash_start", nowIso)
+      .gt("flash_end", nowIso)
+      .eq("status", "active")
+      .eq("is_available", true)
+      .is("deleted_at", null);
+    // A failed read counts as none: the quiet direction (leave the page out
+    // of the sitemap for a while) rather than submit an empty page.
+    if (error) return 0;
+    return count ?? 0;
+  },
+  ["live-flash-count"],
+  { revalidate: 120, tags: ["products"] },
+);

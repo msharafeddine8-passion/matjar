@@ -42,7 +42,9 @@ export const ALWAYS_INDEXED_PATHS = [
   "/explore",
   "/categories",
   "/offers",
-  "/flash",
+  // `/flash` is NOT here: with no running flash sale it is a page that says
+  // «ما في عروض فلاش هلق». The sitemap adds it on the live count instead
+  // (FLASH_PATH below), and the page says noindex on the same count.
   "/clearance",
   "/best-sellers",
   "/map",
@@ -72,6 +74,16 @@ export function sectionIndexable(count: number): boolean {
 export function sectionRobots(count: number) {
   return sectionIndexable(count) ? undefined : NOINDEX_FOLLOW;
 }
+
+/** The flash-sale page: listed and indexable only while a flash sale is
+ *  actually running (same one-row bar as a gated section). */
+export const FLASH_PATH = "/flash";
+
+/** A business-leader profile (/hub/leaders/<slug>) is a templated page about
+ *  a real person built from a handful of fields — thin by construction. It
+ *  stays reachable and its links are followed, but it is neither indexed nor
+ *  submitted in the sitemap. */
+export const LEADER_PROFILE_ROBOTS = NOINDEX_FOLLOW;
 
 /** A sector page (/category/[slug]) with no merchant is a thin page. */
 export function categoryIndexable(storeCount: number): boolean {

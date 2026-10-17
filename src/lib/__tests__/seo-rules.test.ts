@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   ALWAYS_INDEXED_PATHS,
+  FLASH_PATH,
   GATED_SECTION_PATHS,
+  LEADER_PROFILE_ROBOTS,
   NOINDEX_FOLLOW,
   PRIVATE_PATH_PREFIXES,
   buildStoreMetadata,
@@ -213,6 +215,23 @@ describe("sitemap.ts follows the rules", () => {
     expect(src).toContain("categoryIndexable(");
     expect(src).toContain("craftTradeIndexable(");
     expect(src).toContain("storeCanonicalPath(");
+  });
+
+  it("lists /flash only on a live flash-sale count, never unconditionally", () => {
+    expect(ALWAYS_INDEXED_PATHS as readonly string[]).not.toContain(FLASH_PATH);
+    expect(src).toContain("countLiveFlashSales()");
+    expect(src).toContain("sectionIndexable(liveFlash)");
+  });
+
+  it("does not submit business-leader profiles (thin pages about real people)", () => {
+    expect(src).not.toContain("/hub/leaders/${");
+    expect(src).not.toContain('.from("business_leaders")');
+    expect(LEADER_PROFILE_ROBOTS).toEqual(NOINDEX_FOLLOW);
+    const page = readFileSync(
+      join(process.cwd(), "src/app/[lang]/(site)/hub/leaders/[slug]/page.tsx"),
+      "utf8",
+    );
+    expect(page).toContain("robots: LEADER_PROFILE_ROBOTS");
   });
 
   it("every table read is bounded", () => {
