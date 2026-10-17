@@ -161,9 +161,10 @@ async function fetchCustomerActivity(lang: string): Promise<ActivityItem[]> {
 /**
  * The customer's activity, newest first.
  *
- * Memoised per request with React `cache`: the site layout calls this for the
- * tab badge on every page and the activity page calls it again for the list —
- * one set of reads serves both.
+ * Memoised per request with React `cache`, so a page that renders the list in
+ * more than one place reads once. The tab-bar badge no longer comes from here:
+ * /api/me counts it with status-filtered head reads (lib/data/viewer.ts),
+ * using the same `needsCustomer` rule.
  */
 export const getCustomerActivity = cache(fetchCustomerActivity);
 

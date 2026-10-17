@@ -10,6 +10,7 @@ import {
   APP_MODE_BOOT_SCRIPT,
   APP_MODE_CRITICAL_CSS,
 } from "@/lib/app-mode";
+import { AUTH_HINT_CSS, AUTH_HINT_SCRIPT } from "@/lib/viewer";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 import { SwRegister } from "@/components/sw-register";
 import { AttributionCapture } from "@/components/attribution/attribution-capture";
@@ -143,6 +144,13 @@ export default async function RootLayout({
             droppable by the asset pipeline. See src/lib/app-mode.ts. */}
         <script dangerouslySetInnerHTML={{ __html: APP_MODE_BOOT_SCRIPT }} />
         <style dangerouslySetInnerHTML={{ __html: APP_MODE_CRITICAL_CSS }} />
+        {/* And once more for the session hint: with a Supabase cookie present,
+            mark <html data-auth> so the (site) header's account slot paints
+            a placeholder, not "log in", until /api/me answers. The public
+            pages stay static — this reads document.cookie, not the request.
+            See src/lib/viewer.ts and src/components/viewer.tsx. */}
+        <script dangerouslySetInnerHTML={{ __html: AUTH_HINT_SCRIPT }} />
+        <style dangerouslySetInnerHTML={{ __html: AUTH_HINT_CSS }} />
       </head>
       <body className="flex min-h-dvh flex-col bg-background font-sans text-foreground antialiased">
         {/* Google Tag Manager was here, and it has never once run.
