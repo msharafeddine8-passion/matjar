@@ -1,6 +1,6 @@
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
-import { getStoresForListing } from "@/lib/data/stores";
+import { getPublicStoresForListing } from "@/lib/data/stores";
 import { StoreRail } from "@/components/store-rail";
 import { railOnlyIfEnough } from "@/lib/rail";
 import { DEFAULT_QUERY, discoveryHref, withQuery } from "@/lib/discovery";
@@ -32,7 +32,9 @@ export async function OpenNowRail({
   lang: Locale;
   dict: Dictionary;
 }) {
-  const open = (await getStoresForListing())
+  // The public listing (no viewer read): Home is ISR, and the hearts on these
+  // cards fill in client-side from the viewer island.
+  const open = (await getPublicStoresForListing())
     .filter((s) => s.isOpen && s.hoursKnown)
     .slice(0, MAX);
 
