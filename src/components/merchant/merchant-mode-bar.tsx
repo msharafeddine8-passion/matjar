@@ -59,14 +59,15 @@ export function MerchantModeBar({
   unknownLabel: string;
   hoursNote: string;
   hoursUnsetNote: string;
-  hoursHref: string;
+  /** Null for staff: the edit screen is owner-only, so the chip is plain text. */
+  hoursHref: string | null;
   viewHref: string;
   viewLabel: string;
 }) {
   const statusLabel =
     open === null ? unknownLabel : open ? openLabel : closedLabel;
   const dot =
-    open === null ? "bg-[#fbbf24]" : open ? "bg-[#34d399]" : "bg-[#fb7185]";
+    open === null ? "bg-warning" : open ? "bg-success" : "bg-danger";
 
   return (
     <>
@@ -124,15 +125,27 @@ export function MerchantModeBar({
           </div>
           {/* h-8 (32px) + the transparent -inset-y-1.5 band (2×6) = a 44px hit
               area without changing the bar's height. */}
-          <Link
-            href={hoursHref}
-            aria-label={`${statusLabel} — ${open === null ? hoursUnsetNote : hoursNote}`}
-            className="relative flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-bold text-white before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-['']"
-            style={{ backgroundColor: "var(--m-mode-chip)" }}
-          >
-            <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} aria-hidden />
-            {statusLabel}
-          </Link>
+          {hoursHref ? (
+            <Link
+              href={hoursHref}
+              aria-label={`${statusLabel} — ${open === null ? hoursUnsetNote : hoursNote}`}
+              className="relative flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-bold text-white before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-['']"
+              style={{ backgroundColor: "var(--m-mode-chip)" }}
+            >
+              <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} aria-hidden />
+              {statusLabel}
+            </Link>
+          ) : (
+            // Staff can't open the owner-only edit screen; a link there would
+            // just bounce them home, so the status is shown, not offered.
+            <span
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-bold text-white"
+              style={{ backgroundColor: "var(--m-mode-chip)" }}
+            >
+              <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} aria-hidden />
+              {statusLabel}
+            </span>
+          )}
           {/* 32×32 visible; the transparent -inset-1.5 band (2×6 on both axes)
               makes the hit area 44×44 without widening the bar. Measured: the
               -inset-y-only version this started as came out 32px WIDE. */}
