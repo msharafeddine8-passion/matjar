@@ -46,7 +46,8 @@
     "rateLimited": "Too many attempts in a short time. Please wait a moment and try again.",
     "back": "Back",
     "close": "Close",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "loadError": "Couldn't load this information — try refreshing the page"
   },
   "catalogItem": {
     "edit": "Edit",
@@ -2118,6 +2119,11 @@
       "digitalFile": "File",
       "digitalFileHint": "Kept in private storage — only the customer who paid can reach it. Up to 100 MB.",
       "digitalFileNeeded": "Upload the file before saving.",
+      "partsFailed": "We couldn't save the options, so the product wasn't added. Please try again.",
+      "partsFailedOrphan": "The options didn't save and we couldn't remove the half-made product — delete it from your product list and try again.",
+      "marketCrossPostFailed": "The product is saved, but it wasn't listed on the Sunday Market. You can add it from \"My listings\".",
+      "editLoadFailed": "We couldn't load this product's options, so editing is closed to keep them from being wiped. Refresh the page and try again.",
+      "saveStepFailed": "The save didn't finish — part of it wasn't stored. Check the product and try again.",
       "digitalTooLarge": "That file is too large — 100 MB is the limit.",
       "digitalUploading": "Uploading…",
       "digitalReplace": "Replace file",
