@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Inbox, Phone } from "lucide-react";
+import { Inbox, MessageCircle, Phone } from "lucide-react";
+import { formatInstant } from "@/lib/activity";
+import { waLink } from "@/lib/phone";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
+import { LoadError } from "@/components/ui/load-error";
 import { LeadStatusControl } from "@/components/lead-status-control";
 import { CardList, CardRow } from "@/components/ui/card";
 import { NextStepEmpty } from "@/components/os-dashboard/next-step-empty";
@@ -57,12 +60,13 @@ export default async function StoreLeadsPage({
   // Staff: the module's own permission (owner-only modules: the owner).
   await requireModuleAccess(supabase, storeId, "leads", lang);
 
-  const { data } = await supabase
+  const { data, error: loadErr } = await supabase
     .from("leads")
     .select("id, kind, name, phone, message, status, created_at")
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });
   const leads = (data ?? []) as LeadRow[];
+  if (loadErr) console.error("[leads] read failed", loadErr);
 
   const statusLabels = t.status as Record<string, string>;
   const kindLabels = t.kinds as Record<string, string>;
@@ -83,7 +87,9 @@ export default async function StoreLeadsPage({
         </h1>
         <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
 
-        {leads.length ? (
+        {loadErr ? (
+          <LoadError message={dict.common.loadError} className="mt-8" />
+        ) : leads.length ? (
           <CardList className="mt-8">
             {leads.map((l) => (
               <CardRow key={l.id}>
@@ -95,18 +101,29 @@ export default async function StoreLeadsPage({
                         {kindLabels[l.kind] ?? l.kind}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(l.created_at).toLocaleDateString(
-                          lang === "ar" ? "ar" : "en",
-                        )}
+                        {formatInstant(l.created_at, lang)}
                       </span>
                     </div>
-                    <a
-                      href={`tel:${l.phone}`}
-                      className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-                    >
-                      <Phone className="h-3.5 w-3.5" />
-                      <span dir="ltr">{l.phone}</span>
-                    </a>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <a
+                        href={`tel:${l.phone}`}
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                      >
+                        <Phone className="h-3.5 w-3.5" />
+                        <span dir="ltr">{l.phone}</span>
+                      </a>
+                      {waLink(l.phone) && (
+                        <a
+                          href={waLink(l.phone)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm font-semibold text-success hover:underline"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          {dict.common.supportWhatsappShort}
+                        </a>
+                      )}
+                    </div>
                     {l.message && (
                       <p className="mt-1.5 text-sm text-muted-foreground">
                         {l.message}

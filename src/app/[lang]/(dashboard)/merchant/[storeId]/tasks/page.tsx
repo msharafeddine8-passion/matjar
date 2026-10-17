@@ -7,6 +7,7 @@ import { isPro } from "@/lib/plan";
 import { getStorePlan } from "@/lib/plan-server";
 import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
+import { LoadError } from "@/components/ui/load-error";
 import { TasksManager, type TaskRow } from "@/components/tasks-manager";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import { requireModuleAccess } from "@/lib/staff-access";
@@ -49,7 +50,7 @@ export default async function StoreTasksPage({
     return <ProGate lang={lang} dict={dict} storeId={storeId} />;
   }
 
-  const { data } = await supabase
+  const { data, error: loadErr } = await supabase
     .from("store_tasks")
     .select("id, title, due_on, priority, status")
     .eq("store_id", storeId)
@@ -57,6 +58,7 @@ export default async function StoreTasksPage({
     .order("due_on", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
   const tasks = (data ?? []) as TaskRow[];
+  if (loadErr) console.error("[tasks] read failed", loadErr);
 
   return (
     <div className="py-10">
@@ -72,14 +74,18 @@ export default async function StoreTasksPage({
           {dict.os.tasks.title}
         </h1>
 
-        <div className="mt-6">
-          <TasksManager
-            storeId={storeId}
-            lang={lang as Locale}
-            dict={dict}
-            tasks={tasks}
-          />
-        </div>
+        {loadErr ? (
+          <LoadError message={dict.common.loadError} className="mt-6" />
+        ) : (
+          <div className="mt-6">
+            <TasksManager
+              storeId={storeId}
+              lang={lang as Locale}
+              dict={dict}
+              tasks={tasks}
+            />
+          </div>
+        )}
       </Container>
     </div>
   );

@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Users, Phone, Gem, BookOpen } from "lucide-react";
+import { Users, Phone, Gem, BookOpen, MessageCircle } from "lucide-react";
+import { formatDay } from "@/lib/activity";
+import { waLink } from "@/lib/phone";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
+import { LoadError } from "@/components/ui/load-error";
 import { NextStepEmpty } from "@/components/os-dashboard/next-step-empty";
 
 const UUID_RE =
@@ -59,7 +62,10 @@ export default async function StoreMembersPage({
   // Staff: the module's own permission (owner-only modules: the owner).
   await requireModuleAccess(supabase, storeId, "members", lang);
 
-  const [{ data: mem }, { data: enr }] = await Promise.all([
+  const [
+    { data: mem, error: memErr },
+    { data: enr, error: enrErr },
+  ] = await Promise.all([
     supabase
       .from("store_memberships")
       .select(
@@ -75,6 +81,8 @@ export default async function StoreMembersPage({
   ]);
   const memberships = (mem ?? []) as unknown as Membership[];
   const enrollments = (enr ?? []) as unknown as Enrollment[];
+  const loadErr = memErr ?? enrErr;
+  if (loadErr) console.error("[members] read failed", loadErr);
 
   const Row = ({
     name,
@@ -98,13 +106,26 @@ export default async function StoreMembersPage({
           )}
         </div>
         {phone && (
-          <a
-            href={`tel:${phone}`}
-            className="mt-0.5 inline-flex items-center gap-1 text-sm text-primary hover:underline"
-          >
-            <Phone className="h-3.5 w-3.5" />
-            <span dir="ltr">{phone}</span>
-          </a>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <a
+              href={`tel:${phone}`}
+              className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+            >
+              <Phone className="h-3.5 w-3.5" />
+              <span dir="ltr">{phone}</span>
+            </a>
+            {waLink(phone) && (
+              <a
+                href={waLink(phone)!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-success hover:underline"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                {dict.common.supportWhatsappShort}
+              </a>
+            )}
+          </div>
         )}
       </div>
       {extra && (
@@ -131,7 +152,9 @@ export default async function StoreMembersPage({
         </h1>
         <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
 
-        {empty ? (
+        {loadErr ? (
+          <LoadError message={dict.common.loadError} className="mt-8" />
+        ) : empty ? (
           <NextStepEmpty
             lang={lang}
             dict={dict}
@@ -157,7 +180,7 @@ export default async function StoreMembersPage({
                       tag={m.store_membership_plans?.name ?? null}
                       extra={
                         m.ends_on
-                          ? `${t.expires} ${new Date(m.ends_on).toLocaleDateString(lang === "ar" ? "ar" : "en")}`
+                          ? `${t.expires} ${formatDay(m.ends_on, lang) || m.ends_on}`
                           : undefined
                       }
                     />
