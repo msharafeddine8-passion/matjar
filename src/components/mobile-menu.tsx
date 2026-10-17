@@ -45,16 +45,27 @@ type Item = {
   appHide?: boolean;
 };
 
+/** The words the menu prints, resolved on the server by site-header. */
+export type MobileMenuLabels = Record<
+  | "shop" | "explore" | "market" | "offers" | "flash" | "bestSellers"
+  | "workServices" | "jobs" | "freelance" | "crafts" | "wholesale" | "delivery"
+  | "more" | "forMerchants" | "hub" | "map" | "pricing" | "dashboard"
+  | "login" | "menu" | "logout",
+  string
+>;
+
 export function MobileMenu({
   lang,
-  dict,
+  labels,
   sections,
   user,
   dashboardHref = null,
   lbpRate = 0,
 }: {
   lang: Locale;
-  dict: Pick<Dictionary, "auth" | "bestSellers" | "common" | "crafts" | "dashboard" | "delivery" | "flash" | "freelance" | "jobs" | "map" | "market" | "mobileNav" | "offers" | "pricing" | "wholesale">;
+  /** Plain strings only: the menu is on every route, so it carries the
+   *  ~20 words it prints rather than fifteen whole dictionary namespaces. */
+  labels: MobileMenuLabels;
   /** Which verticals have three real results behind them — a plain object of
    *  booleans, so it crosses the server/client boundary as data. */
   sections: NavSections;
@@ -120,32 +131,32 @@ export function MobileMenu({
   // heading over empty space.
   const allGroups: { title: string; items: Item[] }[] = [
     {
-      title: dict.mobileNav.shop,
+      title: labels.shop,
       items: [
-        { href: `/${lang}/explore`, label: dict.common.explore, icon: Compass },
-        { href: `/${lang}/market`, label: dict.market.nav, icon: ShoppingBag, bold: true, on: sections.market },
-        { href: `/${lang}/offers`, label: dict.offers.title, icon: Percent },
-        { href: `/${lang}/flash`, label: dict.flash.title, icon: Zap },
-        { href: `/${lang}/best-sellers`, label: dict.bestSellers.title, icon: TrendingUp },
+        { href: `/${lang}/explore`, label: labels.explore, icon: Compass },
+        { href: `/${lang}/market`, label: labels.market, icon: ShoppingBag, bold: true, on: sections.market },
+        { href: `/${lang}/offers`, label: labels.offers, icon: Percent },
+        { href: `/${lang}/flash`, label: labels.flash, icon: Zap },
+        { href: `/${lang}/best-sellers`, label: labels.bestSellers, icon: TrendingUp },
       ],
     },
     {
-      title: dict.common.workServices,
+      title: labels.workServices,
       items: [
-        { href: `/${lang}/jobs`, label: dict.jobs.title, icon: Briefcase, on: sections.jobs },
-        { href: `/${lang}/freelance`, label: dict.freelance.title, icon: Sparkles, on: sections.freelance },
-        { href: `/${lang}/crafts`, label: dict.crafts.title, icon: Hammer, on: sections.crafts },
-        { href: `/${lang}/wholesale`, label: dict.wholesale.title, icon: Boxes, on: sections.wholesale },
-        { href: `/${lang}/delivery`, label: dict.delivery.title, icon: Truck, on: sections.delivery },
+        { href: `/${lang}/jobs`, label: labels.jobs, icon: Briefcase, on: sections.jobs },
+        { href: `/${lang}/freelance`, label: labels.freelance, icon: Sparkles, on: sections.freelance },
+        { href: `/${lang}/crafts`, label: labels.crafts, icon: Hammer, on: sections.crafts },
+        { href: `/${lang}/wholesale`, label: labels.wholesale, icon: Boxes, on: sections.wholesale },
+        { href: `/${lang}/delivery`, label: labels.delivery, icon: Truck, on: sections.delivery },
       ],
     },
     {
-      title: dict.mobileNav.more,
+      title: labels.more,
       items: [
-        { href: `/${lang}/merchants`, label: dict.common.forMerchants, icon: Store, bold: true, appHide: true },
-        { href: `/${lang}/hub`, label: dict.common.hub, icon: Wrench },
-        { href: `/${lang}/map`, label: dict.map.title, icon: MapIcon },
-        { href: `/${lang}/pricing`, label: dict.pricing.title, icon: Tag },
+        { href: `/${lang}/merchants`, label: labels.forMerchants, icon: Store, bold: true, appHide: true },
+        { href: `/${lang}/hub`, label: labels.hub, icon: Wrench },
+        { href: `/${lang}/map`, label: labels.map, icon: MapIcon },
+        { href: `/${lang}/pricing`, label: labels.pricing, icon: Tag },
       ],
     },
   ];
@@ -156,11 +167,11 @@ export function MobileMenu({
   const account: Item[] = user
     ? [
         ...(dashboardHref
-          ? [{ href: dashboardHref, label: dict.dashboard.panel, icon: LayoutDashboard, bold: true }]
+          ? [{ href: dashboardHref, label: labels.dashboard, icon: LayoutDashboard, bold: true }]
           : []),
         { href: `/${lang}/account`, label: user.name, icon: User },
       ]
-    : [{ href: `/${lang}/login`, label: dict.common.login, icon: LogIn }];
+    : [{ href: `/${lang}/login`, label: labels.login, icon: LogIn }];
 
   // `lg:hidden`, not `md:hidden`: the desktop nav and controls only appear at
   // `lg`, so a tablet between 768 and 1024 was left with no menu at all and a
@@ -170,7 +181,7 @@ export function MobileMenu({
       <button
         ref={triggerRef}
         type="button"
-        aria-label={dict.common.menu}
+        aria-label={labels.menu}
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((v) => !v)}
@@ -193,7 +204,7 @@ export function MobileMenu({
             ref={panelRef}
             role="dialog"
             aria-modal="true"
-            aria-label={dict.common.menu}
+            aria-label={labels.menu}
             className="fixed inset-x-0 top-[calc(var(--m-header-h)+env(safe-area-inset-top))] z-40 max-h-[calc(100dvh-var(--m-header-h)-env(safe-area-inset-top))] overflow-y-auto border-b border-border bg-background p-3 shadow-lg"
           >
             {lbpRate > 0 && (
@@ -269,7 +280,7 @@ export function MobileMenu({
             </div>
             {user && (
               <div className="mt-1" onClick={() => setOpen(false)}>
-                <LogoutButton label={dict.auth.logout} />
+                <LogoutButton label={labels.logout} />
               </div>
             )}
           </nav>
