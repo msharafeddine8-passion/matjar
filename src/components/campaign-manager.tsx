@@ -94,7 +94,7 @@ export function CampaignManager({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "os">;
   initial: CampaignRow[];
   counts: AudienceCounts;
 }) {

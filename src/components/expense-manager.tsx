@@ -30,7 +30,7 @@ export function ExpenseManager({
   expenses,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "merchant">;
   expenses: Expense[];
 }) {
   const router = useRouter();

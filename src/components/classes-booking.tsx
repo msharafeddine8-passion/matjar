@@ -40,7 +40,7 @@ export function ClassesBooking({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "booking" | "classes">;
   classes: ClassRow[];
   customerName: string | null;
   customerPhone?: string | null;

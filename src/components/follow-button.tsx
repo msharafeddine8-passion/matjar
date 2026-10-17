@@ -18,7 +18,7 @@ export function FollowButton({
   storeId: string;
   following: boolean;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "store">;
   /** Phone presentation: icon only, one 44px target, label back from lg up.
    *  Opt-in — a caller that does not ask for it renders exactly as before. */
   compact?: boolean;

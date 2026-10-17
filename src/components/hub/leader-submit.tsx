@@ -25,7 +25,7 @@ function slugify(name: string) {
 // UNPUBLISHED row (RLS enforces submitted_by = auth.uid() and published = false);
 // a super admin reviews and publishes. Keeps the directory curated — never
 // auto-populated with unverified profiles.
-export function LeaderSubmit({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+export function LeaderSubmit({ lang, dict }: { lang: Locale; dict: Pick<Dictionary, "common" | "hub"> }) {
   const l = dict.hub.leaders;
   const [uid, setUid] = useState<string | null>(null);
   const [ready, setReady] = useState(false);

@@ -88,7 +88,7 @@ function RangePair({
   bounds: { min: number; max: number };
   value: RangeInput;
   onChange: (r: RangeInput) => void;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "store">;
   step?: string;
 }) {
   // Numbers are LTR with tabular figures inside Arabic text, the same house
@@ -143,7 +143,7 @@ export function CatalogueFilters({
   onChange,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "store">;
   category: CategoryKey;
   /** The WHOLE catalogue, never the filtered list. Deriving the controls from
    *  the filtered rows would shrink the options as the shopper narrows, so the

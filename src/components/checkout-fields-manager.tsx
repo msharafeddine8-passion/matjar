@@ -28,7 +28,7 @@ export function CheckoutFieldsManager({
   initial,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "merchant">;
   initial: CheckoutFieldRow[];
 }) {
   const router = useRouter();

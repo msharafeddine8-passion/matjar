@@ -13,7 +13,7 @@ const field =
 
 // Client-only barcode generator (bundled `jsbarcode`). CODE128 accepts any text;
 // EAN-13 needs 12–13 digits. Invalid input is surfaced, never thrown.
-export function BarcodeGenerator({ dict }: { dict: Dictionary }) {
+export function BarcodeGenerator({ dict }: { dict: Pick<Dictionary, "hub"> }) {
   const t = dict.hub.tools.barcode;
   const [value, setValue] = useState("");
   const [format, setFormat] = useState("CODE128");

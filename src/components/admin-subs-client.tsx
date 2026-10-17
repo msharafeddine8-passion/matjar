@@ -39,7 +39,7 @@ function Row({
 }: {
   row: SubRow;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "auth" | "common">;
 }) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -305,7 +305,7 @@ export function AdminSubsClient({
   rows,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "auth" | "common">;
   rows: SubRow[];
 }) {
   const t = dict.admin.subs;

@@ -53,7 +53,7 @@ export function BusinessTypeManager({
   types,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "auth" | "common">;
   types: BusinessType[];
 }) {
   const router = useRouter();

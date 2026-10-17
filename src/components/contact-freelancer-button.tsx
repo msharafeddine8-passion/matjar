@@ -18,7 +18,7 @@ export function ContactFreelancerButton({
 }: {
   freelancerId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "freelance">;
   /** Overrides the default "تواصل مع المستقل" — e.g. «راسل» beside «اطلب عرض». */
   label?: string;
   /** Set when the button is the SECONDARY action next to a primary one; omitted,

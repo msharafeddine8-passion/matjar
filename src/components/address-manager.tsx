@@ -44,7 +44,7 @@ export function AddressManager({
   rows,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "account" | "auth" | "common">;
   rows: AddressRow[];
 }) {
   const router = useRouter();
@@ -294,7 +294,7 @@ function AddressFields({
   onCancel,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "account" | "auth" | "common">;
   initial: AddressRow;
   busy: boolean;
   error: string | null;

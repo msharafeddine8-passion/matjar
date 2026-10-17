@@ -17,7 +17,7 @@ export function ListingReport({
 }: {
   listingId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "market" | "reportContent">;
 }) {
   const router = useRouter();
   const t = dict.market;
@@ -136,7 +136,7 @@ export function ContentReport({
   entityType: ReportableEntity;
   entityId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "market" | "reportContent">;
 }) {
   const router = useRouter();
   const t = dict.reportContent;

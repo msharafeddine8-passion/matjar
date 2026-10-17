@@ -40,7 +40,7 @@ export function StaySearch({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "stay">;
 }) {
   const t = dict.stay;
   const today = beirutYmd(new Date());

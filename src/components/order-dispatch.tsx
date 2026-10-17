@@ -59,7 +59,7 @@ export function OrderDispatch({
   couriers: DispatchCourier[];
   request: DeliveryRequest | null;
   canDispatch: boolean;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "merchant">;
 }) {
   const router = useRouter();
   const confirm = useConfirm();

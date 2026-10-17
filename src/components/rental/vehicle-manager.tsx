@@ -56,7 +56,7 @@ export function VehicleManager({
   initial,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "catalogItem" | "common" | "os">;
   initial: VehicleRow[];
 }) {
   const router = useRouter();

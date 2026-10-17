@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ShareButton } from "@/components/share-button";
 import { CardListUl } from "@/components/ui/card";
+import { dictSlice } from "@/lib/dict-slice";
 
 // Onboarding nudge shown on the OS home. While the store is being set up it
 // reports one weighted number and ONE next action; once everything is done it
@@ -183,7 +184,7 @@ export function StoreChecklist({
             {displayUrl}
           </span>
           <div className="flex shrink-0 items-center gap-2">
-            <ShareButton title={storeName} dict={dict} url={storeUrl} />
+            <ShareButton title={storeName} dict={dictSlice(dict, ["store"])} url={storeUrl} />
             <Link
               href={storePath}
               className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold transition-colors hover:border-primary hover:text-primary lg:min-h-0"

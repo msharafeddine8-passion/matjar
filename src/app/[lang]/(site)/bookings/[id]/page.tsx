@@ -13,6 +13,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { OrderCancelButton } from "@/components/order-cancel-button";
 import { BookingReschedule } from "@/components/booking-reschedule";
 import { AttendanceConfirm } from "@/components/attendance-confirm";
+import { dictSlice } from "@/lib/dict-slice";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -167,11 +168,11 @@ export default async function BookingDetailPage({
             place instead of spread down a list of other people's bookings. */}
         {(live || booking.status === "pending") && (
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            {live && <OrderCancelButton id={booking.id} kind="booking" dict={dict} />}
+            {live && <OrderCancelButton id={booking.id} kind="booking" dict={dictSlice(dict, ["auth", "booking", "common", "orders"])} />}
             {booking.status === "pending" && (
               <BookingReschedule
                 bookingId={booking.id}
-                dict={dict}
+                dict={dictSlice(dict, ["booking", "common"])}
                 initialDate={booking.requested_date}
                 initialTime={booking.requested_time}
               />
@@ -182,7 +183,7 @@ export default async function BookingDetailPage({
                   {t.attendance.confirmed}
                 </span>
               ) : (
-                <AttendanceConfirm bookingId={booking.id} dict={dict} />
+                <AttendanceConfirm bookingId={booking.id} dict={dictSlice(dict, ["booking", "common"])} />
               ))}
           </div>
         )}

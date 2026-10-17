@@ -10,6 +10,7 @@ import {
   type ProfileReview,
 } from "@/lib/profile-engine";
 import { ReviewCard } from "@/components/reviews/review-card";
+import { dictSlice } from "@/lib/dict-slice";
 
 // Reviews 2.0 on the business profile.
 //
@@ -74,7 +75,7 @@ export function ProfileReviews({
             )}
             <ReviewForm
               storeId={storeId}
-              dict={dict}
+              dict={dictSlice(dict, ["common", "reviews"])}
               customerName={currentUser.name}
               initialRating={mine?.rating}
               initialComment={mine?.comment ?? undefined}

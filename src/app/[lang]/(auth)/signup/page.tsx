@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { SignupForm } from "@/components/auth-forms";
+import { dictSlice } from "@/lib/dict-slice";
 
 export async function generateMetadata({
   params,
@@ -29,7 +30,7 @@ export default async function SignupPage({
   // during prerender.
   return (
     <Suspense>
-      <SignupForm lang={lang} dict={dict} />
+      <SignupForm lang={lang} dict={dictSlice(dict, ["auth", "common"])} />
     </Suspense>
   );
 }

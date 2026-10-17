@@ -4,6 +4,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { Container } from "@/components/ui/container";
 import { GuestOrderTracker } from "@/components/guest-order-tracker";
+import { dictSlice } from "@/lib/dict-slice";
 
 // Guest order tracking page. Reached from the order confirmation link; the
 // order id is in the URL, the guest confirms with their phone.
@@ -29,7 +30,7 @@ export default async function TrackOrderPage({
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{t.subtitle}</p>
         </div>
-        <GuestOrderTracker orderId={orderId} lang={lang as Locale} dict={dict} />
+        <GuestOrderTracker orderId={orderId} lang={lang as Locale} dict={dictSlice(dict, ["orders", "os"])} />
       </Container>
     </div>
   );

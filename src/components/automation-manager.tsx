@@ -217,7 +217,7 @@ export function AutomationManager({
   storeId: string;
   storeName: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "os">;
   initial: AutomationRow[];
   runs: RunRow[];
   locations: LocationOption[];

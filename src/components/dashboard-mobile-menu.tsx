@@ -16,7 +16,7 @@ export function DashboardMobileMenu({
   name,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "dashboard">;
   isAdmin: boolean;
   name?: string;
 }) {

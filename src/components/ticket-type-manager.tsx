@@ -40,7 +40,7 @@ export function TicketTypeManager({
   initial,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "catalogItem" | "common" | "os">;
   initial: TicketTypeRow[];
 }) {
   const router = useRouter();

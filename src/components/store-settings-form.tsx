@@ -52,7 +52,7 @@ export function StoreSettingsForm({
   isHealthcare = false,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "account" | "auth" | "merchant">;
   initial: StoreSettings;
   isHealthcare?: boolean;
 }) {

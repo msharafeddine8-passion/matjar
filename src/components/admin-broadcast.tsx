@@ -23,7 +23,7 @@ const AUDIENCES: Audience[] = ["all", "merchants", "customers"];
 // 0294 moved the write inside admin_broadcast_notify, in the same transaction
 // as the notification fan-out, so the log row exists if and only if the
 // broadcast actually went out. Nothing on this side can skip it.
-export function AdminBroadcast({ dict }: { dict: Dictionary }) {
+export function AdminBroadcast({ dict }: { dict: Pick<Dictionary, "auth" | "common" | "push"> }) {
   const t = dict.push;
   const confirm = useConfirm();
   const [title, setTitle] = useState("");

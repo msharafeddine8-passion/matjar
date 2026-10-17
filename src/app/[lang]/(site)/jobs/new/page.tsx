@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardBody } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { JobPostForm } from "@/components/job-post-form";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function NewJobPage({
   params,
@@ -50,7 +51,7 @@ export default async function NewJobPage({
 
         {store ? (
           <div className="mt-2">
-            <JobPostForm lang={lang} dict={dict} defaultCompany={defaultCompany} />
+            <JobPostForm lang={lang} dict={dictSlice(dict, ["auth", "jobs"])} defaultCompany={defaultCompany} />
           </div>
         ) : (
           // Job posting is merchants-only: no store → upsell, not the form.

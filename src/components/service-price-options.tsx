@@ -26,7 +26,7 @@ export function ServicePriceOptions({
 }: {
   rows: ServiceOptionRow[];
   onChange: (rows: ServiceOptionRow[]) => void;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "merchant">;
 }) {
   const p = dict.merchant.products;
   const set = (i: number, patch: Partial<ServiceOptionRow>) =>

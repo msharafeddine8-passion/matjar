@@ -227,7 +227,7 @@ export default async function FreelancerProfilePage({
                 <ContactFreelancerButton
                   freelancerId={id}
                   lang={locale}
-                  dict={dict}
+                  dict={dictSlice(dict, ["freelance"])}
                   label={dict.proMarket.message}
                   variant="secondary"
                 />

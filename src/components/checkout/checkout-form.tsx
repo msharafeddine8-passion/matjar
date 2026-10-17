@@ -140,7 +140,7 @@ export function CheckoutForm({
   extraCustomFields,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "account" | "auth" | "loyaltyCards" | "store">;
   store: StoreCheckout;
   viewer: CheckoutViewer;
   /** The basket as the customer reads it. */

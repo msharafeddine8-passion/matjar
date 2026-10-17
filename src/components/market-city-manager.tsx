@@ -42,7 +42,7 @@ export function MarketCityManager({
   regions,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "common">;
   cities: MarketCityRow[];
   regions?: MarketRegion[];
 }) {

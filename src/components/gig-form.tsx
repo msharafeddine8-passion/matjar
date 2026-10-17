@@ -18,7 +18,7 @@ export function GigForm({
   freelancerName,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "account" | "auth" | "freelance">;
   freelancerName: string;
 }) {
   const router = useRouter();

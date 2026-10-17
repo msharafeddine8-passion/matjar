@@ -284,9 +284,9 @@ export default async function ListingPage({
                 favorited={listing.isFavorited}
                 savesCount={listing.savesCount}
                 lang={lang}
-                dict={dict}
+                dict={dictSlice(dict, ["market"])}
               />
-              <ListingReport listingId={id} lang={lang} dict={dict} />
+              <ListingReport listingId={id} lang={lang} dict={dictSlice(dict, ["auth", "market", "reportContent"])} />
             </div>
           </div>
         </div>

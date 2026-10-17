@@ -100,7 +100,7 @@ export function EditStoreForm({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "merchant" | "os" | "store" | "upload">;
   businessTypes: Option[];
   regions: Option[];
   initial: Initial;

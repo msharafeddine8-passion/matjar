@@ -71,6 +71,7 @@ import {
   resolveOffering,
   type OfferingSectionKey,
 } from "@/lib/offering";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -385,7 +386,7 @@ export default async function ProductPage({
               <Money value={compareAt} />
             </span>
           )}
-          {flashEnd != null && <FlashCountdown endsAt={flashEnd} dict={dict} />}
+          {flashEnd != null && <FlashCountdown endsAt={flashEnd} dict={dictSlice(dict, ["flash"])} />}
         </div>
         {lbpRate > 0 && lbpPrice != null && (
           <p dir="ltr" className="mt-1 text-sm tabular-nums text-muted-foreground">
@@ -595,7 +596,7 @@ export default async function ProductPage({
         <>
           <ProductOrder
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["account", "auth", "loyaltyCards", "offering", "orders", "os", "product", "store"])}
             productId={product.id}
             productName={name}
             checkout={checkout}
@@ -642,11 +643,11 @@ export default async function ProductPage({
           productId={product.id}
           wishlisted={isWishlisted}
           lang={lang}
-          dict={dict}
+          dict={dictSlice(dict, ["product"])}
         />
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        <ShareButton title={name} dict={dict} />
+        <ShareButton title={name} dict={dictSlice(dict, ["store"])} />
         <ProductStoryCard
           productId={product.id}
           name={name}
@@ -659,7 +660,7 @@ export default async function ProductPage({
           }
           imageUrl={product.images[0] ?? null}
           baseUrl={SITE_URL}
-          dict={dict}
+          dict={dictSlice(dict, ["share"])}
         />
       </div>
     </>
@@ -761,7 +762,7 @@ export default async function ProductPage({
       questions={questions}
       canAsk={!!user}
       canAnswer={isStoreOwner}
-      dict={dict}
+      dict={dictSlice(dict, ["common", "productQa"])}
       askPlaceholder={copy.qaPlaceholder}
     />
   );
@@ -783,7 +784,7 @@ export default async function ProductPage({
     ) : null;
 
   nodes.recentlyViewed = (
-    <RecentlyViewed currentId={product.id} lang={l} dict={dict} />
+    <RecentlyViewed currentId={product.id} lang={l} dict={dictSlice(dict, ["offering", "product"])} />
   );
 
   // Fragments, not wrappers: the resolver reorders the page without adding a
@@ -902,7 +903,7 @@ export default async function ProductPage({
               entityType="product"
               entityId={product.id}
               lang={lang}
-              dict={dict}
+              dict={dictSlice(dict, ["auth", "market", "reportContent"])}
             />
           </div>
         )}

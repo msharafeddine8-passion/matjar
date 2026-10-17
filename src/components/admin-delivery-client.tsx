@@ -30,7 +30,7 @@ export function AdminDeliveryClient({
   dict,
   companies,
 }: {
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "common">;
   companies: DeliveryCompany[];
 }) {
   const router = useRouter();

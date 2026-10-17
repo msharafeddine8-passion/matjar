@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Container } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
 import { GigForm } from "@/components/gig-form";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function NewGigPage({
   params,
@@ -50,7 +51,7 @@ export default async function NewGigPage({
           icon={Sparkles}
         />
         <div className="mt-2">
-          <GigForm lang={lang} dict={dict} freelancerName={freelancerName} />
+          <GigForm lang={lang} dict={dictSlice(dict, ["account", "auth", "freelance"])} freelancerName={freelancerName} />
         </div>
       </Container>
     </div>

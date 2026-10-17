@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FreelancerProfileForm } from "@/components/freelancer-profile-form";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function MyGigsPage({
   params,
@@ -85,7 +86,7 @@ export default async function MyGigsPage({
             </Link>
           </div>
           <FreelancerProfileForm
-            dict={dict}
+            dict={dictSlice(dict, ["account", "auth", "freelance", "wholesale"])}
             initial={{
               bio: profile.bio ?? "",
               skills: Array.isArray(profile.skills) ? profile.skills : [],

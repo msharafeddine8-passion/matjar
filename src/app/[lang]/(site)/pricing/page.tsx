@@ -13,6 +13,7 @@ import { PLAN_ORDER, PLAN_TIERS, promoState, type PlanKey } from "@/lib/plan-tie
 import { TRIAL_DAYS } from "@/lib/plan";
 import { fillPlanCopy, planCopy, planCopyVars } from "@/lib/plan-copy";
 import { PRICING_MATRIX, matrixCell, type FeatureId } from "@/lib/feature-availability";
+import { dictSlice } from "@/lib/dict-slice";
 
 export async function generateMetadata({
   params,
@@ -116,7 +117,7 @@ export default async function PricingPage({
         <div className="mt-10">
           <PricingPlans
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["pricing"])}
             plans={PLAN_TIERS}
             promoActive={promoActive}
             daysLeft={daysLeft}

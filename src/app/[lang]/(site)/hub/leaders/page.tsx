@@ -12,6 +12,7 @@ import { LeaderSubmit } from "@/components/hub/leader-submit";
 import { LeadersDirectory } from "@/components/hub/leaders-directory";
 import { LEADER_CARD_COLUMNS, type LeaderCard } from "@/lib/leaders";
 import { featureCopy } from "@/lib/feature-availability";
+import { dictSlice } from "@/lib/dict-slice";
 
 export async function generateMetadata({
   params,
@@ -144,7 +145,7 @@ export default async function LeadersPage({
 
         {/* Submit */}
         <div id="submit" className="mt-16 scroll-mt-24">
-          <LeaderSubmit lang={lang} dict={dict} />
+          <LeaderSubmit lang={lang} dict={dictSlice(dict, ["common", "hub"])} />
         </div>
       </Container>
     </div>

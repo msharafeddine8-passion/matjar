@@ -23,7 +23,7 @@ export function ProductStoryCard({
   price: number;
   imageUrl: string | null;
   baseUrl: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "share">;
   /** The price as the offering page words it — "$90", or for an unpriced
    *  service "السعر بعد الاستشارة". Omitted = the formatted number. */
   priceText?: string;

@@ -53,7 +53,7 @@ export function CraftJoinForm({
 }: {
   userId: string;
   lang: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "crafts" | "upload">;
   groups: JoinGroup[];
   trades: JoinTrade[];
   areas: JoinArea[];

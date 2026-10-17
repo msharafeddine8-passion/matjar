@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { InitialsAvatar } from "@/components/hub/initials-avatar";
 import { ContactFreelancerButton } from "@/components/contact-freelancer-button";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -131,7 +132,7 @@ export default async function PublicProfilePage({
                   <ContactFreelancerButton
                     freelancerId={id}
                     lang={lang as Locale}
-                    dict={dict}
+                    dict={dictSlice(dict, ["freelance"])}
                   />
                 )}
               </div>

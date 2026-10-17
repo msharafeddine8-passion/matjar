@@ -45,7 +45,7 @@ export function ServiceRequestForm({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "os">;
   /** The store own service names — the placeholder example is built from these
    *  so a marketing agency never shows an electrical-wiring example. */
   examples?: string[];

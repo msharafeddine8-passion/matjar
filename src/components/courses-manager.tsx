@@ -58,7 +58,7 @@ export function CoursesManager({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "catalogItem" | "common" | "courses" | "merchant">;
   courses: CourseRow[];
 }) {
   const router = useRouter();

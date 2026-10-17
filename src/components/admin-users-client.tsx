@@ -46,7 +46,7 @@ export function AdminUsersClient({
   viewerIsSuper,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "auth" | "common">;
   users: AdminUser[];
   currentUserId: string;
   viewerIsSuper: boolean;

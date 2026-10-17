@@ -140,7 +140,7 @@ export function StoreProducts({
   hours = null,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "account" | "auth" | "common" | "loyaltyCards" | "offering" | "orders" | "os" | "store">;
   category: CategoryKey;
   isBooking: boolean;
   products: Product[];

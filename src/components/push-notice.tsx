@@ -1,6 +1,7 @@
 import { Bell } from "lucide-react";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { PushOptIn } from "@/components/push-opt-in";
+import { dictSlice } from "@/lib/dict-slice";
 
 // The switch, where the person who needs it will actually stand.
 //
@@ -37,7 +38,7 @@ export function PushNotice({
           </p>
         </div>
       </div>
-      <PushOptIn dict={dict} />
+      <PushOptIn dict={dictSlice(dict, ["push"])} />
     </div>
   );
 }

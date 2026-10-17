@@ -30,7 +30,7 @@ export function DeliveryZonesManager({
   initial,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "merchant">;
   initial: ZoneRowM[];
 }) {
   const router = useRouter();

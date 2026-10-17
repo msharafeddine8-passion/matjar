@@ -28,6 +28,7 @@ import type { DoctorView } from "@/components/store/store-doctors";
 // list and its prices stay in the HTML. See store/lazy-engines.tsx.
 import { BookingPanel } from "@/components/store/lazy-engines";
 import { Money } from "@/components/ui/money";
+import { dictSlice } from "@/lib/dict-slice";
 
 export function StoreProductsSection({
   sectionTitle,
@@ -141,7 +142,7 @@ export function StoreProductsSection({
             <BookingPanel
               storeId={id}
               lang={lang}
-              dict={dict}
+              dict={dictSlice(dict, ["auth", "booking", "common", "store"])}
               category={store.category}
               customerName={currentUser?.name ?? null}
               signedIn={!!currentUser}
@@ -179,7 +180,7 @@ export function StoreProductsSection({
           ) : surface === "order" && checkout ? (
             <StoreProducts
               lang={lang}
-              dict={dict}
+              dict={dictSlice(dict, ["account", "auth", "common", "loyaltyCards", "offering", "orders", "os", "store"])}
               category={store.category}
               isBooking={false}
               checkout={checkout}
@@ -320,7 +321,7 @@ export function StoreProductsSection({
           </h2>
           <StoreProducts
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["account", "auth", "common", "loyaltyCards", "offering", "orders", "os", "store"])}
             category={store.category}
             isBooking={false}
             checkout={checkout}

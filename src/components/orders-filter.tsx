@@ -110,7 +110,7 @@ export function OrdersFilter({
   wa,
 }: {
   orders: OrderCard[];
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "merchant" | "orders" | "os" | "payments" | "store" | "waActions">;
   lang: string;
   storeId: string;
   storeName: string;

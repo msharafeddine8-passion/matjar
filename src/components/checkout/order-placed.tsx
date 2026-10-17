@@ -26,7 +26,7 @@ export function OrderPlaced({
   storeName = null,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "orders" | "os" | "store">;
   order: PlacedOrder;
   loggedIn: boolean;
   /** WHO the order went to. §28 asks a success screen for reference, merchant,

@@ -50,7 +50,7 @@ export function BookingsCalendar({
   category,
 }: {
   lang: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "booking">;
   bookings: CalendarBooking[];
   /** Store sector key — picks the provider icon (stethoscope only for clinics/vets). */
   category?: string;

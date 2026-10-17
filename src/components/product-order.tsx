@@ -85,7 +85,7 @@ export function ProductOrder({
   soldOutLabel,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "account" | "auth" | "loyaltyCards" | "offering" | "orders" | "os" | "product" | "store">;
   productId: string;
   /** The line name on the order summary and in the WhatsApp message. */
   productName: string;

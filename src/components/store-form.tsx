@@ -65,7 +65,7 @@ export function StoreForm({
   regions,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "groups" | "merchant" | "store">;
   businessTypes: BizOption[];
   regions: Option[];
 }) {

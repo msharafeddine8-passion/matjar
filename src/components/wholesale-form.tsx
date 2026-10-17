@@ -21,7 +21,7 @@ export function WholesaleForm({
   sellerName,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "account" | "auth" | "wholesale">;
   sellerName: string;
 }) {
   const router = useRouter();

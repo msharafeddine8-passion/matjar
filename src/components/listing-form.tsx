@@ -41,7 +41,7 @@ export function ListingForm({
   listingId,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "market">;
   categories: MarketCategory[];
   cities: MarketCity[];
   regions?: MarketRegion[];

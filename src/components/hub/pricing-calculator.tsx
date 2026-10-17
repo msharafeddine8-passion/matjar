@@ -14,7 +14,7 @@ function money(n: number) {
 
 // From cost + target margin (+ optional fees/tax) → the price to sell at, and
 // the resulting profit per unit. The inverse of the profit calculator.
-export function PricingCalculator({ dict }: { dict: Dictionary }) {
+export function PricingCalculator({ dict }: { dict: Pick<Dictionary, "hub"> }) {
   const t = dict.hub.tools.pricing;
   const [cost, setCost] = useState("");
   const [margin, setMargin] = useState("30");

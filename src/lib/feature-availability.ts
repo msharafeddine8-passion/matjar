@@ -1143,7 +1143,7 @@ export function dictPath(dict: Dictionary, path: string): string | null {
 /** The ONE canonical word for a status, from the dictionary: متاح / تجريبي /
  *  قريباً / غير متاح. Every badge, chip and note that names availability
  *  prints this and nothing else. */
-export function featureCopy(status: FeatureStatus, dict: Dictionary): string {
+export function featureCopy(status: FeatureStatus, dict: Pick<Dictionary, "features">): string {
   return dict.features.status[status];
 }
 

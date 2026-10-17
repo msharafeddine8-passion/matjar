@@ -14,7 +14,7 @@ export function AttendanceConfirm({
   dict,
 }: {
   bookingId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "booking" | "common">;
 }) {
   const router = useRouter();
   const t = dict.booking.attendance;

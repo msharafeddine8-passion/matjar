@@ -22,7 +22,7 @@ export function MessageThread({
   conversationId: string;
   meId: string;
   initialMessages: ChatMessage[];
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "messages">;
   /** A draft to start from (never sent on its own) — e.g. the line naming the
    *  Sunday Market listing a buyer came from. */
   initialText?: string;

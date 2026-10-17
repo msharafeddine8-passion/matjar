@@ -132,7 +132,7 @@ export function AdminAcademyClient({
   guides,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "auth" | "common" | "hub">;
   guides: GuideRow[];
 }) {
   void lang;

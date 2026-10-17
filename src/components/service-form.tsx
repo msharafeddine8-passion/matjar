@@ -21,7 +21,7 @@ export function ServiceForm({
   sections = [],
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "merchant" | "os">;
   lang: Locale;
   sections?: SectionOption[];
 }) {

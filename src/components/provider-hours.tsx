@@ -36,7 +36,7 @@ export function ProviderHours({
   initialExceptions,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "merchant">;
   doctors: { id: string; name: string }[];
   initialRules: HourRule[];
   initialExceptions: HourException[];

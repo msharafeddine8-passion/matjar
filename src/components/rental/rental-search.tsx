@@ -79,7 +79,7 @@ export function RentalSearch({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "rental">;
 }) {
   const t = dict.rental;
   const today = todayIso();

@@ -15,7 +15,7 @@ type Mode = "store" | "wa" | "text";
 
 // Client-only QR generator (uses the bundled `qrcode` lib — no CDN). Renders to
 // a canvas so the merchant can download a print-ready PNG.
-export function QrGenerator({ dict }: { dict: Dictionary }) {
+export function QrGenerator({ dict }: { dict: Pick<Dictionary, "hub"> }) {
   const t = dict.hub.tools.qr;
   const [mode, setMode] = useState<Mode>("store");
   const [value, setValue] = useState("");

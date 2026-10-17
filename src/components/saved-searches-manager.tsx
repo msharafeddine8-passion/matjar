@@ -25,7 +25,7 @@ export function SavedSearchesManager({
 }: {
   rows: SavedSearchRow[];
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "savedSearch">;
 }) {
   const router = useRouter();
   const t = dict.savedSearch;

@@ -8,6 +8,7 @@ import { CardList, CardRow } from "@/components/ui/card";
 import { OrderCancelButton } from "@/components/order-cancel-button";
 import { BookingReschedule } from "@/components/booking-reschedule";
 import { AttendanceConfirm } from "@/components/attendance-confirm";
+import { dictSlice } from "@/lib/dict-slice";
 
 type BookingStatus =
   | "pending"
@@ -91,12 +92,12 @@ export default async function BookingsPage({
                   {(b.status === "pending" ||
                     b.status === "accepted" ||
                     b.status === "scheduled") && (
-                    <OrderCancelButton id={b.id} kind="booking" dict={dict} />
+                    <OrderCancelButton id={b.id} kind="booking" dict={dictSlice(dict, ["auth", "booking", "common", "orders"])} />
                   )}
                   {b.status === "pending" && (
                     <BookingReschedule
                       bookingId={b.id}
-                      dict={dict}
+                      dict={dictSlice(dict, ["booking", "common"])}
                       initialDate={b.requested_date}
                       initialTime={b.requested_time}
                     />
@@ -107,7 +108,7 @@ export default async function BookingsPage({
                         {dict.booking.attendance.confirmed}
                       </span>
                     ) : (
-                      <AttendanceConfirm bookingId={b.id} dict={dict} />
+                      <AttendanceConfirm bookingId={b.id} dict={dictSlice(dict, ["booking", "common"])} />
                     ))}
                 </div>
               </CardRow>

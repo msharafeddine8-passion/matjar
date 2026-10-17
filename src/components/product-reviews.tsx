@@ -5,6 +5,7 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import type { ProductReviewsData } from "@/lib/data/product-reviews";
 import { Card, CardList, CardRow } from "@/components/ui/card";
 import { ProductReviewForm } from "@/components/product-review-form";
+import { dictSlice } from "@/lib/dict-slice";
 
 /** Wording the offering resolver picks per variant, so a clinic's page says
  *  "تقييمات الخدمة" and a restaurant's "تقييمات الطبق" instead of speaking about
@@ -93,7 +94,7 @@ export function ProductReviews({
         <div className="mb-6">
           <ProductReviewForm
             productId={productId}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "productReviews"])}
             commentPlaceholder={copy?.commentPlaceholder}
           />
         </div>

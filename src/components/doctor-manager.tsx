@@ -53,7 +53,7 @@ function ProviderServices({
   doctorId: string;
   services: ProviderService[];
   initialLinked: string[];
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "merchant">;
   lang: Locale;
 }) {
   const router = useRouter();
@@ -143,7 +143,7 @@ export function DoctorManager({
   category,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "merchant">;
   doctors: Doctor[];
   services: ProviderService[];
   assignments: Record<string, string[]>;

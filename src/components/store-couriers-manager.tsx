@@ -22,7 +22,7 @@ export function StoreCouriersManager({
   loadFailed = false,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "account" | "auth" | "common" | "merchant">;
   companies: CourierCompany[];
   selected: Record<string, { price: string }>;
   /** The store's current couriers failed to load: saving would act on a

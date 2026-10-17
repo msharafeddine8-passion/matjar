@@ -128,7 +128,7 @@ export function AdminNav({
   access,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "demand">;
   access: AdminAccess;
 }) {
   const pathname = usePathname();

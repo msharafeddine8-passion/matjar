@@ -28,7 +28,7 @@ export function FreelancerVerifyList({
   dict,
 }: {
   people: VerifiableFreelancer[];
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "freelance">;
 }) {
   const router = useRouter();
   const t = dict.freelance;

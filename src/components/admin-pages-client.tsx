@@ -54,7 +54,7 @@ export function AdminPagesClient({
   pages,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "auth" | "common">;
   pages: PageRow[];
 }) {
   const router = useRouter();

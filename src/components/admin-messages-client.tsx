@@ -34,7 +34,7 @@ export function AdminMessagesClient({
   rows,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "common">;
   rows: MessageRow[];
 }) {
   const router = useRouter();

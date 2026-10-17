@@ -103,7 +103,7 @@ export function BookingPanel({
   signedIn?: boolean;
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "booking" | "common" | "store">;
   category: CategoryKey;
   services: Service[];
   customerName: string | null;

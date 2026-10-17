@@ -12,6 +12,7 @@ import { Tag } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
 import { ListingForm, type ListingInitial } from "@/components/listing-form";
+import { dictSlice } from "@/lib/dict-slice";
 
 // A seller-only write screen: never indexed (robots.ts also disallows it).
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -80,7 +81,7 @@ export default async function EditListingPage({
         <div className="mt-2">
           <ListingForm
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "market"])}
             categories={categories}
             cities={cities}
             regions={marketRegions}

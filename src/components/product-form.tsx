@@ -52,7 +52,7 @@ export function ProductForm({
   storeId: string;
   lang: Locale;
   category: CategoryKey;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "merchant" | "os">;
   addKey?: "add" | "addMenuItem" | "addService" | "addListing";
   simplified?: boolean;
   sections?: SectionOption[];

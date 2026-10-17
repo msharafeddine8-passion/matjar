@@ -54,7 +54,7 @@ export function MembershipsManager({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "catalogItem" | "common" | "memberships" | "merchant">;
   plans: Plan[];
 }) {
   const router = useRouter();

@@ -25,7 +25,7 @@ export function GuestOrderTracker({
 }: {
   orderId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "orders" | "os">;
 }) {
   const t = dict.os.track;
   const [phone, setPhone] = useState("");

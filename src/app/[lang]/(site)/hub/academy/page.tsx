@@ -10,6 +10,7 @@ import { Container } from "@/components/ui/container";
 import { AcademyExplorer, type LightGuide } from "@/components/hub/academy-explorer";
 import { CATEGORY_STYLE, LEARNING_PATHS } from "@/content/academy";
 import { getAcademyGuides } from "@/lib/data/academy";
+import { dictSlice } from "@/lib/dict-slice";
 
 export async function generateMetadata({
   params,
@@ -97,7 +98,7 @@ export default async function AcademyPage({
         </div>
 
         {/* Categories + recommend + article grid (client, interactive filters) */}
-        <AcademyExplorer guides={light} featuredSlug={featured.slug} dict={dict} lang={lang} />
+        <AcademyExplorer guides={light} featuredSlug={featured.slug} dict={dictSlice(dict, ["features", "hub"])} lang={lang} />
 
         {/* Learning paths */}
         <div className="mt-16">

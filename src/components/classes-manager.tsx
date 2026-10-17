@@ -58,7 +58,7 @@ export function ClassesManager({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "catalogItem" | "classes" | "common" | "merchant">;
   classes: ClassRow[];
 }) {
   const router = useRouter();

@@ -35,7 +35,7 @@ export function CheckoutGiftCard({
   code,
   onCode,
 }: {
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyaltyCards">;
   lang: string;
   storeId: string;
   /** The checked code (normalised), or null. */
@@ -131,7 +131,7 @@ export async function redeemGiftCardForOrder({
 }: {
   orderId: string;
   code: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyaltyCards">;
 }): Promise<string> {
   const t = dict.loyaltyCards.checkout;
   try {

@@ -30,7 +30,7 @@ function localToday(): string {
 // Invoice generator: a form drives a live A4-style preview; printing uses the
 // browser (window.print) so Arabic RTL renders perfectly with no PDF library
 // and no font-embedding headache. A scoped @media print rule isolates the sheet.
-export function InvoiceGenerator({ dict }: { dict: Dictionary }) {
+export function InvoiceGenerator({ dict }: { dict: Pick<Dictionary, "hub"> }) {
   const t = dict.hub.tools.invoice;
   const [seller, setSeller] = useState("");
   const [sellerInfo, setSellerInfo] = useState("");

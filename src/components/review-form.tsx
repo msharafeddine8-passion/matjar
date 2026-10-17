@@ -15,7 +15,7 @@ export function ReviewForm({
   initialComment,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "reviews">;
   customerName: string;
   initialRating?: number;
   initialComment?: string;

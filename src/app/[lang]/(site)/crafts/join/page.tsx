@@ -17,6 +17,7 @@ import {
 } from "@/components/crafts/craft-join-form";
 import { countActiveProviders } from "@/lib/data/crafts";
 import { localeAlternates } from "@/lib/site";
+import { dictSlice } from "@/lib/dict-slice";
 
 export async function generateMetadata({
   params,
@@ -184,7 +185,7 @@ export default async function CraftJoinPage({
               <CraftJoinForm
                 userId={user.id}
                 lang={lang}
-                dict={dict}
+                dict={dictSlice(dict, ["auth", "crafts", "upload"])}
                 groups={(groups ?? []) as JoinGroup[]}
                 trades={(trades ?? []) as JoinTrade[]}
                 areas={(areas ?? []) as JoinArea[]}

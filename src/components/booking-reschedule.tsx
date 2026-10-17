@@ -20,7 +20,7 @@ export function BookingReschedule({
   guest,
 }: {
   bookingId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "booking" | "common">;
   initialDate?: string | null;
   initialTime?: string | null;
   /** Guest booking: after the move, offer the new time on WhatsApp. */

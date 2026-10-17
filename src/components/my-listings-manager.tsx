@@ -34,7 +34,7 @@ export function MyListingsManager({
 }: {
   listings: ListingCard[];
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "market" | "moderation">;
 }) {
   const router = useRouter();
   const confirm = useConfirm();
