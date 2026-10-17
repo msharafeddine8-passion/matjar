@@ -116,6 +116,8 @@ export function BookingPanel({
   const [error, setError] = useState<string | null>(null);
   const [bookedWaUrl, setBookedWaUrl] = useState<string | null>(null);
   const [booked, setBooked] = useState(false);
+  // 0328: a guest has no "my bookings" page; the success card says who calls.
+  const [bookedAsGuest, setBookedAsGuest] = useState(false);
   // Conflict awareness: taken time strings for the picked date (legacy path).
   const [taken, setTaken] = useState<string[]>([]);
   // New-engine availability (mode/duration/busy ranges/windows) — 0174.
@@ -490,10 +492,20 @@ export function BookingPanel({
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    // 0328: no account needed. A guest's name and phone are what the merchant
+    // calls back on, so both are required here and checked again server-side.
     if (!user) {
-      setLoading(false);
-      router.push(`/${lang}/login`);
-      return;
+      const guestError =
+        name.trim().length < 2
+          ? dict.booking.guestNameRequired
+          : phone.replace(/\D/g, "").length < 7
+            ? dict.booking.guestPhoneRequired
+            : null;
+      if (guestError) {
+        setError(guestError);
+        setLoading(false);
+        return;
+      }
     }
     const serviceId = String(form.get("service_id"));
     const service = services.find((s) => s.id === serviceId);
@@ -519,7 +531,9 @@ export function BookingPanel({
 
     // New engine: one atomic RPC computes the real range, assigns pooled
     // providers, checks hours/capacity, and the DB constraints win any race.
-    if (service?.allocationMode) {
+    // Guests always go through it: the legacy path inserts as the signed-in
+    // customer, and the RPC handles legacy (mode-less) services too.
+    if (service?.allocationMode || !user) {
       const { data: res, error: rpcErr } = await supabase.rpc("place_booking", {
         p_store_id: storeId,
         p_product_id: serviceId,
@@ -553,7 +567,13 @@ export function BookingPanel({
                   ? dict.booking.outsideHours
                   : code === "option_unavailable"
                     ? dict.booking.optionUnavailable
-                    : dict.auth.errorGeneric,
+                    : code === "guest_name"
+                      ? dict.booking.guestNameRequired
+                      : code === "guest_phone"
+                        ? dict.booking.guestPhoneRequired
+                        : code === "rate_limited"
+                          ? dict.booking.guestRateLimited
+                          : dict.auth.errorGeneric,
         );
         if (code === "slot_taken" || code === "capacity_full") {
           await refreshTaken(chosenDate, doctorId, serviceId);
@@ -568,7 +588,9 @@ export function BookingPanel({
       // Failure is swallowed on purpose: the appointment already exists and is
       // valid without this answer, and turning an optional extra into "booking
       // failed" would be a lie.
-      if (asksPatientStatus && patientStatus && r?.id) {
+      // set_booking_intake checks the booking is the caller's own, which a
+      // guest (no account) can never prove — skip it for them.
+      if (user && asksPatientStatus && patientStatus && r?.id) {
         await supabase.rpc("set_booking_intake", {
           p_booking_id: r.id,
           p_patient_status: patientStatus,
@@ -643,6 +665,7 @@ export function BookingPanel({
       setBookedWaUrl(waLink(whatsapp, msg));
     }
     setLoading(false);
+    setBookedAsGuest(!user);
     setBooked(true);
     router.refresh();
   }
@@ -658,7 +681,10 @@ export function BookingPanel({
           {dict.booking.bookedTitle}
         </h3>
         <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-          {dict.booking.bookedNote}
+          {bookedAsGuest
+            ? // LRI…PDI: the number stays left-to-right inside Arabic text.
+              dict.booking.guestBookedNote.replace("{phone}", `\u2066${phone.trim()}\u2069`)
+            : dict.booking.bookedNote}
         </p>
         <div className="mt-5 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
           {bookedWaUrl && (
@@ -672,12 +698,14 @@ export function BookingPanel({
               {dict.booking.notifyMerchantWa}
             </a>
           )}
+          {!bookedAsGuest && (
           <Link
             href={`/${lang}/bookings`}
             className="rounded-xl border border-border bg-surface px-5 py-3 text-sm font-bold transition-colors hover:border-primary hover:text-primary"
           >
             {dict.booking.viewMyBookings}
           </Link>
+          )}
         </div>
       </div>
     );
@@ -831,8 +859,19 @@ export function BookingPanel({
           <CalendarCheck className="h-5 w-5 text-primary" />
           {dict.booking.title}
         </h3>
-        {customerName ? (
-          <>
+        {/* 0328: anyone can book — a guest leaves a name and a number. */}
+        {!customerName && (
+          <p className="mb-3 text-sm text-muted-foreground">
+            {dict.booking.guestHint}{" "}
+            <Link
+              href={`/${lang}/login`}
+              className="font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              {dict.booking.guestHintLogin}
+            </Link>
+          </p>
+        )}
+        <>
           <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-border bg-surface p-5">
             {/* Phones only: what is being booked, restated at every step. The
                 commonest booking mistake is confirming the wrong service or
@@ -1456,17 +1495,7 @@ export function BookingPanel({
               </>
             )}
           </BottomSheet>
-          </>
-        ) : (
-          <Link
-            href={`/${lang}/login`}
-            // 42px, same two pixels short as the review sign-in link it is a
-            // twin of; taken from the hit box so the pill is unchanged.
-            className="relative inline-block rounded-xl border border-border px-5 py-2.5 text-sm font-semibold transition-colors before:absolute before:-inset-y-px before:content-[''] hover:border-primary hover:text-primary"
-          >
-            {dict.booking.loginToBook}
-          </Link>
-        )}
+        </>
       </div>
     </div>
   );
