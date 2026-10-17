@@ -172,8 +172,9 @@ describe("the full dictionary stays on the server", () => {
     const sliced = files.filter((f) => /dict=\{dictSlice\(dict,/.test(src.get(f) ?? ""));
     expect(sliced.length).toBeGreaterThan(50);
     const header = files.find((f) => rel(f) === "components/site-header.tsx");
-    expect(header && resolveComponent(header, "MobileMenu")).toBe(
-      path.join(SRC, "components", "mobile-menu.tsx"),
+    // The header reaches the menu through the viewer island (components/viewer.tsx).
+    expect(header && resolveComponent(header, "ViewerMobileMenu")).toBe(
+      path.join(SRC, "components", "viewer.tsx"),
     );
   });
 });

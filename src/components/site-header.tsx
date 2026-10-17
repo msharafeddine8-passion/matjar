@@ -1,39 +1,36 @@
 import Link from "next/link";
 import { dictSlice } from "@/lib/dict-slice";
 import Image from "next/image";
-import { User } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { Container } from "@/components/ui/container";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LogoutButton } from "@/components/logout-button";
-import { MobileMenu } from "@/components/mobile-menu";
 import { NavDropdown } from "@/components/nav-dropdown";
 import { NavLink } from "@/components/nav-link";
-import { HeaderBells } from "@/components/header-bells";
+import {
+  GuestOnly,
+  ViewerAccount,
+  ViewerBells,
+  ViewerMobileMenu,
+} from "@/components/viewer";
 import { HeaderSearch } from "@/components/header-search";
 import { MobileSearch } from "@/components/mobile-search";
 import type { NavSections } from "@/lib/data/section-supply";
 
+// Anonymous chrome, cookie-free: rendered identically for every visitor so the
+// pages under it can be static. Everything that depends on WHO is looking —
+// bells, name, dashboard link, the guest-only CTA, the phone menu's account
+// rows — is a slot filled by the viewer island (components/viewer.tsx) from
+// one /api/me request after hydration.
 export function SiteHeader({
   lang,
   dict,
-  user,
-  userId = null,
-  unread = 0,
-  unreadMessages = 0,
-  dashboardHref = null,
   lbpRate = 0,
   sections,
 }: {
   lang: Locale;
   dict: Dictionary;
-  user: { name: string } | null;
-  userId?: string | null;
-  unread?: number;
-  unreadMessages?: number;
-  dashboardHref?: string | null;
   lbpRate?: number;
   /** Which verticals have three real results behind them — see
    *  lib/data/section-supply.ts. Unlisted sections keep their routes; they
@@ -158,15 +155,7 @@ export function SiteHeader({
             map link (see the nav above) is what paid the debt. */}
         <div className="flex shrink-0 items-center gap-1 sm:gap-3">
           {/* Bells stay visible for signed-in users even on a phone. */}
-          {user && (
-            <HeaderBells
-              lang={lang}
-              dict={dictSlice(dict, ["common"])}
-              userId={userId}
-              unreadNotifications={unread}
-              unreadMessages={unreadMessages}
-            />
-          )}
+          <ViewerBells lang={lang} dict={dictSlice(dict, ["common"])} />
           {/* Full controls on desktop; below `lg` these live in the ☰ menu so
               the bar can never overflow. */}
           <div className="hidden items-center gap-2 lg:flex lg:gap-3">
@@ -190,33 +179,14 @@ export function SiteHeader({
             <span data-app-hide="lang" className="contents">
               <LanguageSwitcher currentLocale={lang} />
             </span>
-            {user ? (
-              <>
-                {dashboardHref && (
-                  <Link
-                    href={dashboardHref}
-                    className="rounded-lg px-3 py-2 text-sm font-bold text-primary transition-colors hover:bg-surface-muted"
-                  >
-                    {dict.dashboard.panel}
-                  </Link>
-                )}
-                <Link
-                  href={`/${lang}/account`}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors hover:bg-surface-muted"
-                >
-                  <User className="h-4 w-4 text-primary" />
-                  {user.name}
-                </Link>
-                <LogoutButton label={dict.auth.logout} />
-              </>
-            ) : (
-              <Link
-                href={`/${lang}/login`}
-                className="rounded-lg px-3 py-2 text-sm font-semibold transition-colors hover:bg-surface-muted"
-              >
-                {dict.common.login}
-              </Link>
-            )}
+            <ViewerAccount
+              lang={lang}
+              labels={{
+                dashboard: dict.dashboard.panel,
+                login: dict.common.login,
+                logout: dict.auth.logout,
+              }}
+            />
           </div>
           {/* Open-store is the primary guest CTA from `lg` up, where the row
               has the width for it. On a phone it was one of only six visible
@@ -235,7 +205,7 @@ export function SiteHeader({
               customer who opened a shopping app is not there to be recruited as
               a merchant. The door is not bricked up — /account carries an
               app-only merchant block, and /merchant/new still answers. */}
-          {!user && (
+          <GuestOnly>
             <Link
               href={`/${lang}/merchant/new`}
               data-app-hide="merchant-cta"
@@ -243,8 +213,8 @@ export function SiteHeader({
             >
               {dict.common.openStore}
             </Link>
-          )}
-          <MobileMenu
+          </GuestOnly>
+          <ViewerMobileMenu
             lang={lang}
             labels={{
               shop: dict.mobileNav.shop,
@@ -270,8 +240,6 @@ export function SiteHeader({
               logout: dict.auth.logout,
             }}
             sections={sections}
-            user={user}
-            dashboardHref={dashboardHref}
             lbpRate={lbpRate}
           />
         </div>
