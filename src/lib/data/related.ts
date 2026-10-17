@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { toCategoryKey, type CategoryKey } from "@/lib/catalog";
 import type { OfferingKind } from "@/lib/offering";
 import { FETCH_BOUNDS, warnIfTruncated } from "./bounds";
+import { pickSimilar } from "@/lib/related-match";
 
 /** A team member who can deliver a service (the `doctors` roster). */
 export type ServiceProvider = {
@@ -114,14 +115,30 @@ export async function getMoreFromStore(
   return mapRows((data ?? []) as unknown as RelatedRow[]);
 }
 
-/** Active offerings of the same kind in the same sector, from other stores. */
-export async function getSimilarProducts(
-  category: CategoryKey,
-  excludeStoreId: string,
-  excludeId: string,
-  limit = 6,
-  kind?: OfferingKind,
-): Promise<RelatedProduct[]> {
+/** How many rows of each pool the similarity filter looks through. It keeps
+ *  a few in `limit`, so the pool has to be wider than the rail. */
+const SIMILAR_POOL = 60;
+
+/** Offerings of the same kind that are plausibly the same kind of thing.
+ *
+ *  It matched on the store's sector alone, and a sector is wide — a butcher's
+ *  sausages recommended another retail store's soap. Now, in order
+ *  (lib/related-match.ts pickSimilar): the same section of the same store,
+ *  then the same store's items that share a word with this one's name, then
+ *  other stores in the same sector whose item names share a word. An item
+ *  that shares nothing is left out — an empty rail beats a wrong one. */
+export async function getSimilarProducts(opts: {
+  productId: string;
+  storeId: string;
+  sectionId: string | null;
+  name: string;
+  nameEn: string | null;
+  category: CategoryKey;
+  limit?: number;
+  kind?: OfferingKind;
+}): Promise<RelatedProduct[]> {
+  const { productId, storeId, category, kind } = opts;
+  const limit = opts.limit ?? 6;
   const supabase = await createClient();
   const { data: bt } = await supabase
     .from("business_types")
@@ -130,34 +147,78 @@ export async function getSimilarProducts(
     .limit(1)
     .maybeSingle();
   const btId = (bt as { id?: string } | null)?.id;
-  if (!btId) return [];
 
-  let q = supabase
+  // Same store first: one bounded read, ranked in memory below.
+  let own = supabase
     .from("products")
     .select(
-      `${RELATED_COLUMNS}, store_id, stores!inner(name, status, business_type_id, business_types(slug))`,
+      `${RELATED_COLUMNS}, store_id, section_id, stores(name, business_types(slug))`,
     )
+    .eq("store_id", storeId)
     .eq("status", "active")
     .eq("is_available", true)
     .is("deleted_at", null)
-    .eq("stores.status", "active")
-    .eq("stores.business_type_id", btId)
-    .neq("id", excludeId)
-    .neq("store_id", excludeStoreId);
-  if (kind) q = q.eq("item_kind", kind);
-  const { data } = await q
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  return mapRows((data ?? []) as unknown as RelatedRow[]);
+    .neq("id", productId);
+  if (kind) own = own.eq("item_kind", kind);
+
+  // Then other stores of the same sector.
+  let others = btId
+    ? supabase
+        .from("products")
+        .select(
+          `${RELATED_COLUMNS}, store_id, section_id, stores!inner(name, status, business_type_id, business_types(slug))`,
+        )
+        .eq("status", "active")
+        .eq("is_available", true)
+        .is("deleted_at", null)
+        .eq("stores.status", "active")
+        .eq("stores.business_type_id", btId)
+        .neq("store_id", storeId)
+    : null;
+  if (others && kind) others = others.eq("item_kind", kind);
+
+  const [{ data: ownRows }, othersRes] = await Promise.all([
+    own.order("sort_order", { ascending: true }).limit(SIMILAR_POOL),
+    others
+      ? others.order("created_at", { ascending: false }).limit(SIMILAR_POOL)
+      : Promise.resolve({ data: [] as unknown[] }),
+  ]);
+
+  type Row = RelatedRow & { store_id: string; section_id: string | null };
+  const rows = [
+    ...((ownRows ?? []) as unknown as Row[]),
+    ...((othersRes.data ?? []) as unknown as Row[]),
+  ];
+  const byId = new Map(rows.map((r) => [r.id, r] as const));
+  const picked = pickSimilar(
+    {
+      id: productId,
+      storeId,
+      sectionId: opts.sectionId,
+      name: opts.name,
+      nameEn: opts.nameEn,
+    },
+    rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      nameEn: r.name_en,
+      storeId: r.store_id,
+      sectionId: r.section_id ?? null,
+    })),
+    limit,
+  );
+  return mapRows(picked.map((p) => byId.get(p.id)!));
 }
 
-/** Who on the store's team delivers this service.
+/** Who on the store's team delivers this service — for «مين بيقدّم هالخدمة».
  *
- *  `service_providers` maps a service to specific team members; NO row for the
- *  service means every member can deliver it — the same rule the booking engine
- *  itself applies. Returns [] when the store has no team, so the section simply
- *  does not render rather than showing an empty shell. Nothing here is invented:
- *  it is the roster the merchant entered. */
+ *  `service_providers` maps a service to specific team members. For BOOKING,
+ *  no row for the service means any member can take it (the booking engine's
+ *  rule, untouched). For this public section it means nobody has said who
+ *  does it, and listing the whole roster there put every doctor of a clinic
+ *  under its lab test as if each of them performed it. So: only the members
+ *  the merchant explicitly linked, and [] (no section) when none are linked
+ *  or the store has no team. Nothing here is invented. */
 export async function getServiceProviders(
   storeId: string,
   productId: string,
@@ -183,6 +244,6 @@ export async function getServiceProviders(
   const assigned = new Set(
     ((links ?? []) as { doctor_id: string }[]).map((r) => r.doctor_id),
   );
-  if (assigned.size === 0) return roster;
+  if (assigned.size === 0) return [];
   return roster.filter((d) => assigned.has(d.id));
 }

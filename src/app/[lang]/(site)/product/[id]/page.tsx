@@ -250,7 +250,7 @@ export default async function ProductPage({
   // recommends services and a shop page recommends goods. Sections the variant
   // does not render are not fetched at all.
   const [
-    moreFromStore,
+    moreFromStoreAll,
     similar,
     boughtTogether,
     productReviews,
@@ -262,13 +262,16 @@ export default async function ProductPage({
       ? getMoreFromStore(product.storeId, product.id, 6, offering.relatedKind)
       : Promise.resolve([] as RelatedProduct[]),
     shows("related")
-      ? getSimilarProducts(
-          product.category,
-          product.storeId,
-          product.id,
-          6,
-          offering.relatedKind,
-        )
+      ? getSimilarProducts({
+          productId: product.id,
+          storeId: product.storeId,
+          sectionId: product.sectionId ?? null,
+          name: product.name,
+          nameEn: product.nameEn,
+          category: product.category,
+          limit: 6,
+          kind: offering.relatedKind,
+        })
       : Promise.resolve([] as RelatedProduct[]),
     shows("boughtTogether")
       ? getBoughtTogether(product.id)
@@ -283,6 +286,10 @@ export default async function ProductPage({
       : Promise.resolve([] as ServiceProvider[]),
   ]);
   const soldCount = (soldRes.data as number | null) ?? 0;
+  // "Similar" now starts with this store's own closest items, so the
+  // "more from this store" rail drops those rather than show them twice.
+  const similarIds = new Set(similar.map((p) => p.id));
+  const moreFromStore = moreFromStoreAll.filter((p) => !similarIds.has(p.id));
 
   let isStoreOwner = false;
   if (user) {
@@ -460,9 +467,9 @@ export default async function ProductPage({
     </div>
   ) : null;
 
-  // Who provides it: the roster the merchant entered, filtered by the
-  // service_providers mapping (no mapping = anyone on the team, the same rule
-  // the booking engine applies). No team, no section.
+  // Who provides it: only the team members the merchant explicitly linked to
+  // this service (service_providers). No link, no section — the whole roster
+  // under a lab test read as if every doctor performed it (getServiceProviders).
   nodes.provider =
     providers.length > 0 ? (
       <div className="mt-5 rounded-2xl border border-border bg-surface p-4">
