@@ -7,7 +7,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { toCategoryKey } from "@/lib/catalog";
 import { featurePlanFloor } from "@/lib/feature-availability";
-import { hasPlan, type StorePlan } from "@/lib/plan-tiers";
+import { effectivePlan, hasPlan, type StorePlan } from "@/lib/plan-tiers";
 import { sectorDefaultModules } from "@/lib/sectors";
 import { Container } from "@/components/ui/container";
 import { ModulesManager, type ModuleItem } from "@/components/modules-manager";
@@ -37,7 +37,7 @@ export default async function StoreModulesPage({
 
   const { data: store } = await supabase
     .from("stores")
-    .select("id, name, owner_id, plan, business_types(slug)")
+    .select("id, name, owner_id, plan, trial_ends_at, business_types(slug)")
     .eq("id", storeId)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
@@ -45,6 +45,7 @@ export default async function StoreModulesPage({
     name: string;
     owner_id: string;
     plan: StorePlan | null;
+    trial_ends_at: string | null;
     business_types: { slug: string } | null;
   };
   // Module management is an owner concern.
@@ -73,12 +74,15 @@ export default async function StoreModulesPage({
   // screen) and for classes (open on every plan), so this page locked and
   // labelled modules differently from the screens behind them. hasPlan ranks
   // Business above Pro, so the top tier is never locked out of a Pro module.
+  // A store on its 14-day Pro trial opens Pro modules everywhere else, so it
+  // must not see them locked here.
+  const plan = effectivePlan(s.plan, s.trial_ends_at);
   const items: ModuleItem[] = sectorDefaultModules(category).map((key) => {
     const floor = featurePlanFloor(key);
     return {
       key,
       floor,
-      locked: floor !== "free" && !hasPlan(s.plan, floor),
+      locked: floor !== "free" && !hasPlan(plan, floor),
       enabled: overrides[key] ?? true,
     };
   });
