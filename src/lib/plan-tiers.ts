@@ -73,6 +73,39 @@ export function annualPrice(plan: PlanConfig, promoActive: boolean): number {
   return promoActive ? plan.annualPromo : plan.annualStandard;
 }
 
+/**
+ * What a manually-recorded payment for `tier` over `period` should default to:
+ * the monthly price, or the annual price that is in force at `now` (promo
+ * while the window is open, standard after). The admin subscriptions screen
+ * used hardcoded $12 / $120 — prices no tier has had since the 2026 repricing.
+ */
+export function planCharge(
+  tier: PlanKey,
+  period: "monthly" | "yearly",
+  now: Date,
+): number {
+  const cfg = PLAN_TIERS[tier];
+  return period === "yearly"
+    ? annualPrice(cfg, promoState(now).active)
+    : cfg.monthly;
+}
+
+/**
+ * The end of one paid period starting at `from`: +1 calendar month or +1 year.
+ * Month-end is clamped (31 Jan → 28/29 Feb, not 2/3 Mar), so a monthly plan
+ * never silently loses or gains days by rolling into the following month.
+ */
+export function addPlanPeriod(from: Date, period: "monthly" | "yearly"): Date {
+  const d = new Date(from.getTime());
+  const day = d.getDate();
+  d.setDate(1);
+  if (period === "yearly") d.setFullYear(d.getFullYear() + 1);
+  else d.setMonth(d.getMonth() + 1);
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(day, lastDay));
+  return d;
+}
+
 // ── Tier enforcement ─────────────────────────────────────────────────────────
 // 'free' is the lapsed/entry floor (never subscribed / trial expired). Paid
 // tiers rank above it. A store "has" a tier if its rank meets the requirement.
