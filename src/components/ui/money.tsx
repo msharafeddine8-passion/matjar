@@ -33,6 +33,7 @@ import { formatUsd, type FormatUsdOptions } from "@/lib/currency";
 export function Money({
   value,
   cents,
+  fixed,
   prefix,
   className = "",
   ...props
@@ -42,6 +43,8 @@ export function Money({
   /** Round to 2 decimals first — for surfaces that settle real amounts
    *  (invoices, POS, supplier bills). See formatUsd's `cents` option. */
   cents?: FormatUsdOptions["cents"];
+  /** Always two decimals ("$12.50") — printed receipts. See formatUsd. */
+  fixed?: FormatUsdOptions["fixed"];
   /** A sign or symbol that belongs to the amount — "−" on a discount row, "+"
    *  on a surcharge. It has to be rendered INSIDE the isolate: order summaries
    *  were writing `−{formatUsd(x)}`, which leaves the sign outside as a bidi
@@ -52,7 +55,10 @@ export function Money({
   return (
     <span className={`text-money ${className}`} {...props}>
       {prefix}
-      {formatUsd(value, cents ? { cents: true } : undefined)}
+      {formatUsd(
+        value,
+        fixed ? { fixed: true } : cents ? { cents: true } : undefined,
+      )}
     </span>
   );
 }
