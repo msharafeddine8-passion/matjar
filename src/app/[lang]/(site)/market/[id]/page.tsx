@@ -103,7 +103,8 @@ export default async function ListingPage({
     : null;
 
   const fmtDate = (iso: string) =>
-    new Date(iso).toLocaleDateString(lang === "ar" ? "ar" : "en", {
+    new Date(iso).toLocaleDateString(lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB", {
+      timeZone: "Asia/Beirut",
       year: "numeric",
       month: "short",
       day: "numeric",

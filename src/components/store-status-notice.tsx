@@ -82,8 +82,8 @@ export function StoreStatusNotice({
               <p className="mt-1.5 text-xs text-muted-foreground">
                 {t.since}{" "}
                 {new Date(changedAt).toLocaleDateString(
-                  lang === "ar" ? "ar" : "en",
-                  { year: "numeric", month: "short", day: "numeric" },
+                  lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
+                  { timeZone: "Asia/Beirut", year: "numeric", month: "short", day: "numeric" },
                 )}
               </p>
             )}

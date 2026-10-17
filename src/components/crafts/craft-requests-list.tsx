@@ -134,8 +134,8 @@ export function CraftRequestsList({
 
           <p className="mt-1.5 text-xs text-muted-foreground">
             {new Date(r.created_at).toLocaleDateString(
-              lang === "ar" ? "ar" : "en",
-              { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" },
+              lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
+              { timeZone: "Asia/Beirut", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" },
             )}
             {r.when_pref && ` · ${r.when_pref}`}
           </p>

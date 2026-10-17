@@ -174,8 +174,9 @@ export function OrdersFilter({
                     )}
                     <span className="ms-2 text-xs">
                       {new Date(order.created_at).toLocaleString(
-                        lang === "ar" ? "ar" : "en",
+                        lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
                         {
+                          timeZone: "Asia/Beirut",
                           month: "short",
                           day: "numeric",
                           hour: "2-digit",
@@ -236,8 +237,8 @@ export function OrdersFilter({
                   <p className="mt-3 flex items-center gap-1.5 rounded-lg bg-warning-soft px-3 py-2 text-sm font-bold text-warning">
                     🕒 {dict.orders.scheduledFor}:{" "}
                     {new Date(order.scheduled_for).toLocaleString(
-                      lang === "ar" ? "ar" : "en",
-                      { dateStyle: "medium", timeStyle: "short" },
+                      lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
+                      { timeZone: "Asia/Beirut", dateStyle: "medium", timeStyle: "short" },
                     )}
                   </p>
                 )}

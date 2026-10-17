@@ -34,7 +34,8 @@ export function OrderTimeline({
   const reachedIdx = flow.indexOf(status);
 
   const fmt = (iso: string) =>
-    new Date(iso).toLocaleString(lang === "ar" ? "ar" : "en", {
+    new Date(iso).toLocaleString(lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB", {
+      timeZone: "Asia/Beirut",
       month: "short",
       day: "numeric",
       hour: "2-digit",

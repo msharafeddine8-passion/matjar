@@ -42,7 +42,8 @@ export function StoreVerifications({
   const kinds = t.kinds as Record<string, string>;
   const fmt = (d: string | null) =>
     d
-      ? new Date(d).toLocaleDateString(lang === "ar" ? "ar" : "en", {
+      ? new Date(d).toLocaleDateString(lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB", {
+          timeZone: "Asia/Beirut",
           year: "numeric",
           month: "short",
         })

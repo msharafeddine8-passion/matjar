@@ -68,7 +68,8 @@ export default async function TrackDeliveryPage({
 
   const fmt = (iso: string | null) =>
     iso
-      ? new Intl.DateTimeFormat(lang === "ar" ? "ar-LB" : "en-GB", {
+      ? new Intl.DateTimeFormat(lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB", {
+          timeZone: "Asia/Beirut",
           day: "numeric",
           month: "short",
           hour: "2-digit",
