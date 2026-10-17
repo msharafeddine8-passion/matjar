@@ -131,7 +131,7 @@ describe("store canonical — one address per store, nothing moves", () => {
     const m = buildStoreMetadata({
       lang: "ar",
       id: "u",
-      store: { name: "Let's meat  ", isReal: true },
+      store: { name: " Let's   meat  ", isReal: true },
     });
     expect(m.title).toBe("Let's meat");
     expect((m.openGraph as { title?: string }).title).toBe("Let's meat");

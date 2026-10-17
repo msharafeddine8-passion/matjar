@@ -13,7 +13,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { regions as catalogRegions } from "@/lib/catalog";
-import { SITE_URL, localeAlternates, shareImages } from "@/lib/site";
+import { SITE_URL, displayTitle, localeAlternates, shareImages } from "@/lib/site";
 import { NOINDEX_FOLLOW, listingRobots } from "@/lib/seo-rules";
 import { jsonLdScript, listingJsonLd } from "@/lib/jsonld";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -52,7 +52,7 @@ export async function generateMetadata({
     : undefined;
   // Trimmed: a stored trailing space rendered as a double space before the
   // template's suffix.
-  const title = listing.title.trim();
+  const title = displayTitle(listing.title);
   const images = shareImages(listing.image, title);
   return {
     title,

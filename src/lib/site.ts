@@ -4,6 +4,13 @@ export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
   "https://matjarlb.com";
 
+/** A merchant-typed name as a <title>/og:title: outer whitespace trimmed and
+ *  inner runs collapsed. "Name " rendered "Name  · متجر", and names typed as
+ *  "engagment  package" carried the double space into every tab and share. */
+export function displayTitle(raw: string): string {
+  return raw.replace(/\s+/g, " ").trim();
+}
+
 // ── Share images ────────────────────────────────────────────────────────────
 //
 // Next merges metadata SHALLOWLY: a page that sets its own `openGraph` (or

@@ -7,7 +7,7 @@ import { ChevronNext, ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
-import { localeAlternates, shareImages } from "@/lib/site";
+import { displayTitle, localeAlternates, shareImages } from "@/lib/site";
 import { regions } from "@/lib/catalog";
 import { countLabel } from "@/lib/data/freelance";
 import type { Gig } from "@/lib/gigs";
@@ -47,7 +47,7 @@ export async function generateMetadata({
     .maybeSingle();
   if (!data) return {};
   const g = data as { title: string; description: string; image_url: string | null };
-  const title = g.title.trim();
+  const title = displayTitle(g.title);
   const description = g.description.slice(0, 160);
   return {
     title,

@@ -12,7 +12,7 @@
 
 import type { Metadata, MetadataRoute } from "next";
 import { hasEnough } from "@/lib/rail";
-import { SITE_URL, localeAlternates, shareImages } from "@/lib/site";
+import { SITE_URL, displayTitle, localeAlternates, shareImages } from "@/lib/site";
 import type { GatedSection } from "@/lib/data/section-supply";
 
 export const SEO_LOCALES = ["ar", "en"] as const;
@@ -143,7 +143,7 @@ export function buildStoreMetadata(opts: {
   const { lang, id, store } = opts;
   if (!store) return { robots: NOINDEX_FOLLOW };
   // Trimmed: a stored trailing space rendered "Name  · متجر" in the tab.
-  const name = store.name.trim();
+  const name = displayTitle(store.name);
   const description = (
     store.description?.trim() ||
     (lang === "ar"

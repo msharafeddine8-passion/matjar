@@ -17,7 +17,7 @@ import {
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
-import { localeAlternates, shareImages, SITE_URL } from "@/lib/site";
+import { displayTitle, localeAlternates, shareImages, SITE_URL } from "@/lib/site";
 import { offeringJsonLd, jsonLdScript } from "@/lib/jsonld";
 import {
   getPublicProductView,
@@ -101,7 +101,7 @@ export async function generateMetadata({
   if (!product) return { title: "Matjar" };
   // Trimmed: a stored trailing space rendered as a double space before the
   // template's " · متجر".
-  const name = localized(product.name, product.nameEn, lang).trim();
+  const name = displayTitle(localized(product.name, product.nameEn, lang));
   const localizedDesc = localized(
     product.description ?? "",
     product.descriptionEn,
