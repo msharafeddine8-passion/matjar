@@ -157,7 +157,9 @@ export default async function WholesalePage({
           <EmptyState
             className="mt-8"
             icon={Boxes}
-            title={t.empty}
+            // «ما في بضاعة مطابقة» claimed a filter that was not there:
+            // with no category picked, nothing matched because nothing exists.
+            title={cat ? t.empty : t.emptyAll}
             action={{ href: `/${lang}/wholesale/new`, label: t.listProduct }}
           />
         )}

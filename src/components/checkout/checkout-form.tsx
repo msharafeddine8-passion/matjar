@@ -596,6 +596,14 @@ export function CheckoutForm({
             <Money value={totals.deliveryFee} cents prefix="+" />
           </div>
         )}
+        {/* No zones = the store has not published a fee, so the total above is
+            NOT delivered-to-the-door. Saying nothing read as free delivery. */}
+        {delivery && store.zones.length === 0 && (
+          <div className="flex justify-between gap-3 text-muted-foreground">
+            <span>{dict.store.deliveryFeeLabel}</span>
+            <span className="text-end">{dict.store.deliveryFeeByStore}</span>
+          </div>
+        )}
         <div className="flex justify-between text-lg font-extrabold">
           <span>{dict.store.total}</span>
           <Money value={totals.grandTotal} cents />

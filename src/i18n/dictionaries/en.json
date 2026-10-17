@@ -1214,6 +1214,7 @@
   "hero": {
     "title": "Every store, restaurant, and service in Lebanon",
     "titleHighlight": "in one place",
+    "mobileTitle": "Shop, order and book —",
     "subtitle": "Shop, order, book, or hire — everything in one place.",
     "searchPlaceholder": "Search for a store, product, restaurant, or service…",
     "locationAll": "All Lebanon",
@@ -1649,6 +1650,7 @@
     "belowStoreMin": "Your order is below this store's minimum.",
     "modifierNeeded": "Some items need options — open the item and choose before ordering.",
     "deliveryFeeLabel": "Delivery fee",
+    "deliveryFeeByStore": "Set by the store",
     "deliveryInstructions": "Delivery instructions (optional)",
     "deliveryInstructionsPlaceholder": "e.g. 2nd floor, call before arriving…",
     "changeFor": "I need change for",
@@ -4197,6 +4199,7 @@
     "merchantOnlyTitle": "Wholesale is for merchants only",
     "merchantOnlyNote": "To list wholesale goods you need a store on Matjar. Open your store free in minutes, then you can post wholesale offers.",
     "empty": "No matching goods right now.",
+    "emptyAll": "No wholesale goods listed yet.",
     "allCategories": "All categories",
     "moqShort": "Min",
     "categories": {
@@ -6612,5 +6615,15 @@
       "location": "The store's map pin, branches and distance.",
       "media": "The photo gallery and cover."
     }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "We couldn't find this page. It may have been removed or the link is wrong — but you can still search for what you need.",
+    "searchLabel": "Search for a store or product",
+    "searchPlaceholder": "e.g. pizza, pharmacy, Tripoli…",
+    "searchSubmit": "Search",
+    "home": "Home",
+    "explore": "Browse stores",
+    "askUs": "Looking for something specific? Ask us"
   }
 }

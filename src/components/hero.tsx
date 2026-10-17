@@ -123,6 +123,19 @@ export function Hero({
         <h1 className="mx-auto max-w-2xl text-xl font-extrabold leading-snug tracking-tight text-balance max-lg:sr-only sm:text-4xl sm:leading-[1.15] lg:mx-0 lg:text-5xl">
           {t.title} <span className="text-primary">{t.titleHighlight}</span>
         </h1>
+        {/* V6: one short visible line on phones. With no headline at all a
+            first-time visitor landed on a location row and a 3D mark with
+            nothing saying what the site is. One line (~28px) keeps the
+            gateways in the first viewport, and search stays where it already
+            is on a phone — the sticky header. aria-hidden: the <h1> above is
+            the announced title; this is the same idea, drawn short. */}
+        <p
+          aria-hidden
+          className="text-lg font-extrabold leading-snug tracking-tight text-balance lg:hidden"
+        >
+          {t.mobileTitle}{" "}
+          <span className="text-primary">{t.titleHighlight}</span>
+        </p>
 
         {/* The supporting line is desktop-only now rather than `sm`-and-up:
             it restates the headline as a verb list, and the headline itself is

@@ -1,8 +1,12 @@
-import Link from "next/link";
 import { supportWaLink } from "@/lib/support";
+import { getDictionary } from "@/i18n/get-dictionary";
+import { NotFoundBody } from "@/components/not-found-body";
 
-// Localized 404. Params aren't available to not-found boundaries, so it links to
-// the root and lets the locale proxy route to the default language.
+// Localized 404. Params aren't available to not-found boundaries, so both
+// languages' copy is read here and NotFoundBody picks one from the URL the
+// visitor is on. It used to print both languages at once and offer only
+// "home" — a dead end. It now offers a search box (works without JS), home,
+// explore, and a human.
 //
 // This page used to answer HTTP 200 rather than 404, and the note here used to
 // argue that was an acceptable trade. It is fixed, and the argument was wrong,
@@ -32,37 +36,12 @@ import { supportWaLink } from "@/lib/support";
 // e2e/smoke.spec.ts asserts the 404 status. It was a `test.fail()` while this
 // stood, which is how the fix announced itself: the suite went red with
 // "expected to fail, but passed".
-export default function NotFound() {
+export default async function NotFound() {
+  const [ar, en] = await Promise.all([getDictionary("ar"), getDictionary("en")]);
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
-      <p className="text-5xl font-extrabold text-primary">404</p>
-      <h1 className="text-2xl font-extrabold">الصفحة غير موجودة</h1>
-      <p className="max-w-sm text-muted-foreground">
-        ما لقينا هالصفحة. ممكن تكون انحذفت أو الرابط غلط.
-        <br />
-        <span className="text-sm">This page could not be found.</span>
-      </p>
-      <Link
-        href="/"
-        className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover"
-      >
-        العودة للرئيسية · Home
-      </Link>
-      {/* A dead link is often a link somebody was GIVEN — a shop's card, a
-          WhatsApp forward — so the person standing here may be looking for a
-          real business and holding a URL that no longer resolves. Home does not
-          help them find it; a human can. Quiet on purpose: this is the second
-          thing to try, not the first.
-          No dictionary here — a not-found boundary gets no params, so there is
-          no locale to look one up with. Both languages, like the copy above. */}
-      <a
-        href={supportWaLink()}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="min-h-11 text-sm font-semibold text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-whatsapp"
-      >
-        بتدوّر على شي محدّد؟ احكينا · Ask us
-      </a>
-    </div>
+    <NotFoundBody
+      copies={{ ar: ar.notFound, en: en.notFound }}
+      supportHref={supportWaLink()}
+    />
   );
 }
