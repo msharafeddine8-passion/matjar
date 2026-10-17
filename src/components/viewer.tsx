@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -19,14 +20,18 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ANONYMOUS,
   dashboardHrefFor,
+  followStateFrom,
   hasAuthCookie,
   parseMe,
+  withFollow,
+  type FollowState,
   type MeResponse,
 } from "@/lib/viewer";
 import { HeaderBells } from "@/components/header-bells";
 import { LogoutButton } from "@/components/logout-button";
 import { MobileMenu, type MobileMenuLabels } from "@/components/mobile-menu";
 import { BottomNav } from "@/components/bottom-nav";
+import { FollowsContext, type FollowsApi } from "@/components/follows-context";
 
 // ===== The viewer island =====
 //
@@ -93,6 +98,7 @@ async function fetchMe(): Promise<MeResponse> {
 
 export function ViewerProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ViewerState>({ status: "pending" });
+  const [follows, setFollows] = useState<FollowState | null>(null);
   const lastFetch = useRef(0);
   const inFlight = useRef(false);
   const pathname = usePathname();
@@ -100,7 +106,22 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
   const apply = useCallback((me: MeResponse) => {
     markHtml(me.signedIn);
     setState(me.signedIn ? { status: "user", me } : { status: "anon" });
+    // Keep this tab's own toggles across refreshes (followStateFrom carries
+    // them over); drop everything on sign-out.
+    setFollows((prev) =>
+      me.signedIn ? followStateFrom(me.followedStoreIds, prev) : null,
+    );
   }, []);
+
+  const setFollow = useCallback((storeId: string, on: boolean) => {
+    // Before /api/me answers there is no list yet; record the toggle anyway
+    // so the answer, possibly read before the write, cannot undo it.
+    setFollows((prev) => withFollow(prev ?? followStateFrom([]), storeId, on));
+  }, []);
+  const followsApi = useMemo<FollowsApi>(
+    () => ({ state: follows, set: setFollow }),
+    [follows, setFollow],
+  );
 
   const load = useCallback(() => {
     if (inFlight.current) return;
@@ -156,7 +177,11 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
   }, [state.status, apply, load]);
 
   return (
-    <ViewerContext.Provider value={state}>{children}</ViewerContext.Provider>
+    <ViewerContext.Provider value={state}>
+      <FollowsContext.Provider value={followsApi}>
+        {children}
+      </FollowsContext.Provider>
+    </ViewerContext.Provider>
   );
 }
 

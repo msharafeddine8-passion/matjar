@@ -23,7 +23,23 @@ export type MeResponse =
       unreadMessages: number;
       /** Items waiting on the customer (the طلباتي tab badge). */
       activityCount: number;
+      /** Stores the viewer follows — the hearts on cards of static pages
+       *  (Home is ISR and cannot know). Newest first, at most
+       *  FOLLOWED_STORE_IDS_CAP; see resolveFavorited for what happens past it. */
+      followedStoreIds: string[];
     };
+
+/**
+ * How many followed store ids /api/me returns (newest follows first).
+ *
+ * A bound, not a promise: a viewer who follows more than this sees an older
+ * follow's heart empty on a static page. Pages that still compute `favorited`
+ * server-side (explore, search, map) pass it as the fallback, which wins
+ * there; a re-follow of an unlisted store hits the (user_id, store_id) key and
+ * FavoriteButton treats that duplicate as "already followed". At today's
+ * scale nobody is near it, and it keeps the /api/me body small (≈37 KB max).
+ */
+export const FOLLOWED_STORE_IDS_CAP = 1000;
 
 export const ANONYMOUS: MeResponse = { signedIn: false };
 
@@ -93,5 +109,58 @@ export function parseMe(body: unknown): MeResponse {
     unreadNotifications: num(b.unreadNotifications),
     unreadMessages: num(b.unreadMessages),
     activityCount: num(b.activityCount),
+    followedStoreIds: Array.isArray(b.followedStoreIds)
+      ? b.followedStoreIds
+          .filter((v): v is string => typeof v === "string" && v.length > 0)
+          .slice(0, FOLLOWED_STORE_IDS_CAP)
+      : [],
   };
+}
+
+// ===== Hearts: the viewer's follows, shared by every FavoriteButton =====
+//
+// Pure state for the viewer island's follow context. `ids` is the last
+// /api/me answer; `overrides` is what the viewer toggled in this tab since,
+// and always wins — a later /api/me answer may have been read before the
+// write landed, and must not flip a heart the viewer just pressed back.
+
+export type FollowState = {
+  ids: ReadonlySet<string>;
+  overrides: ReadonlyMap<string, boolean>;
+};
+
+export function followStateFrom(
+  ids: readonly string[],
+  prev?: FollowState | null,
+): FollowState {
+  return { ids: new Set(ids), overrides: prev?.overrides ?? new Map() };
+}
+
+/** The state after the viewer (un)follows one store. Never mutates. */
+export function withFollow(
+  state: FollowState,
+  storeId: string,
+  on: boolean,
+): FollowState {
+  const overrides = new Map(state.overrides);
+  overrides.set(storeId, on);
+  return { ids: state.ids, overrides };
+}
+
+/**
+ * Is this heart filled? `state` null = not known (anonymous, or /api/me not
+ * answered yet): the server's `fallback` decides. Otherwise this tab's own
+ * toggle wins, then the follow list, then the server's `fallback` — which is
+ * `false` on static pages and the real per-user answer on dynamic ones, so it
+ * also covers a follow past FOLLOWED_STORE_IDS_CAP there.
+ */
+export function resolveFavorited(
+  state: FollowState | null,
+  storeId: string,
+  fallback: boolean,
+): boolean {
+  if (!state) return fallback;
+  const o = state.overrides.get(storeId);
+  if (o !== undefined) return o;
+  return state.ids.has(storeId) || fallback;
 }
