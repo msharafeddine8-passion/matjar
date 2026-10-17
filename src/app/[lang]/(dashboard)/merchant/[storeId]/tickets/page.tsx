@@ -5,6 +5,7 @@ import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
 import {
   TicketTypeManager,
@@ -53,6 +54,8 @@ export default async function StoreTicketsPage({
     .eq("id", storeId)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
+  // Staff: the module's own permission (owner-only modules: the owner).
+  await requireModuleAccess(supabase, storeId, "tickets", lang);
 
   const { data: typeData } = await supabase
     .from("event_ticket_types")

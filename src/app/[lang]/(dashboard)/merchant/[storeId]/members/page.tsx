@@ -5,6 +5,7 @@ import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
 import { NextStepEmpty } from "@/components/os-dashboard/next-step-empty";
 
@@ -55,6 +56,8 @@ export default async function StoreMembersPage({
     .eq("id", storeId)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
+  // Staff: the module's own permission (owner-only modules: the owner).
+  await requireModuleAccess(supabase, storeId, "members", lang);
 
   const [{ data: mem }, { data: enr }] = await Promise.all([
     supabase

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { requireModuleAccess } from "@/lib/staff-access";
 import { toCategoryKey } from "@/lib/catalog";
 import { categoryModule } from "@/lib/modules";
 import { Container } from "@/components/ui/container";
@@ -45,6 +46,8 @@ export default async function EditProductPage({
     .eq("id", storeId)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
+  // Staff: the module's own permission (owner-only modules: the owner).
+  await requireModuleAccess(supabase, storeId, "items", lang);
   const category = toCategoryKey(
     (store as unknown as { business_types: { slug: string } | null })
       .business_types?.slug,

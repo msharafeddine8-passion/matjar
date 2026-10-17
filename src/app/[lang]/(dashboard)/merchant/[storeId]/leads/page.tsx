@@ -5,6 +5,7 @@ import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
 import { LeadStatusControl } from "@/components/lead-status-control";
 import { CardList, CardRow } from "@/components/ui/card";
@@ -53,6 +54,8 @@ export default async function StoreLeadsPage({
     .eq("id", storeId)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
+  // Staff: the module's own permission (owner-only modules: the owner).
+  await requireModuleAccess(supabase, storeId, "leads", lang);
 
   const { data } = await supabase
     .from("leads")

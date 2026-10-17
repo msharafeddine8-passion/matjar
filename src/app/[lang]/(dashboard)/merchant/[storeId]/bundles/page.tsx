@@ -5,6 +5,7 @@ import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
 import {
   BundleManager,
@@ -41,6 +42,8 @@ export default async function StoreBundlesPage({
     .eq("id", storeId)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
+  // Staff: the module's own permission (owner-only modules: the owner).
+  await requireModuleAccess(supabase, storeId, "items", lang);
 
   // Every non-bundle product is a candidate component; bundles are the existing
   // is_bundle rows with their items.
