@@ -219,6 +219,19 @@ export default async function ProductPage({
         dict.booking.fromPrice,
       )
     : null;
+  // The LBP line converts ONE price. Beside «$5 · $10 · $15» it printed the
+  // first option's conversion as if it were the whole line's, so a service
+  // with several distinct prices shows no LBP figure at all; one price (or
+  // options that all cost the same) still gets its conversion.
+  const distinctOptionPrices = serviceOptions.length
+    ? [...new Set(serviceOptions.map((v) => v.price ?? basePrice))]
+    : null;
+  const lbpPrice =
+    distinctOptionPrices == null
+      ? basePrice
+      : distinctOptionPrices.length === 1
+        ? distinctOptionPrices[0]
+        : null;
   const compareAt = compareAtPrice(product);
   const flashEnd = flashEndsAt(product);
   // A service the merchant never priced says so; nothing on this page prints a
@@ -366,9 +379,9 @@ export default async function ProductPage({
           )}
           {flashEnd != null && <FlashCountdown endsAt={flashEnd} dict={dict} />}
         </div>
-        {lbpRate > 0 && (
+        {lbpRate > 0 && lbpPrice != null && (
           <p dir="ltr" className="mt-1 text-sm tabular-nums text-muted-foreground">
-            {formatLbp(basePrice, lbpRate, l)}
+            {formatLbp(lbpPrice, lbpRate, l)}
           </p>
         )}
         {attrText && (

@@ -3932,6 +3932,7 @@
     "selectType": "Select type",
     "salary": "Salary (optional)",
     "salaryPlaceholder": "e.g. $500-700 or based on experience",
+    "salaryValue": "Salary: {v}",
     "description": "Job details",
     "descriptionPlaceholder": "Responsibilities, requirements, experience…",
     "applyEmail": "Email to receive applications (optional)",

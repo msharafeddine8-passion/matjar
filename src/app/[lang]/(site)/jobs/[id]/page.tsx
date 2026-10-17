@@ -191,8 +191,14 @@ export default async function JobDetailPage({
                 {regionName}
               </span>
             )}
+            {/* Labelled: salary_note is free text, and a bare «400» said
+                nothing about what it was. */}
             {job.salary_note && (
-              <span className="font-semibold text-primary">{job.salary_note}</span>
+              <span>
+                {t.salaryValue.split("{v}")[0]}
+                <bdi className="font-semibold text-primary">{job.salary_note}</bdi>
+                {t.salaryValue.split("{v}")[1]}
+              </span>
             )}
             {expLabel && (
               <span className="flex items-center gap-1">

@@ -3932,6 +3932,7 @@
     "selectType": "اختر النوع",
     "salary": "الراتب (اختياري)",
     "salaryPlaceholder": "مثلاً: $500-700 أو حسب الخبرة",
+    "salaryValue": "الراتب: {v}",
     "description": "تفاصيل الوظيفة",
     "descriptionPlaceholder": "المهام المطلوبة، الشروط، الخبرة…",
     "applyEmail": "إيميل استقبال الطلبات (اختياري)",
