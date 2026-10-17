@@ -105,13 +105,30 @@ export type OsGroupKey = "daily" | "people" | "money" | "store";
 // only what that business actually needs.
 export const OS_GROUPS: OsGroupKey[] = ["daily", "people", "money", "store"];
 
+/** The staff permission keys the database checks (staff_can). The staff
+ *  screen offers exactly these toggles. */
+export type StaffPerm =
+  | "orders"
+  | "bookings"
+  | "products"
+  | "customers"
+  | "expenses"
+  | "inventory"
+  | "pos"
+  | "suppliers"
+  | "classes"
+  | "tasks";
+
 export const OS_MODULE_META: Record<
   OsModuleKey,
   {
     Icon: LucideIcon;
     path: string;
     ownerOnly?: boolean;
-    perm?: "orders" | "bookings" | "products" | "customers" | "expenses";
+    /** Staff need ANY of these. Each must be the key the module's tables and
+     *  RPCs check in the database, or the menu opens a screen whose data the
+     *  database then refuses (empty lists, failing saves). */
+    perm?: StaffPerm | readonly StaffPerm[];
     /** Minimum paid tier to open this module (stores below see a lock +
      *  upsell). Absent = available on every plan. */
     minPlan?: "pro" | "business";
@@ -121,7 +138,8 @@ export const OS_MODULE_META: Record<
   bookings: { Icon: CalendarCheck, path: "bookings", perm: "bookings" },
   resources: { Icon: LandPlot, path: "resources", perm: "bookings" },
   memberships: { Icon: Gem, path: "memberships", ownerOnly: true },
-  classes: { Icon: CalendarRange, path: "classes", perm: "bookings" },
+  // store_classes_manage checks 'classes' (0159).
+  classes: { Icon: CalendarRange, path: "classes", perm: "classes" },
   portfolio: { Icon: Images, path: "portfolio", perm: "products" },
   courses: { Icon: BookOpen, path: "courses", perm: "products" },
   tools: { Icon: Wrench, path: "tools", minPlan: "pro" },
@@ -154,10 +172,13 @@ export const OS_MODULE_META: Record<
   // shop, and no existing staff permission means "may see what everyone earns".
   hr: { Icon: Fingerprint, path: "hr", ownerOnly: true, minPlan: "business" },
   automations: { Icon: Zap, path: "automations", perm: "orders", minPlan: "business" },
-  tasks: { Icon: ListTodo, path: "tasks", minPlan: "pro" },
-  inventory: { Icon: Boxes, path: "inventory", perm: "products", minPlan: "business" },
-  pos: { Icon: Calculator, path: "pos", perm: "orders", minPlan: "pro" },
-  suppliers: { Icon: Handshake, path: "suppliers", perm: "orders", minPlan: "business" },
+  // store_tasks, stock_movements/product_branch_stock, store_suppliers/
+  // supplier_transactions check these exact keys. POS: pos_record_sale takes
+  // pos or orders, and 0332 lets pos_sales be read with either.
+  tasks: { Icon: ListTodo, path: "tasks", perm: "tasks", minPlan: "pro" },
+  inventory: { Icon: Boxes, path: "inventory", perm: "inventory", minPlan: "business" },
+  pos: { Icon: Calculator, path: "pos", perm: ["pos", "orders"], minPlan: "pro" },
+  suppliers: { Icon: Handshake, path: "suppliers", perm: "suppliers", minPlan: "business" },
   kitchen: { Icon: ChefHat, path: "kitchen", perm: "orders", minPlan: "business" },
   reports: { Icon: BarChart3, path: "reports", perm: "orders", minPlan: "pro" },
   // 0325: store_accounting checks the expenses permission.
@@ -170,6 +191,23 @@ export const OS_MODULE_META: Record<
   settings: { Icon: Settings, path: "settings", ownerOnly: true },
   edit: { Icon: Pencil, path: "edit", ownerOnly: true },
 };
+
+/** The permissions that open a module (empty = no staff permission needed). */
+export function modulePerms(key: OsModuleKey): readonly StaffPerm[] {
+  const p = OS_MODULE_META[key].perm;
+  return p === undefined ? [] : typeof p === "string" ? [p] : p;
+}
+
+/** Whether a staff member with these toggles may open the module. */
+export function staffMayOpen(
+  key: OsModuleKey,
+  perms: Record<string, boolean>,
+): boolean {
+  const meta = OS_MODULE_META[key];
+  if (meta.ownerOnly) return false;
+  const need = modulePerms(key);
+  return need.length === 0 || need.some((p) => perms[p] === true);
+}
 
 export type SectorConfig = {
   /** Sector identity icon (hero, empty states). */

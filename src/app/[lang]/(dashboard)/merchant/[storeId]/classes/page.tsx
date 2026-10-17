@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Container } from "@/components/ui/container";
 import { ClassesManager, type ClassRow } from "@/components/classes-manager";
 import { ChevronPrev } from "@/components/ui/directional-icon";
+import { requireModuleAccess } from "@/lib/staff-access";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -29,6 +30,7 @@ export default async function StoreClassesPage({
     p_store_id: storeId,
   });
   if (!canManage) redirect(`/${lang}/merchant`);
+  await requireModuleAccess(supabase, storeId, "classes", lang);
 
   const { data: store } = await supabase
     .from("stores")

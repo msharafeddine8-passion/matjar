@@ -17,8 +17,11 @@ import { fetchOneStorePrivateFields } from "@/lib/store-private";
 import { toCategoryKey, type CategoryKey } from "@/lib/catalog";
 import {
   getSector,
+  OS_MODULE_META,
   resolveStoreModules,
   sectorPrimarySetup,
+  staffMayOpen,
+  type OsModuleKey,
 } from "@/lib/sectors";
 import { computeCompleteness } from "@/lib/completeness";
 import { validateStorePublic } from "@/lib/data-quality";
@@ -200,6 +203,15 @@ export default async function StoreOsHomePage({
       .maybeSingle();
     perms = (staffRow?.permissions as Record<string, boolean> | null) ?? {};
   }
+  // Can this viewer open a module right now: the staff rule the menu and the
+  // database share, AND the plan (trial included). Every link this page offers
+  // goes through it, so a free shop is never pointed at a paywall it can't
+  // pass and staff are never pointed at a screen the database will refuse.
+  const homePlan = effectivePlan(s.plan, s.trial_ends_at);
+  const canOpen = (key: OsModuleKey) => {
+    const min = OS_MODULE_META[key].minPlan;
+    return (isOwner || staffMayOpen(key, perms)) && (!min || hasPlan(homePlan, min));
+  };
   const canOrders = isOwner || (perms.orders ?? false);
   const canBookings = isOwner || (perms.bookings ?? false);
   const canProducts = isOwner || (perms.products ?? false);
@@ -508,6 +520,7 @@ export default async function StoreOsHomePage({
     uniques: vSummary.uniques ?? 0,
   };
 
+  const reportsHref = canOpen("reports") ? `${base}/reports` : undefined;
   let stats: StatItem[] = [];
   if (canRevenue && report) {
     stats = [
@@ -515,26 +528,26 @@ export default async function StoreOsHomePage({
         label: t.revenue,
         value: fmtMoney(realized),
         hint: t.revenueHint,
-        href: `${base}/reports`,
+        href: reportsHref,
       },
       {
         label: t.pendingRevenue,
         value: fmtMoney(pendingRevenue),
         hint: t.pendingRevenueHint,
-        href: hasOrders ? `${base}/orders` : `${base}/reports`,
+        href: hasOrders ? `${base}/orders` : reportsHref,
         highlight: pendingRevenue > 0,
       },
       {
         label: t.weekOrders,
         value: String(report.week?.count ?? 0),
         pct: report.week?.pct ?? 0,
-        href: hasOrders ? `${base}/orders` : `${base}/reports`,
+        href: hasOrders ? `${base}/orders` : reportsHref,
       },
       {
         label: t.monthOrders,
         value: String(report.month?.count ?? 0),
         pct: report.month?.pct ?? 0,
-        href: `${base}/reports`,
+        href: reportsHref,
       },
       {
         label: t.weekVisits,
@@ -543,7 +556,7 @@ export default async function StoreOsHomePage({
           visits7d.uniques > 0
             ? t.weekVisitsHint.replace("{n}", String(visits7d.uniques))
             : undefined,
-        href: `${base}/reports`,
+        href: reportsHref,
       },
     ];
   } else if (canBookings) {
@@ -685,7 +698,7 @@ export default async function StoreOsHomePage({
         .replace("{name}", p.name)
         .replace("{n}", String(p.stock)),
       cta: t.restock,
-      href: `${base}/inventory`,
+      href: canOpen("inventory") ? `${base}/inventory` : `${base}/items`,
     });
   }
   const showAlerts = alerts.length > 0 || isOwner;
@@ -761,6 +774,7 @@ export default async function StoreOsHomePage({
       offerings: primaryCount ?? itemsCount,
       offeringsWithCost: costedItems,
       providers,
+      teamAvailable: hasPlan(homePlan, "pro"), // the team screen is Pro (OS_MODULE_META.doctors)
     },
     primarySetup
       ? { key: primarySetup.labelKey, href: primarySetup.module }
@@ -807,23 +821,24 @@ export default async function StoreOsHomePage({
         key: "checklist",
         text: t.suggestChecklist,
         cta: t.suggestChecklistCta,
-        href: `${base}/edit`,
+        // The item the checklist actually wants next, not always the edit form.
+        href: `${base}/${completeness.next?.href ?? "edit"}`,
       });
     if (lowStock.length > 0 && hasInventory)
       suggestions.push({
         key: "restock",
         text: t.suggestRestock,
         cta: t.suggestRestockCta,
-        href: `${base}/inventory`,
+        href: canOpen("inventory") ? `${base}/inventory` : `${base}/items`,
       });
-    if (hasAudience && (campaigns14Res.count ?? 0) === 0)
+    if (canOpen("campaigns") && hasAudience && (campaigns14Res.count ?? 0) === 0)
       suggestions.push({
         key: "campaign",
         text: t.suggestCampaign,
         cta: t.suggestCampaignCta,
         href: `${base}/campaigns`,
       });
-    if ((automationsCountRes.count ?? 0) === 0)
+    if (canOpen("automations") && (automationsCountRes.count ?? 0) === 0)
       suggestions.push({
         key: "automation",
         text: t.suggestAutomation,
@@ -924,7 +939,11 @@ export default async function StoreOsHomePage({
     ],
   };
   const quickActions: QuickAction[] = quickDefs[category]
-    .filter((a) => isOwner || (perms[a.perm] ?? false))
+    .filter((a) =>
+      a.path in OS_MODULE_META
+        ? canOpen(a.path as OsModuleKey)
+        : isOwner || (perms[a.perm] ?? false),
+    )
     .map((a) => ({ key: a.key, label: a.label, href: `${base}/${a.path}` }));
 
   // ---- Layout: same widgets, sector-specific emphasis ----------------------
@@ -955,7 +974,9 @@ export default async function StoreOsHomePage({
       <WidgetCard
         title={t.chartTitle}
         Icon={BarChart3}
-        action={{ label: dict.merchant.analytics.link, href: `${base}/reports` }}
+        action={
+          reportsHref ? { label: dict.merchant.analytics.link, href: reportsHref } : undefined
+        }
       >
         <RevenueChart
           days={chartDays}

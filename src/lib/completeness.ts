@@ -71,6 +71,10 @@ export type StoreFacts = {
   offeringsWithCost: number;
   /** Providers on the roster, where the sector has a team. */
   providers: number;
+  /** Whether the store's plan (trial included) can open the team screen. The
+   *  team page is a Pro module: a required step behind a paywall would keep a
+   *  free clinic "not ready" forever. Omitted = available. */
+  teamAvailable?: boolean;
 };
 
 const BASE: Omit<CompletenessItem, "done">[] = [
@@ -104,7 +108,9 @@ const COST: Omit<CompletenessItem, "done"> = {
   key: "costPrices",
   weight: 10,
   required: false,
-  href: "inventory",
+  // The cost field is on the product form itself; the inventory screen is a
+  // Business module a free store can't open.
+  href: "items",
 };
 
 /** A clinic without doctors, a salon without stylists: the module that defines
@@ -127,7 +133,7 @@ export function computeCompleteness(
   const specs = [...BASE];
 
   if (modules.has("location")) specs.push(MAP_PIN);
-  if (modules.has("team")) specs.push(TEAM);
+  if (modules.has("team") && facts.teamAvailable !== false) specs.push(TEAM);
   // Only where the primary entity IS a product, and only once some exist.
   //
   // A hotel's offerings are rooms and an organiser's are ticket types, but cost

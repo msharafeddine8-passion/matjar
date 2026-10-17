@@ -18,6 +18,7 @@ import {
   type PosCustomer,
   type PosLocation,
 } from "@/components/pos-terminal";
+import { requireModuleAccess } from "@/lib/staff-access";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -60,20 +61,8 @@ export default async function StorePosPage({
     return <ProGate lang={lang} dict={dict} storeId={storeId} />;
   }
 
-  // Staff need the orders permission to sell.
-  const isOwner =
-    (store as unknown as { owner_id: string }).owner_id === user.id;
-  if (!isOwner) {
-    const { data: staffRow } = await supabase
-      .from("store_staff")
-      .select("permissions")
-      .eq("store_id", storeId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    const perms =
-      (staffRow?.permissions as Record<string, boolean> | null) ?? {};
-    if (!(perms.orders ?? false)) redirect(`/${lang}/merchant/${storeId}`);
-  }
+  // Staff: the permission the module's own tables check (requireModuleAccess).
+  await requireModuleAccess(supabase, storeId, "pos", lang);
 
   // Beirut's day, not the server's: on Vercel setHours(0) is UTC midnight, so
   // a sale rung up between 00:00 and 03:00 Beirut used to count as yesterday.

@@ -14,6 +14,7 @@ import {
   CampaignManager,
   type CampaignRow,
 } from "@/components/campaign-manager";
+import { requireModuleAccess } from "@/lib/staff-access";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -55,20 +56,8 @@ export default async function StoreCampaignsPage({
     return <ProGate lang={lang} dict={dict} storeId={storeId} requiredPlan="business" />;
   }
 
-  // Campaigns reach customers: staff need the orders permission.
-  const isOwner =
-    (store as unknown as { owner_id: string }).owner_id === user.id;
-  if (!isOwner) {
-    const { data: staffRow } = await supabase
-      .from("store_staff")
-      .select("permissions")
-      .eq("store_id", storeId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    const perms =
-      (staffRow?.permissions as Record<string, boolean> | null) ?? {};
-    if (!(perms.orders ?? false)) redirect(`/${lang}/merchant/${storeId}`);
-  }
+  // Staff: the permission the module's own tables check (requireModuleAccess).
+  await requireModuleAccess(supabase, storeId, "campaigns", lang);
 
   // Recent campaigns + audience counts. Follower/customer id sets are fetched
   // (capped, matching the RPC's 5000 send cap) so we can show accurate live

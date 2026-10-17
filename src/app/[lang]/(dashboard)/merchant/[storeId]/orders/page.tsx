@@ -27,6 +27,7 @@ import {
   loadLastSent,
   loadWaTemplates,
 } from "@/lib/wa-actions-server";
+import { requireModuleAccess } from "@/lib/staff-access";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -97,6 +98,7 @@ export default async function StoreOrdersPage({
     p_store_id: storeId,
   });
   if (!canManage) redirect(`/${lang}/merchant`);
+  await requireModuleAccess(supabase, storeId, "orders", lang);
   const { data: store } = await supabase
     .from("stores")
     .select("id, name")

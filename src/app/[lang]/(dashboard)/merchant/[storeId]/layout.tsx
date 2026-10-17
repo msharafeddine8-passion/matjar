@@ -8,6 +8,7 @@ import {
   getSector,
   OS_GROUPS,
   OS_MODULE_META,
+  staffMayOpen,
   sectorTeamMeta,
   type OsModuleKey,
 } from "@/lib/sectors";
@@ -121,12 +122,8 @@ export default async function StoreOsLayout({
       .maybeSingle();
     perms = (staffRow?.permissions as Record<string, boolean> | null) ?? {};
   }
-  const canSee = (key: OsModuleKey) => {
-    const meta = OS_MODULE_META[key];
-    if (isOwner) return true;
-    if (meta.ownerOnly) return false;
-    return meta.perm ? (perms[meta.perm] ?? false) : true;
-  };
+  // One rule for the menu, the page guards and the database (staffMayOpen).
+  const canSee = (key: OsModuleKey) => isOwner || staffMayOpen(key, perms);
 
   // Same label mapping as the OS home — every string is an existing dict key.
   const moduleLabel: Record<OsModuleKey, string> = {

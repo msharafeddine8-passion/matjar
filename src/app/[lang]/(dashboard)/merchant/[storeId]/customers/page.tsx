@@ -16,6 +16,7 @@ import {
   type DerivedCustomer,
 } from "@/components/crm-manager";
 import { NextStepEmpty } from "@/components/os-dashboard/next-step-empty";
+import { requireModuleAccess } from "@/lib/staff-access";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -67,21 +68,8 @@ export default async function StoreCustomersPage({
     return <ProGate lang={lang} dict={dict} storeId={storeId} />;
   }
 
-  // CRM contains customer data + spend: staff need the customers permission
-  // (0325 — store_customer_order_totals checks the same one).
-  const isOwner =
-    (store as unknown as { owner_id: string }).owner_id === user.id;
-  if (!isOwner) {
-    const { data: staffRow } = await supabase
-      .from("store_staff")
-      .select("permissions")
-      .eq("store_id", storeId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    const perms =
-      (staffRow?.permissions as Record<string, boolean> | null) ?? {};
-    if (!(perms.customers ?? false)) redirect(`/${lang}/merchant/${storeId}`);
-  }
+  // Staff: the permission the module's own tables check (requireModuleAccess).
+  await requireModuleAccess(supabase, storeId, "customers", lang);
   const category = toCategoryKey(
     (store as unknown as { business_types: { slug: string } | null })
       .business_types?.slug,

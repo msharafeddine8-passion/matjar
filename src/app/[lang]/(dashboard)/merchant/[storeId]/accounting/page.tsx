@@ -11,6 +11,7 @@ import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
 import { ExpenseManager, type Expense } from "@/components/expense-manager";
 import { BooksLock } from "@/components/books-lock";
+import { requireModuleAccess } from "@/lib/staff-access";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -51,21 +52,10 @@ export default async function AccountingPage({
     return <ProGate lang={lang} dict={dict} storeId={storeId} requiredPlan="business" />;
   }
 
-  // Money data: staff need the expenses permission (0325 — store_accounting
-  // checks the same one).
+  // Staff: the permission the module's own tables check (requireModuleAccess).
+  await requireModuleAccess(supabase, storeId, "accounting", lang);
   const isOwner =
     (store as unknown as { owner_id: string }).owner_id === user.id;
-  if (!isOwner) {
-    const { data: staffRow } = await supabase
-      .from("store_staff")
-      .select("permissions")
-      .eq("store_id", storeId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    const perms =
-      (staffRow?.permissions as Record<string, boolean> | null) ?? {};
-    if (!(perms.expenses ?? false)) redirect(`/${lang}/merchant/${storeId}`);
-  }
 
   const [{ data: acctData }, { data: expData }] = await Promise.all([
     // Money totals aggregated server-side (migration 0087) so they can't
