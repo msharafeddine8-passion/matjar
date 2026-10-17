@@ -15,6 +15,7 @@ describe("module access follows the database's permission keys", () => {
     expect(modulePerms("pos")).toEqual(["pos", "orders"]);
     expect(modulePerms("customers")).toEqual(["customers"]);
     expect(modulePerms("accounting")).toEqual(["expenses"]);
+    expect(modulePerms("members")).toEqual(["customers"]);
   });
 
   it("a default staffer (orders/bookings/products) no longer sees suppliers, inventory, tasks or classes", () => {
