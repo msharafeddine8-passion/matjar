@@ -9,7 +9,7 @@ import { searchAll } from "@/lib/data/search";
 import { getDiscoveryCoverage } from "@/lib/data/discovery";
 import { getUsdLbpRate } from "@/lib/data/settings";
 import { groupBySector, sectorOptions } from "@/lib/discovery";
-import { regions } from "@/lib/catalog";
+import { regions, type Store } from "@/lib/catalog";
 import {
   AREA_BY_SLUG,
   TRADES,
@@ -35,6 +35,7 @@ import { KindHeading } from "@/components/search/kind-heading";
 import { MapResultsLink } from "@/components/search/map-results-link";
 import { searchHref } from "@/components/search/recent";
 import { DemandCapture } from "@/components/search/demand-capture";
+import { CountText } from "@/components/ui/count-text";
 
 export async function generateMetadata({
   params,
@@ -101,7 +102,12 @@ export default async function SearchPage({
     wantsMap ? Promise.resolve(null) : getDiscoveryCoverage(),
   ]);
 
-  const stores = results?.stores ?? [];
+  // Sector members that never mention what was asked for («بيتزا» → a
+  // butcher) are suggestions: shown under their own heading, never counted —
+  // «1 نتيجة» over a meat shop told the buyer we had pizza.
+  const allStores = results?.stores ?? [];
+  const stores = allStores.filter((s) => !s.suggested);
+  const suggestedStores = allStores.filter((s) => s.suggested);
   const products = results?.products ?? [];
   const listings = results?.listings ?? [];
   const total = stores.length + products.length + listings.length;
@@ -150,10 +156,7 @@ export default async function SearchPage({
             <span className="text-primary">&ldquo;{q}&rdquo;</span>
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            <span className="font-bold tabular-nums text-foreground">
-              {mapStores.length}
-            </span>{" "}
-            {dict.discovery.storesCount}
+            <CountText forms={dict.discovery.storesCount} n={mapStores.length} />
           </p>
           <div className="mt-4">
             {mapStores.length ? (
@@ -236,10 +239,7 @@ export default async function SearchPage({
 
         {q ? (
           <p className="text-sm text-muted-foreground lg:mt-3">
-            <span className="font-bold tabular-nums text-foreground">
-              {total}
-            </span>{" "}
-            {t.resultsCount}
+            <CountText forms={t.resultsCount} n={total} />
           </p>
         ) : (
           <p className="text-sm text-muted-foreground lg:mt-3">{t.prompt}</p>
@@ -265,12 +265,24 @@ export default async function SearchPage({
             offer would be the only 40px target on this screen. */}
         {q && total === 0 && (
           <>
-            <EmptyState
-              className="mt-6"
-              icon={SearchX}
-              title={t.empty}
-              description={t.emptyHint}
-            />
+            {/* With suggestions to show, their heading already says «ما
+                لقينا»; the empty state would say it twice. */}
+            {suggestedStores.length === 0 && (
+              <EmptyState
+                className="mt-6"
+                icon={SearchX}
+                title={t.empty}
+                description={t.emptyHint}
+              />
+            )}
+            {suggestedStores.length > 0 && (
+              <SuggestedStores
+                stores={suggestedStores}
+                title={t.suggestionsNone.replace("{q}", q)}
+                lang={l}
+                dict={dict}
+              />
+            )}
             {/* A search that found nothing is still worth something: the
                 buyer can tell us what they wanted (lib/demand.ts). */}
             <div className="mt-4">
@@ -390,6 +402,15 @@ export default async function SearchPage({
               </section>
             )}
 
+            {suggestedStores.length > 0 && (
+              <SuggestedStores
+                stores={suggestedStores}
+                title={t.suggestionsMore}
+                lang={l}
+                dict={dict}
+              />
+            )}
+
             {listings.length > 0 && (
               <section aria-labelledby="sec-listings">
                 <KindHeading
@@ -439,6 +460,42 @@ export default async function SearchPage({
 }
 
 type Dict = Awaited<ReturnType<typeof getDictionary>>;
+
+/** Stores offered as «يمكن يعجبك» — related, but not an answer to the words. */
+function SuggestedStores({
+  stores,
+  title,
+  lang,
+  dict,
+}: {
+  stores: Store[];
+  title: string;
+  lang: Locale;
+  dict: Dict;
+}) {
+  return (
+    <section aria-labelledby="sec-suggested" className="mt-6">
+      <h2
+        id="sec-suggested"
+        className="mb-3 text-sm font-bold text-muted-foreground lg:mb-4 lg:text-lg lg:font-extrabold lg:text-foreground"
+      >
+        {title}
+      </h2>
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {stores.map((store) => (
+          <StoreCard
+            key={store.id}
+            store={store}
+            lang={lang}
+            dict={dict}
+            factsDict={dict.discovery}
+            cardDict={dict.sectorCards}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
 
 /** The name of the place the intent resolved: the area when one was named
  *  («طرابلس»), else the region («الشمال»). */

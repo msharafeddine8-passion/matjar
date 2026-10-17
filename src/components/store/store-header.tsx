@@ -24,6 +24,7 @@ import {
   QUICK_ACTION_LABEL,
 } from "@/components/quick-action";
 import { StoreAbout } from "@/components/store/store-about";
+import { countLabel } from "@/lib/plural";
 
 export function StoreHeader({
   store,
@@ -113,17 +114,14 @@ export function StoreHeader({
                   <Star className="h-4 w-4 fill-accent-foreground text-accent-foreground" />
                   <span className="font-bold">{headerRating.toFixed(1)}</span>
                   <span className="text-muted-foreground">
-                    ({headerCount} {dict.featured.reviews})
+                    ({countLabel(dict.sectorCards.counts.reviews, headerCount)})
                   </span>
                 </span>
               )}
               {ordersFulfilled > 0 && (
                 <span className="flex items-center gap-1 rounded-full bg-success-soft px-2.5 py-1 font-semibold text-success">
                   <BadgeCheck className="h-4 w-4" />
-                  {dict.store.ordersFulfilled.replace(
-                    "{n}",
-                    String(ordersFulfilled),
-                  )}
+                  {countLabel(dict.store.ordersFulfilled, ordersFulfilled)}
                 </span>
               )}
               {store.prepTime && store.acceptsDelivery && (

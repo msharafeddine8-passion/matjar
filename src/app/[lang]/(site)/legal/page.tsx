@@ -14,6 +14,7 @@ import {
   type LegalEntityState,
 } from "@/lib/legal-entity";
 import { Container } from "@/components/ui/container";
+import { createClient } from "@/lib/supabase/server";
 
 // ISS-025 — who is behind this, and on what terms.
 //
@@ -81,6 +82,8 @@ const AR = {
   missingTitle: "معلومات الكيان القانوني ما تعبّت على هالنسخة",
   missingBody:
     "هالصفحة ما بتخترع اسم شركة ولا رقم سجل. صاحب المنصّة لازم يحطّ القيم التالية بمتغيّرات البيئة (Vercel ← Settings ← Environment Variables) وبعدها يعيد النشر:",
+  entityPending:
+    "لأي سؤال عن الجهة يلي بتشغّل متجر، احكينا عالواتساب.",
   missingBlankLabel: "ما تعبّى",
   missingFillerLabel: "معبّى بقيمة مؤقّتة — لازم القيمة الحقيقية",
   missingVatNote:
@@ -154,6 +157,8 @@ const EN = {
   missingTitle: "Legal entity details are not configured on this deployment",
   missingBody:
     "This page does not invent a company name or a register number. The platform's owner must set the following environment variables (Vercel → Settings → Environment Variables) and redeploy:",
+  entityPending:
+    "For any question about who operates Matjar, message us on WhatsApp.",
   missingBlankLabel: "not set",
   missingFillerLabel: "set to a placeholder — needs the real value",
   missingVatNote:
@@ -271,6 +276,27 @@ export default async function LegalPage({
   const t: typeof AR = lang === "ar" ? AR : (EN as typeof AR);
   const state = readLegalEntity(process.env);
 
+  // The setup panel (env var names, «لسّا ما راجعو محامي») is a note to the
+  // operator, not to a customer deciding whether to trust the platform. Only a
+  // super admin sees it; everyone else gets one neutral line. Same role read
+  // the (site) layout uses for the dashboard link.
+  let isSuperAdmin = false;
+  {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      isSuperAdmin =
+        (profile as { role?: string } | null)?.role === "super_admin";
+    }
+  }
+
   if (!state.configured) {
     // Same shape as the assetlinks route: the deploy is broken in a way only a
     // log will reach the person who can fix it.
@@ -286,13 +312,15 @@ export default async function LegalPage({
           {t.title}
         </h1>
 
-        {/* Said before anything else it might be weighed against. */}
-        <div className="mt-6 rounded-2xl border border-border bg-surface-muted/40 p-4">
-          <h2 className="text-sm font-extrabold">{t.draftTitle}</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            {t.draftBody}
-          </p>
-        </div>
+        {/* The review status is the operator's to-do, shown to the operator. */}
+        {isSuperAdmin && (
+          <div className="mt-6 rounded-2xl border border-border bg-surface-muted/40 p-4">
+            <h2 className="text-sm font-extrabold">{t.draftTitle}</h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+              {t.draftBody}
+            </p>
+          </div>
+        )}
 
         <section className="mt-10">
           <h2 className="flex items-center gap-2 text-lg font-bold">
@@ -320,8 +348,12 @@ export default async function LegalPage({
                 </div>
               )}
             </dl>
-          ) : (
+          ) : isSuperAdmin ? (
             <NotConfigured state={state} t={t} />
+          ) : (
+            <p className="mt-3 leading-7 text-muted-foreground">
+              {t.entityPending}
+            </p>
           )}
         </section>
 

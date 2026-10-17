@@ -111,8 +111,8 @@ export default async function InquiryDetailPage({
               {t.sentOn}{" "}
               <span dir="ltr" className="tabular-nums">
                 {new Date(lead.created_at).toLocaleDateString(
-                  lang === "ar" ? "ar" : "en",
-                  { year: "numeric", month: "short", day: "numeric" },
+                  lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
+                  { timeZone: "Asia/Beirut", year: "numeric", month: "short", day: "numeric" },
                 )}
               </span>
             </p>

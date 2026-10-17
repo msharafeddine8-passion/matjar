@@ -26,6 +26,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { DiscoveryFilters } from "@/components/discovery-filters";
 import { ExploreClient } from "@/components/explore-client";
 import { SectorShortcuts } from "@/components/search/sector-shortcuts";
+import { CountText } from "@/components/ui/count-text";
 
 export type RawSearchParams = Record<string, string | string[] | undefined>;
 
@@ -135,10 +136,7 @@ export async function DiscoveryPage({
 
       <section aria-labelledby="sec-results" className="mt-6">
         <h2 id="sec-results" className="text-sm text-muted-foreground">
-          <span className="font-bold tabular-nums text-foreground">
-            {result.total}
-          </span>{" "}
-          {dict.explore.results}
+          <CountText forms={dict.explore.results} n={result.total} />
         </h2>
 
         <div className="mt-4">

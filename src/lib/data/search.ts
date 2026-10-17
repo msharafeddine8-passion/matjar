@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Locale } from "@/i18n/config";
-import { toCategoryKey, type CategoryKey, type Store } from "@/lib/catalog";
+import { toCategoryKey, type CategoryKey } from "@/lib/catalog";
 import type { OfferingKind } from "@/lib/offering";
 import {
   listingSearchTerms,
@@ -10,7 +10,7 @@ import {
   productSearchTerms,
   type SearchIntent,
 } from "@/lib/search-intent";
-import { searchStores } from "./stores";
+import { searchStores, type SearchStore } from "./stores";
 import { getActiveListings, type ListingCard } from "./market";
 
 export type ProductResult = {
@@ -66,7 +66,8 @@ export async function offeringFactsFor(
 }
 
 export type SearchResults = {
-  stores: Store[];
+  /** Includes `suggested` rows: shown as suggestions, not counted. */
+  stores: SearchStore[];
   products: ProductResult[];
   listings: ListingCard[];
   /** What the query was understood to mean (lib/search-intent.ts). */
@@ -170,7 +171,7 @@ export async function searchAll(
   const intent = parseSearchIntent(term);
   const explicitRegion = region && region !== "all" ? region : undefined;
   const [stores, products, listings] = await Promise.all([
-    searchStores(term, region, planStoreSearch(intent)),
+    searchStores(term, region, planStoreSearch(intent), intent),
     searchProducts(productSearchTerms(intent)),
     // Only the URL region narrows listings: most listings leave region empty,
     // and a place inferred from the words must not hide them.

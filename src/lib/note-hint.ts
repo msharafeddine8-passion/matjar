@@ -38,7 +38,13 @@ const BY_SECTOR: Partial<Record<CategoryKey, NoteHintKey>> = {
  *  unrecognised sector through `toCategoryKey` would hand a shopper retail's
  *  hint — an invented example, which is the exact failure this table exists to
  *  avoid. Same result as the old assertion, minus the assertion. */
-export function noteHintKey(category?: string | null): NoteHintKey {
+export function noteHintKey(
+  category?: string | null,
+  /** The offering's CTA. «أضف إلى الطلب» means a dish on a menu, whatever
+   *  sector row the store sits under, so it gets the kitchen example. */
+  cta?: string | null,
+): NoteHintKey {
+  if (cta === "addToOrder") return "food";
   if (!isCategoryKey(category)) return "default";
   return BY_SECTOR[category] ?? "default";
 }

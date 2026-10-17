@@ -97,7 +97,7 @@ export function DeliveryWindow({
                 : i === 1
                   ? dict.store.windowTomorrow
                   : new Date(`${w.date}T12:00`).toLocaleDateString(
-                      lang === "ar" ? "ar-LB" : "en-GB",
+                      lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
                       { weekday: "long", day: "numeric", month: "short" },
                     )}
             </option>

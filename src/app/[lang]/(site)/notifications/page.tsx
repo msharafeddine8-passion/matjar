@@ -71,7 +71,7 @@ function requestedPlanName(plan: unknown): string {
 // it's a delta, so it's always correct regardless of server/client TZ.
 function timeAgo(iso: string, lang: string): string {
   const diff = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
-  const rtf = new Intl.RelativeTimeFormat(lang === "ar" ? "ar" : "en", {
+  const rtf = new Intl.RelativeTimeFormat(lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB", {
     numeric: "auto",
   });
   const units: [Intl.RelativeTimeFormatUnit, number][] = [
@@ -468,8 +468,8 @@ export default async function NotificationsPage({
                             ? dict.notifications.onTrialUntil.replace(
                                 "{date}",
                                 new Date(n.data.trial_ends_at).toLocaleDateString(
-                                  lang === "ar" ? "ar" : "en",
-                                  { dateStyle: "medium" },
+                                  lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
+                                  { timeZone: "Asia/Beirut", dateStyle: "medium" },
                                 ),
                               )
                             : dict.notifications.trialEnded}

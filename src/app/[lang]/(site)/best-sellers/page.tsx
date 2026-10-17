@@ -14,6 +14,7 @@ import { localized } from "@/lib/i18n-field";
 import { Container } from "@/components/ui/container";
 import { PageHero } from "@/components/ui/page-hero";
 import { EmptyState } from "@/components/ui/empty-state";
+import { countLabel } from "@/lib/plural";
 
 export async function generateMetadata({
   params,
@@ -84,7 +85,7 @@ export default async function BestSellersPage({
                     #{i + 1}
                   </span>
                   <span className="absolute end-2 top-2 rounded-full bg-surface/90 px-2 py-0.5 text-xs font-bold backdrop-blur">
-                    {p.sold} {dict.bestSellers.sold}
+                    {countLabel(dict.bestSellers.sold, p.sold)}
                   </span>
                 </div>
                 <div className="flex flex-1 flex-col p-3">

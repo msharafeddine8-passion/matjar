@@ -128,8 +128,8 @@ export default async function CraftRequestDetailPage({
               <CalendarClock className="h-4 w-4 shrink-0 text-primary" />
               <span dir="ltr" className="tabular-nums">
                 {new Date(req.scheduled_for).toLocaleString(
-                  lang === "ar" ? "ar" : "en",
-                  { dateStyle: "medium", timeStyle: "short" },
+                  lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
+                  { timeZone: "Asia/Beirut", dateStyle: "medium", timeStyle: "short" },
                 )}
               </span>
             </p>

@@ -8,6 +8,7 @@ import { localeAlternates, shareImages } from "@/lib/site";
 import { discoveryParams, siblingSectors } from "@/lib/discovery";
 import { getDiscoveryCoverage } from "@/lib/data/discovery";
 import { categoryIcons } from "@/components/category-icon";
+import { CountText } from "@/components/ui/count-text";
 import {
   DiscoveryPage,
   resolveQuery,
@@ -115,10 +116,7 @@ export default async function CategoryPage({
                 {/* The live count, not a boast. It is the one number that tells
                     a buyer whether this category is worth their scroll. */}
                 <p className="mt-1.5 text-sm text-muted-foreground">
-                  <span className="font-bold tabular-nums text-foreground">
-                    {count}
-                  </span>{" "}
-                  {dict.discovery.storesCount}
+                  <CountText forms={dict.discovery.storesCount} n={count} />
                 </p>
               </div>
             </div>

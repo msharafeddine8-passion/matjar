@@ -56,6 +56,7 @@ import { Container } from "@/components/ui/container";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductOrder } from "@/components/product-order";
 import { ProductBuyBar } from "@/components/product-buy-bar";
+import { cartCanCarry } from "@/lib/store-cart";
 import { WishlistButton } from "@/components/wishlist-button";
 import { ShareButton } from "@/components/share-button";
 import { ProductStoryCard } from "@/components/product-story-card";
@@ -874,7 +875,18 @@ export default async function ProductPage({
                 ? formatUsd(compareAt)
                 : null
             }
-            label={ctaLabel}
+            // Same word the buy box's own button carries: a product the
+            // basket cannot hold (variants / add-ons) is ordered on its own.
+            label={
+              offering.addableToCart &&
+              !cartCanCarry({
+                variants: product.variants.length,
+                addons: product.addons.length,
+                modifierGroups: product.modifierGroups.length,
+              })
+                ? dict.product.buyNow
+                : ctaLabel
+            }
             soldOut={soldOut}
             soldOutLabel={dict.offering.soldOut[offering.noun]}
           />

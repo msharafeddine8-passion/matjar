@@ -18,6 +18,7 @@ import {
   planStoreSearch,
   productSearchTerms,
   rankStores,
+  isSuggestionOnly,
   stemVariants,
   storeTextOrClause,
   type RankableStore,
@@ -382,6 +383,30 @@ describe("rankStores", () => {
   });
   it("an unknown brand matches only literal text", () => {
     expect(run("etumax")).toEqual([]);
+  });
+  const suggestion = (q: string, s: Parameters<typeof isSuggestionOnly>[0]) => {
+    const intent = parseSearchIntent(q);
+    return isSuggestionOnly(s, intent, planStoreSearch(intent));
+  };
+  it("«بيتزا» with no pizzeria keeps the food sector only as suggestions", () => {
+    const plan = planStoreSearch(parseSearchIntent("بيتزا"));
+    const kept = rankStores(all, plan);
+    expect(kept.length).toBeGreaterThan(0);
+    expect(kept.every((s) => suggestion("بيتزا", s))).toBe(true);
+  });
+  it("a sector-wide word is an answer, not a suggestion", () => {
+    expect(suggestion("مطاعم", letsMeat)).toBe(false);
+    expect(suggestion("مطعم طرابلس", letsMeat)).toBe(false);
+  });
+  it("a store whose text names the item is an answer", () => {
+    const pizzeria = store({ id: "pz", name: "Pizza Roma", description: "بيتزا ايطالية", sector: "food" });
+    expect(suggestion("بيتزا", pizzeria)).toBe(false);
+    expect(suggestion("مطعم بيتزا", pizzeria)).toBe(false);
+    expect(suggestion("مطعم بيتزا", letsMeat)).toBe(true);
+  });
+  it("a store outside the sector is never labelled a suggestion", () => {
+    expect(suggestion("ملابس", albisa)).toBe(false);
+    expect(suggestion("iphone", qabass)).toBe(false);
   });
 });
 

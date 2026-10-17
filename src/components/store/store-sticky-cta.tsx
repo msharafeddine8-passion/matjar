@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ChevronUp, Phone } from "lucide-react";
+import { CART_EVENT, cartCount, cartKey, readCart } from "@/lib/store-cart";
 
 // The store's primary action, kept under the thumb.
 //
@@ -20,12 +21,15 @@ import { ChevronUp, Phone } from "lucide-react";
 // indicator inset, so it can never cover a tab or be trapped under one.
 export function StoreStickyCta({
   targetId,
+  storeId,
   href,
   label,
   note,
 }: {
   /** Scroll to this section. Omitted for an outbound action. */
   targetId?: string;
+  /** Hide while this store's basket (`matjar-cart-<storeId>`) has items. */
+  storeId?: string;
   /**
    * An outbound action instead of a scroll — `tel:` or `wa.me`.
    *
@@ -44,19 +48,56 @@ export function StoreStickyCta({
   /** A true one-line fact — the store name, "starts from $x". Never a promise. */
   note?: string | null;
 }) {
-  const [show, setShow] = useState(true);
+  // Two independent reasons to step aside, tracked separately so one cannot
+  // undo the other: the catalogue / booking area is on screen (the bar would
+  // cover the very control it points at, or pull the customer away from a
+  // half-filled booking form), or the store's basket has something in it (the
+  // cart bar owns the bottom of the screen then — two stacked bars hid the
+  // checkout button on a phone).
+  const [inView, setInView] = useState(false);
+  const [hasCart, setHasCart] = useState(false);
 
   useEffect(() => {
     if (!targetId) return;
     const target = document.getElementById(targetId);
     if (!target || typeof IntersectionObserver === "undefined") return;
+    // The heading is one line; the area under it (grid, cart, booking steps)
+    // is the section wrapper the page puts around it (`sec-<key>`).
+    const area = target.closest<HTMLElement>('[id^="sec-"]');
+    const watched = area && area !== target ? [target, area] : [target];
+    const visible = new Set<Element>();
     const obs = new IntersectionObserver(
-      ([entry]) => setShow(!entry.isIntersecting),
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) visible.add(e.target);
+          else visible.delete(e.target);
+        }
+        setInView(visible.size > 0);
+      },
       { threshold: 0 },
     );
-    obs.observe(target);
+    watched.forEach((el) => obs.observe(el));
     return () => obs.disconnect();
   }, [targetId]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    const sync = () => setHasCart(cartCount(readCart(storeId)) > 0);
+    // localStorage exists only after mount — reading it here, once, is the
+    // documented way to avoid an SSR/hydration mismatch.
+    sync();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === null || e.key === cartKey(storeId)) sync();
+    };
+    window.addEventListener(CART_EVENT, sync);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(CART_EVENT, sync);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [storeId]);
+
+  const show = !inView && !hasCart;
 
   if (!show) return null;
 

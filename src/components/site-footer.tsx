@@ -105,6 +105,9 @@ export function SiteFooter({
         { label: L.help, href: `/${lang}/help` },
         { label: L.contact, href: `/${lang}/contact` },
         { label: L.privacy, href: `/${lang}/privacy` },
+        // The terms existed (footer.links.legal was even translated) but no
+        // public page linked to them.
+        { label: L.legal, href: `/${lang}/legal` },
       ],
     },
   ];

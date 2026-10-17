@@ -101,14 +101,14 @@ export function SiteHeader({
           <nav className="hidden items-center gap-1 lg:flex">
             <NavLink
               href={`/${lang}/explore`}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground aria-[current=page]:bg-surface-muted aria-[current=page]:text-foreground"
+              className="whitespace-nowrap rounded-lg px-2.5 py-2 text-sm xl:px-3 font-medium text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground aria-[current=page]:bg-surface-muted aria-[current=page]:text-foreground"
             >
               {dict.common.explore}
             </NavLink>
             {sections.market && (
               <NavLink
                 href={`/${lang}/market`}
-                className="rounded-lg px-3 py-2 text-sm font-bold text-primary transition-colors hover:bg-surface-muted aria-[current=page]:bg-primary-soft"
+                className="whitespace-nowrap rounded-lg px-2.5 py-2 text-sm xl:px-3 font-bold text-primary transition-colors hover:bg-surface-muted aria-[current=page]:bg-primary-soft"
               >
                 {dict.market.nav}
               </NavLink>
@@ -127,20 +127,20 @@ export function SiteHeader({
             {workItems.length === 1 && (
               <NavLink
                 href={workItems[0].href}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground aria-[current=page]:bg-surface-muted aria-[current=page]:text-foreground"
+                className="whitespace-nowrap rounded-lg px-2.5 py-2 text-sm xl:px-3 font-medium text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground aria-[current=page]:bg-surface-muted aria-[current=page]:text-foreground"
               >
                 {workItems[0].label}
               </NavLink>
             )}
             <NavLink
               href={`/${lang}/hub`}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground aria-[current=page]:bg-surface-muted aria-[current=page]:text-foreground"
+              className="whitespace-nowrap rounded-lg px-2.5 py-2 text-sm xl:px-3 font-medium text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground aria-[current=page]:bg-surface-muted aria-[current=page]:text-foreground"
             >
               {dict.common.hub}
             </NavLink>
             <NavLink
               href={`/${lang}/merchants`}
-              className="rounded-lg px-3 py-2 text-sm font-bold text-primary transition-colors hover:bg-surface-muted aria-[current=page]:bg-primary-soft"
+              className="whitespace-nowrap rounded-lg px-2.5 py-2 text-sm xl:px-3 font-bold text-primary transition-colors hover:bg-surface-muted aria-[current=page]:bg-primary-soft"
             >
               {dict.common.forMerchants}
             </NavLink>

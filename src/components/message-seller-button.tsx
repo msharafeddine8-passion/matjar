@@ -35,7 +35,9 @@ export function MessageSellerButton({
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      router.push(`/${lang}/login?next=/${lang}/market/${listingId}`);
+      router.push(
+        `/${lang}/login?reason=message&next=/${lang}/market/${listingId}`,
+      );
       return;
     }
     const { data, error } = await supabase.rpc("start_listing_conversation", {

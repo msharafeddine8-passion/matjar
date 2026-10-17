@@ -110,8 +110,8 @@ export function StoreReviews({
                         className="text-xs tabular-nums text-muted-foreground"
                       >
                         {new Date(r.reply_at).toLocaleDateString(
-                          lang === "ar" ? "ar" : "en",
-                          { year: "numeric", month: "short", day: "numeric" },
+                          lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
+                          { timeZone: "Asia/Beirut", year: "numeric", month: "short", day: "numeric" },
                         )}
                       </time>
                     )}

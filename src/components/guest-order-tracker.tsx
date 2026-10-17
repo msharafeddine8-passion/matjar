@@ -109,8 +109,8 @@ export function GuestOrderTracker({
               <p className="text-xs text-muted-foreground">
                 {t.placedOn}{" "}
                 {new Date(result.created_at).toLocaleDateString(
-                  lang === "ar" ? "ar" : "en",
-                  { year: "numeric", month: "short", day: "numeric" },
+                  lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
+                  { timeZone: "Asia/Beirut", year: "numeric", month: "short", day: "numeric" },
                 )}{" "}
                 · ${Number(result.total).toLocaleString("en-US")}
               </p>
