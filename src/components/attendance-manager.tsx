@@ -163,7 +163,7 @@ export function AttendanceManager({
 
   // Digits are pinned to a numbering system for the same reason: node and the
   // phone do not agree on what plain "ar" means.
-  const numLocale = lang === "ar" ? "ar-u-nu-arab" : lang;
+  const numLocale = lang === "ar" ? "ar-LB-u-nu-latn" : lang;
 
   // Clock times stay Latin and 24-hour, matching the booking screens — a punch
   // is a reading off a machine, and "17:05" is unambiguous in both languages.

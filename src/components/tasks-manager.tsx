@@ -101,9 +101,9 @@ export function TasksManager({
   }
 
   const fmtDue = (iso: string) =>
-    new Date(`${iso}T00:00:00`).toLocaleDateString(
-      lang === "ar" ? "ar" : "en",
-      { month: "short", day: "numeric" },
+    new Date(`${iso}T00:00:00Z`).toLocaleDateString(
+      lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
+      { month: "short", day: "numeric", timeZone: "UTC" },
     );
 
   const row = (task: TaskRow) => {

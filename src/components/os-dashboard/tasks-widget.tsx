@@ -63,9 +63,9 @@ export function TasksWidget({
               </span>
               {t.due_on && (
                 <span className="shrink-0 text-[11px] font-bold tabular-nums text-muted-foreground">
-                  {new Date(`${t.due_on}T00:00:00`).toLocaleDateString(
-                    lang === "ar" ? "ar" : "en",
-                    { month: "short", day: "numeric" },
+                  {new Date(`${t.due_on}T00:00:00Z`).toLocaleDateString(
+                    lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
+                    { month: "short", day: "numeric", timeZone: "UTC" },
                   )}
                 </span>
               )}

@@ -119,7 +119,7 @@ export function isoToBeirutWall(iso: string): string {
 }
 
 /**
- * "٧ س ٣٠ د" / "7 h 30 m". Digits follow the locale, the unit letters come from
+ * "7 س 30 د" / "7 h 30 m". Digits follow the locale, the unit letters come from
  * the dictionary — never spelled out here, or the screen ships Arabic strings
  * hidden inside a helper where no translator will find them.
  */
@@ -133,8 +133,9 @@ export function formatDuration(
   // The numbering system is named rather than inferred. Node and the browser do
   // not agree on what a plain "ar" means — this machine's ICU answers 7 where a
   // phone answers ٧ — and a component that renders on both would hydrate with a
-  // mismatch. Naming it makes the two sides identical by construction.
-  const n = new Intl.NumberFormat(lang === "ar" ? "ar-u-nu-arab" : lang);
+  // mismatch. Naming it makes the two sides identical by construction — and
+  // it is Latin, like every other number a merchant reads here.
+  const n = new Intl.NumberFormat(lang === "ar" ? "ar-LB-u-nu-latn" : lang);
   const h = Math.floor(total / 60);
   const m = total % 60;
   if (h === 0) return `${n.format(m)} ${minsUnit}`;
