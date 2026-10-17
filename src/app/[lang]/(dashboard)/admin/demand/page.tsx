@@ -8,6 +8,7 @@ import {
   type DemandRequestRow,
   type DemandSummaryRow,
 } from "./demand-admin-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 // Unmet demand: zero-result searches (search_logs) and «ما لقيت يلي بدّك ياه»
 // requests (demand_requests, migration 0306) side by side.
@@ -54,7 +55,7 @@ export default async function AdminDemandPage({
   return (
     <AdminDemandClient
       lang={lang}
-      dict={dict}
+      dict={dictSlice(dict, ["catalog", "common", "demand"])}
       days={days}
       summary={summary}
       recent={recent}

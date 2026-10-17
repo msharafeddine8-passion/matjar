@@ -20,6 +20,7 @@ import {
   type SupplierOption,
 } from "@/components/receive-stock-form";
 import { requireModuleAccess } from "@/lib/staff-access";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -148,7 +149,7 @@ export default async function StoreInventoryPage({
         <div className="mt-6">
           <InventoryManager
             lang={lang as Locale}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "os"])}
             products={(productsData ?? []) as InventoryProduct[]}
             movements={(movementsData ?? []) as unknown as Movement[]}
             branchCount={branchCount ?? 0}

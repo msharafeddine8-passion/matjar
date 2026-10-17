@@ -7,6 +7,7 @@ import {
   AdminMessagesClient,
   type MessageRow,
 } from "@/components/admin-messages-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminMessagesPage({
   params,
@@ -80,5 +81,5 @@ export default async function AdminMessagesPage({
     store: m.conversation_id ? storeByConv.get(m.conversation_id) ?? null : null,
   }));
 
-  return <AdminMessagesClient lang={lang} dict={dict} rows={rows} />;
+  return <AdminMessagesClient lang={lang} dict={dictSlice(dict, ["admin", "common"])} rows={rows} />;
 }

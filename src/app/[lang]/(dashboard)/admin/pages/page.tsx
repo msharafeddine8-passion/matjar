@@ -4,6 +4,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdminSection } from "@/lib/admin-guard";
 import { AdminPagesClient, type PageRow } from "@/components/admin-pages-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminPagesPage({
   params,
@@ -39,5 +40,5 @@ export default async function AdminPagesPage({
     published: r.published,
   }));
 
-  return <AdminPagesClient lang={lang} dict={dict} pages={pages} />;
+  return <AdminPagesClient lang={lang} dict={dictSlice(dict, ["admin", "auth", "common"])} pages={pages} />;
 }

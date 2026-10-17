@@ -9,6 +9,7 @@ import {
   AdminModerationClient,
   type ModerationItem,
 } from "@/components/admin-moderation-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminWholesalePage({
   params,
@@ -71,7 +72,7 @@ export default async function AdminWholesalePage({
   return (
     <AdminModerationClient
       lang={lang}
-      dict={dict}
+      dict={dictSlice(dict, ["admin", "common"])}
       table="wholesale_products"
       title={dict.admin.wholesale.title}
       subtitle={dict.admin.wholesale.subtitle}

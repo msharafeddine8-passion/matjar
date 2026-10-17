@@ -28,6 +28,7 @@ import {
   loadWaTemplates,
 } from "@/lib/wa-actions-server";
 import { requireModuleAccess } from "@/lib/staff-access";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -287,7 +288,7 @@ export default async function StoreBookingsPage({
           <div className="mt-3">
             <BookingReschedule
               bookingId={b.id}
-              dict={dict}
+              dict={dictSlice(dict, ["booking", "common"])}
               initialDate={b.requested_date}
               initialTime={b.requested_time}
               guest={guest}
@@ -371,7 +372,7 @@ export default async function StoreBookingsPage({
           <>
             <BookingsCalendar
               lang={lang}
-              dict={dict}
+              dict={dictSlice(dict, ["booking"])}
               bookings={calendarBookings}
               category={category}
             />

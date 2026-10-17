@@ -7,6 +7,7 @@ import {
   AdminQuestionsClient,
   type QuestionRow,
 } from "@/components/admin-questions-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminQuestionsPage({
   params,
@@ -65,5 +66,5 @@ export default async function AdminQuestionsPage({
     createdAt: q.created_at,
   }));
 
-  return <AdminQuestionsClient lang={lang} dict={dict} rows={rows} />;
+  return <AdminQuestionsClient lang={lang} dict={dictSlice(dict, ["admin", "common"])} rows={rows} />;
 }

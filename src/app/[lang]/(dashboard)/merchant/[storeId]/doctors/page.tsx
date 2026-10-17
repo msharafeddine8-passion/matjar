@@ -17,6 +17,7 @@ import { sectorHasTeam, sectorTeamMeta } from "@/lib/sectors";
 import { toCategoryKey } from "@/lib/catalog";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import { beirutYmd } from "@/lib/quick-panel";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -147,7 +148,7 @@ export default async function StoreDoctorsPage({
         <div className="mt-6">
           <DoctorManager
             storeId={storeId}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "common", "merchant"])}
             doctors={doctors}
             services={services}
             assignments={assignments}
@@ -156,7 +157,7 @@ export default async function StoreDoctorsPage({
           />
           <ProviderHours
             storeId={storeId}
-            dict={dict}
+            dict={dictSlice(dict, ["common", "merchant"])}
             doctors={doctors.map((d) => ({ id: d.id, name: d.name }))}
             initialRules={hourRules}
             initialExceptions={hourExceptions}

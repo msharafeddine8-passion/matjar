@@ -20,6 +20,7 @@ import { planCopy } from "@/lib/plan-copy";
 import { Money } from "@/components/ui/money";
 import { CardList, CardRow } from "@/components/ui/card";
 import { MerchantItemAvailability } from "@/components/merchant/merchant-item-availability";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -158,7 +159,7 @@ export default async function StoreItemsPage({
           <SectionManager
             storeId={storeId}
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["common", "merchant"])}
             initial={sections}
           />
         </div>
@@ -320,7 +321,7 @@ export default async function StoreItemsPage({
           ) : category === "services" || category === "healthcare" ? (
             <ServiceForm
               storeId={storeId}
-              dict={dict}
+              dict={dictSlice(dict, ["auth", "merchant", "os"])}
               lang={lang}
               sections={sections}
             />
@@ -329,7 +330,7 @@ export default async function StoreItemsPage({
               storeId={storeId}
               lang={lang}
               category={category}
-              dict={dict}
+              dict={dictSlice(dict, ["auth", "merchant", "os"])}
               addKey={mod.addKey}
               simplified={mod.simplifiedItem}
               sections={sections}

@@ -16,6 +16,7 @@ import {
 } from "@/components/product-edit-form";
 import { unitPricingValue } from "@/lib/unit-pricing";
 import { beirutYmd } from "@/lib/quick-panel";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -230,7 +231,7 @@ export default async function EditProductPage({
             productId={productId}
             lang={lang}
             category={category}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "flash", "merchant", "store"])}
             simplified={mod.simplifiedItem}
             initial={initial}
             sections={sections}

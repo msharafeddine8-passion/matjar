@@ -10,6 +10,7 @@ import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
 import { CouponManager, type Coupon } from "@/components/coupon-manager";
 import { ChevronPrev } from "@/components/ui/directional-icon";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -65,7 +66,7 @@ export default async function StoreCouponsPage({
           {dict.merchant.coupons.title}
         </h1>
         <div className="mt-6">
-          <CouponManager storeId={storeId} dict={dict} coupons={coupons} />
+          <CouponManager storeId={storeId} dict={dictSlice(dict, ["auth", "common", "merchant"])} coupons={coupons} />
         </div>
         {/* Loyalty card + gift cards (0310) sit beside coupons: the same
             owner, the same Pro floor, the same "bring them back" job. */}

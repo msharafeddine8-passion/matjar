@@ -16,6 +16,7 @@ import {
   validateStorePublic,
 } from "@/lib/data-quality";
 import { AdminStoresClient, type AdminStore } from "@/components/admin-stores-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 // commercial_reg_no, status_reason and status_changed_by are not on this row:
 // 0314 revokes them from every client role, and they arrive through
@@ -190,5 +191,5 @@ export default async function AdminStoresPage({
     };
   });
 
-  return <AdminStoresClient lang={lang} dict={dict} stores={stores} />;
+  return <AdminStoresClient lang={lang} dict={dictSlice(dict, ["admin", "auth", "common", "dataQuality"])} stores={stores} />;
 }

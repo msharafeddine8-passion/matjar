@@ -7,6 +7,7 @@ import {
   AdminDealsClient,
   type DealRow,
 } from "@/components/admin-deals-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminDealsPage({
   params,
@@ -65,5 +66,5 @@ export default async function AdminDealsPage({
     store: r.stores?.name ?? null,
   }));
 
-  return <AdminDealsClient lang={lang} dict={dict} rows={rows} />;
+  return <AdminDealsClient lang={lang} dict={dictSlice(dict, ["admin", "common"])} rows={rows} />;
 }

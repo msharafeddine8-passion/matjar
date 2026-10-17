@@ -11,6 +11,7 @@ import { LoadError } from "@/components/load-error";
 import { TasksManager, type TaskRow } from "@/components/tasks-manager";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import { requireModuleAccess } from "@/lib/staff-access";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -81,7 +82,7 @@ export default async function StoreTasksPage({
             <TasksManager
               storeId={storeId}
               lang={lang as Locale}
-              dict={dict}
+              dict={dictSlice(dict, ["auth", "common", "merchant", "os"])}
               tasks={tasks}
             />
           </div>

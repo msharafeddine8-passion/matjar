@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
 import { UnitManager, type UnitRow } from "@/components/unit-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -68,7 +69,7 @@ export default async function StoreUnitsPage({
           {t.title}
         </h1>
         <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
-        <UnitManager storeId={storeId} dict={dict} initial={units} />
+        <UnitManager storeId={storeId} dict={dictSlice(dict, ["auth", "catalogItem", "common", "os"])} initial={units} />
       </Container>
     </div>
   );

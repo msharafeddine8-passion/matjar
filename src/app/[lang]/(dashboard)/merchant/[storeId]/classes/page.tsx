@@ -7,6 +7,7 @@ import { Container } from "@/components/ui/container";
 import { ClassesManager, type ClassRow } from "@/components/classes-manager";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import { requireModuleAccess } from "@/lib/staff-access";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -70,7 +71,7 @@ export default async function StoreClassesPage({
           <ClassesManager
             storeId={storeId}
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "catalogItem", "classes", "common", "merchant"])}
             classes={classes}
           />
         </div>

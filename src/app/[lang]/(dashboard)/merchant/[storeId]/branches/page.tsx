@@ -9,6 +9,7 @@ import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
 import { BranchManager, type BranchRow } from "@/components/branch-manager";
 import { ChevronPrev } from "@/components/ui/directional-icon";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -72,7 +73,7 @@ export default async function StoreBranchesPage({
         <BranchManager
           storeId={storeId}
           lang={lang}
-          dict={dict}
+          dict={dictSlice(dict, ["common", "os"])}
           initial={branches}
           stockSeparate={
             (store as unknown as { branch_stock_separate: boolean | null })

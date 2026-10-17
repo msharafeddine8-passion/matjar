@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Container } from "@/components/ui/container";
 import { ResourcesManager, type Resource } from "@/components/resources-manager";
 import { ChevronPrev } from "@/components/ui/directional-icon";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -65,7 +66,7 @@ export default async function StoreResourcesPage({
           <ResourcesManager
             storeId={storeId}
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "catalogItem", "common", "merchant", "resources"])}
             resources={resources}
           />
         </div>

@@ -19,6 +19,7 @@ import {
   type PosLocation,
 } from "@/components/pos-terminal";
 import { requireModuleAccess } from "@/lib/staff-access";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -133,7 +134,7 @@ export default async function StorePosPage({
         <div className="mt-6">
           <PosTerminal
             storeId={storeId}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "loyaltyCards", "os"])}
             products={(productsData ?? []) as PosProduct[]}
             customers={(customersData ?? []) as PosCustomer[]}
             locations={(locationsData ?? []) as PosLocation[]}

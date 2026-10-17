@@ -13,6 +13,7 @@ import { LoadError } from "@/components/load-error";
 import { ExpenseManager, type Expense } from "@/components/expense-manager";
 import { BooksLock } from "@/components/books-lock";
 import { requireModuleAccess } from "@/lib/staff-access";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -171,7 +172,7 @@ export default async function AccountingPage({
         )}
 
         <div className="mt-6">
-          <ExpenseManager storeId={storeId} dict={dict} expenses={expenses} />
+          <ExpenseManager storeId={storeId} dict={dictSlice(dict, ["auth", "common", "merchant"])} expenses={expenses} />
         </div>
         </>
         )}

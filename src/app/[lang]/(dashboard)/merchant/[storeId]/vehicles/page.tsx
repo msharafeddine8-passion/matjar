@@ -11,6 +11,7 @@ import {
   VehicleManager,
   type VehicleRow,
 } from "@/components/rental/vehicle-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -74,7 +75,7 @@ export default async function StoreVehiclesPage({
           {t.title}
         </h1>
         <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
-        <VehicleManager storeId={storeId} dict={dict} initial={vehicles} />
+        <VehicleManager storeId={storeId} dict={dictSlice(dict, ["auth", "catalogItem", "common", "os"])} initial={vehicles} />
       </Container>
     </div>
   );

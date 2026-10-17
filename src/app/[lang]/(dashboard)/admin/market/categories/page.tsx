@@ -7,6 +7,7 @@ import {
   MarketCategoryManager,
   type MarketCategoryRow,
 } from "@/components/market-category-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminMarketCategoriesPage({
   params,
@@ -26,6 +27,6 @@ export default async function AdminMarketCategoriesPage({
   const categories = (data ?? []) as MarketCategoryRow[];
 
   return (
-    <MarketCategoryManager lang={lang} dict={dict} categories={categories} />
+    <MarketCategoryManager lang={lang} dict={dictSlice(dict, ["admin", "auth", "common"])} categories={categories} />
   );
 }

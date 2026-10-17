@@ -15,6 +15,7 @@ import {
   type SupplierTx,
 } from "@/components/suppliers-manager";
 import { requireModuleAccess } from "@/lib/staff-access";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -97,7 +98,7 @@ export default async function StoreSuppliersPage({
           <SuppliersManager
             storeId={storeId}
             lang={lang as Locale}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "common", "merchant", "os"])}
             suppliers={(suppliersData ?? []) as SupplierRow[]}
             transactions={(txData ?? []) as SupplierTx[]}
           />

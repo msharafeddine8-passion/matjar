@@ -16,6 +16,7 @@ import {
   AdminMarketQueue,
   type QueueRow,
 } from "@/components/admin-market-queue";
+import { dictSlice } from "@/lib/dict-slice";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -196,7 +197,7 @@ export default async function AdminMarketQueuePage({
   return (
     <AdminMarketQueue
       lang={lang}
-      dict={dict}
+      dict={dictSlice(dict, ["admin", "common", "moderation"])}
       items={items}
       sellerHistoryAvailable={Boolean(sellers)}
     />

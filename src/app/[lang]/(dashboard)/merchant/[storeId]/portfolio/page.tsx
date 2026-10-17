@@ -9,6 +9,7 @@ import {
   PortfolioManager,
   type PortfolioItem,
 } from "@/components/portfolio-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -68,7 +69,7 @@ export default async function StorePortfolioPage({
           <PortfolioManager
             storeId={storeId}
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "catalogItem", "common", "merchant", "portfolio"])}
             items={items}
           />
         </div>

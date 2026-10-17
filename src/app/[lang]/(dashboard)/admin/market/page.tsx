@@ -7,6 +7,7 @@ import {
   AdminMarketClient,
   type AdminListing,
 } from "@/components/admin-market-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminMarketPage({
   params,
@@ -67,7 +68,7 @@ export default async function AdminMarketPage({
   return (
     <AdminMarketClient
       lang={lang}
-      dict={dict}
+      dict={dictSlice(dict, ["admin", "common", "moderation"])}
       listings={listings}
       openReports={openReports ?? 0}
     />

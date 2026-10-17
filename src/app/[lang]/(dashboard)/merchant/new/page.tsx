@@ -6,6 +6,7 @@ import { regions, categoryGroup, toCategoryKey } from "@/lib/catalog";
 import { Check } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { StoreForm } from "@/components/store-form";
+import { dictSlice } from "@/lib/dict-slice";
 
 type BusinessTypeRow = {
   id: string;
@@ -92,7 +93,7 @@ export default async function NewStorePage({
         <div className="mt-6">
           <StoreForm
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["groups", "merchant", "store"])}
             businessTypes={businessTypes}
             regions={regionOptions}
           />

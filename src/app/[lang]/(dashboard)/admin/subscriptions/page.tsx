@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdminSection } from "@/lib/admin-guard";
 import type { StorePlan } from "@/lib/plan-tiers";
 import { AdminSubsClient, type SubRow } from "@/components/admin-subs-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminSubscriptionsPage({
   params,
@@ -64,5 +65,5 @@ export default async function AdminSubscriptionsPage({
     payments: payMap.get(s.id) ?? 0,
   }));
 
-  return <AdminSubsClient lang={lang} dict={dict} rows={rows} />;
+  return <AdminSubsClient lang={lang} dict={dictSlice(dict, ["admin", "auth", "common"])} rows={rows} />;
 }

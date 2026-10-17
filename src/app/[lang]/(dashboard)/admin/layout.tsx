@@ -4,6 +4,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { AdminNav } from "@/components/admin-nav";
 import type { AdminAccess } from "@/lib/admin-sections";
+import { dictSlice } from "@/lib/dict-slice";
 
 // All /admin pages share the platform-admin gate + section nav. Access is
 // either "all" (super_admin) or the explicit set of granted sections
@@ -44,7 +45,7 @@ export default async function AdminLayout({
 
   return (
     <>
-      <AdminNav lang={lang} dict={dict} access={access} />
+      <AdminNav lang={lang} dict={dictSlice(dict, ["admin", "demand"])} access={access} />
       {children}
     </>
   );

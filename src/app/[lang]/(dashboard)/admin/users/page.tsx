@@ -4,6 +4,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdminSection } from "@/lib/admin-guard";
 import { AdminUsersClient, type AdminUser } from "@/components/admin-users-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminUsersPage({
   params,
@@ -37,7 +38,7 @@ export default async function AdminUsersPage({
   return (
     <AdminUsersClient
       lang={lang}
-      dict={dict}
+      dict={dictSlice(dict, ["admin", "auth", "common"])}
       users={users}
       currentUserId={user?.id ?? ""}
       viewerIsSuper={viewerIsSuper}

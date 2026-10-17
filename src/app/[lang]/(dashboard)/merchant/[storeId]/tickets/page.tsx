@@ -14,6 +14,7 @@ import {
   type TicketTypeRow,
 } from "@/components/ticket-type-manager";
 import { CardList, CardRow } from "@/components/ui/card";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -103,7 +104,7 @@ export default async function StoreTicketsPage({
         {typeErr ? (
           <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-6" />
         ) : (
-          <TicketTypeManager storeId={storeId} dict={dict} initial={types} />
+          <TicketTypeManager storeId={storeId} dict={dictSlice(dict, ["auth", "catalogItem", "common", "os"])} initial={types} />
         )}
 
         <h2 className="mt-12 text-xl font-extrabold tracking-tight">
