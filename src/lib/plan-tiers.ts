@@ -20,7 +20,11 @@ export type PlanConfig = {
 // closed with the promo prices still the ones being advertised to merchants.
 // Same prices; only the deadline moved. The copy that names the window reads
 // this date through {date}, so nothing else has to change when it moves again.
-export const PROMO_END = "2026-09-30T23:59:59+03:00"; // Asia/Beirut
+// Re-opened on 2026-10-17 (it had lapsed on 09-30) and run to the end of the
+// year, again at the owner's request — same prices. The offset is +02:00, not
+// +03:00: Lebanon leaves summer time on the last Sunday of October, so 31 Dec
+// is on EET. With +03:00 the promo would close an hour early, at 23:00 Beirut.
+export const PROMO_END = "2026-12-31T23:59:59+02:00"; // Asia/Beirut
 
 export const PLAN_TIERS: Record<PlanKey, PlanConfig> = {
   basic: {
