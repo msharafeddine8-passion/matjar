@@ -12,13 +12,17 @@ const OBJ = `${SB}/storage/v1/object/public/store-assets/abc/photo.png`;
 describe("image loader", () => {
   it("routes a Supabase public object through Supabase's own resizer", () => {
     const out = loader({ src: OBJ, width: 640, quality: 75 });
-    expect(out).toBe(`${SB}/storage/v1/render/image/public/store-assets/abc/photo.png?width=640&quality=75`);
+    expect(out).toBe(`${SB}/storage/v1/render/image/public/store-assets/abc/photo.png?width=640&resize=contain&quality=75`);
   });
 
   it("never leaves a Supabase object on the path Vercel would optimize", () => {
     const out = loader({ src: OBJ, width: 384 });
     expect(out).not.toContain("/storage/v1/object/public/");
     expect(out).toContain("/storage/v1/render/image/public/");
+  });
+
+  it("keeps the aspect ratio (resize=contain) so Supabase never crops to the original height", () => {
+    expect(loader({ src: OBJ, width: 128 })).toContain("resize=contain");
   });
 
   it("defaults quality to 75 when next/image does not pass one", () => {

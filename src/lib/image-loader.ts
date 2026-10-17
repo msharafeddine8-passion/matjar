@@ -52,5 +52,9 @@ export default function supabaseImageLoader({
   // codebase produces, but a second "?" would corrupt the URL, so join safely.
   const base = src.replace(OBJECT, RENDER);
   const sep = base.includes("?") ? "&" : "?";
-  return `${base}${sep}width=${width}&quality=${quality ?? 75}`;
+  // resize=contain keeps the aspect ratio. With width alone Supabase keeps the
+  // ORIGINAL height and crops the sides (a 1283x1506 cover asked at 640 came
+  // back 640x1506), so every logo, cover and thumbnail showed a zoomed-in
+  // centre strip. Share images (site.ts) already passed it.
+  return `${base}${sep}width=${width}&resize=contain&quality=${quality ?? 75}`;
 }
