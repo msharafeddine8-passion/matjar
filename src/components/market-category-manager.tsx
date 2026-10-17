@@ -39,7 +39,7 @@ export function MarketCategoryManager({
   categories,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "auth" | "common">;
   categories: MarketCategoryRow[];
 }) {
   const router = useRouter();

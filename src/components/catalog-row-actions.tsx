@@ -51,7 +51,7 @@ export type CatalogTable =
   | "store_portfolio";
 
 /** Delete + show/hide for one table, with the copy and the 23503 handling. */
-export function useCatalogRowOps(table: CatalogTable, dict: Dictionary) {
+export function useCatalogRowOps(table: CatalogTable, dict: Pick<Dictionary, "catalogItem" | "common">) {
   const router = useRouter();
   const confirm = useConfirm();
   const t = dict.catalogItem;
@@ -136,7 +136,7 @@ export function CatalogRowActions({
   onToggleActive,
   onDelete,
 }: {
-  dict: Dictionary;
+  dict: Pick<Dictionary, "catalogItem" | "common">;
   deleteLabel: string;
   busy?: boolean;
   /** Omit for a table with no `active` flag — no hide button is drawn. */

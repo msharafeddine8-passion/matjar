@@ -14,7 +14,7 @@ export function HoursEditor({
   initial,
   initialSlot,
 }: {
-  dict: Dictionary;
+  dict: Pick<Dictionary, "os">;
   initial: WeekHours | null;
   initialSlot: number;
 }) {

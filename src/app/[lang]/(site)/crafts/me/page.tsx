@@ -15,6 +15,7 @@ import {
   CraftWorksManager,
   type CraftWork,
 } from "@/components/crafts/craft-works-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 // The tradesman's own screen.
 //
@@ -226,7 +227,7 @@ export default async function CraftMePage({
             works={(p.craft_works ?? [])
               .slice()
               .sort((a, b) => a.sort_order - b.sort_order)}
-            dict={dict}
+            dict={dictSlice(dict, ["upload"])}
             labels={{
               title: t.meWorks,
               body: t.meWorksBody,

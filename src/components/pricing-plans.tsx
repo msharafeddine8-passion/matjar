@@ -35,7 +35,7 @@ export function PricingPlans({
   lbpRate,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "pricing">;
   plans: Record<PlanKey, PlanConfig>;
   promoActive: boolean;
   daysLeft: number;

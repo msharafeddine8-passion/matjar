@@ -10,6 +10,7 @@ import {
   BusinessTypeManager,
   type BusinessType,
 } from "@/components/business-type-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminBusinessTypesPage({
   params,
@@ -89,7 +90,7 @@ export default async function AdminBusinessTypesPage({
           </Container>
         </div>
       )}
-      <BusinessTypeManager lang={lang} dict={dict} types={types} />
+      <BusinessTypeManager lang={lang} dict={dictSlice(dict, ["admin", "auth", "common"])} types={types} />
     </>
   );
 }

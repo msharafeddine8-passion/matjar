@@ -42,7 +42,7 @@ export function SectionManager({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "merchant">;
   initial: SectionRow[];
 }) {
   const router = useRouter();

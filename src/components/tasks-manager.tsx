@@ -36,7 +36,7 @@ export function TasksManager({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "merchant" | "os">;
   tasks: TaskRow[];
 }) {
   const router = useRouter();

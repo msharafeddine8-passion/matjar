@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileText, Send } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import type { SubDict } from "@/lib/dict-slice";
 import { createClient } from "@/lib/supabase/client";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { GalleryUpload } from "@/components/gallery-upload";
@@ -45,7 +46,7 @@ export function ServiceRequestForm({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common"> & SubDict<"os", "requestForm" | "requests">;
   /** The store own service names — the placeholder example is built from these
    *  so a marketing agency never shows an electrical-wiring example. */
   examples?: string[];

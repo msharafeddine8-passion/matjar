@@ -1274,7 +1274,7 @@ export default async function StoreOsHomePage({
                   </p>
                 </div>
               ) : (
-                <StoreShareCard code={s.short_code} slug={s.slug} baseUrl={SITE_URL} dict={dict} />
+                <StoreShareCard code={s.short_code} slug={s.slug} baseUrl={SITE_URL} dict={dictSlice(dict, ["share"])} />
               )}
             </div>
           )}

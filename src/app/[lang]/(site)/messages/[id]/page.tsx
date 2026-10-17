@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Container } from "@/components/ui/container";
 import { MessageThread, type ChatMessage } from "@/components/message-thread";
 import { ChevronPrev } from "@/components/ui/directional-icon";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -109,7 +110,7 @@ export default async function ThreadPage({
             conversationId={id}
             meId={user.id}
             initialMessages={(msgs ?? []) as ChatMessage[]}
-            dict={dict}
+            dict={dictSlice(dict, ["common", "messages"])}
             initialText={initialText}
           />
         </div>

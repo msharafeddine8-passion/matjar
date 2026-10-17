@@ -16,7 +16,7 @@ export function JobPostForm({
   defaultCompany,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "jobs">;
   defaultCompany: string;
 }) {
   const router = useRouter();

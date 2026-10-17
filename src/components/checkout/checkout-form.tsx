@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Check, Clock, Truck, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Locale } from "@/i18n/config";
-import type { Dictionary } from "@/i18n/get-dictionary";
+import type { CheckoutDict } from "@/lib/checkout-dict";
 import { formatLbp, formatUsd } from "@/lib/currency";
 import { Money } from "@/components/ui/money";
 import { localized } from "@/lib/i18n-field";
@@ -140,7 +140,7 @@ export function CheckoutForm({
   extraCustomFields,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: CheckoutDict;
   store: StoreCheckout;
   viewer: CheckoutViewer;
   /** The basket as the customer reads it. */

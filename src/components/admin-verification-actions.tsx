@@ -17,7 +17,7 @@ export function AdminVerificationActions({
   dict,
 }: {
   id: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "auth" | "common" | "verifications">;
 }) {
   const router = useRouter();
   const confirm = useConfirm();

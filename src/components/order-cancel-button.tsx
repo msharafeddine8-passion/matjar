@@ -16,7 +16,7 @@ export function OrderCancelButton({
 }: {
   id: string;
   kind: "order" | "booking";
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "booking" | "common" | "orders">;
 }) {
   const router = useRouter();
   const confirm = useConfirm();

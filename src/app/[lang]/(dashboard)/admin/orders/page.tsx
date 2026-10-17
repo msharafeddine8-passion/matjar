@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { OrderPayments, type OrderPayment } from "@/components/order-payments";
+import { dictSlice } from "@/lib/dict-slice";
 
 type OrderRow = {
   id: string;
@@ -253,7 +254,7 @@ export default async function AdminOrdersPage({
                         orderTotal={Number(order.total ?? 0)}
                         orderStatus={order.status}
                         payments={paymentsByOrder.get(order.id) ?? []}
-                        dict={dict}
+                        dict={dictSlice(dict, ["common", "payments"])}
                       />
                     </div>
                   );

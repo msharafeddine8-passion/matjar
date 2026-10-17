@@ -66,7 +66,7 @@ export function AdminMarketQueue({
   sellerHistoryAvailable,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "common" | "moderation">;
   items: QueueRow[];
   /** false until migration 0313 (market_seller_facts + moderation_note). */
   sellerHistoryAvailable: boolean;

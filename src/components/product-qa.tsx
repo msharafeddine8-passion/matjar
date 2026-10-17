@@ -22,7 +22,7 @@ export function ProductQA({
   questions: ProductQuestion[];
   canAsk: boolean;
   canAnswer: boolean;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "productQa">;
   /** Variant wording from the offering resolver — a clinic page must not ask
    *  "عندك سؤال عن المنتج؟". Omitted = the product wording. */
   askPlaceholder?: string;

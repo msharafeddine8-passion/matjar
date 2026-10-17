@@ -96,6 +96,7 @@ import {
   StaySearch,
   TimeslotBooking,
 } from "@/components/store/lazy-engines";
+import { dictSlice, subDict } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -846,7 +847,7 @@ export default async function StorePage({
         <ServiceRequestForm
           storeId={id}
           lang={lang}
-          dict={dict}
+          dict={{ ...dictSlice(dict, ["common"]), ...subDict(dict, "os", ["requestForm", "requests"]) }}
           examples={store.products
             .filter((p) => p.itemKind === "service")
             .map((p) => p.name)}
@@ -859,7 +860,7 @@ export default async function StorePage({
         <LeadForm
           storeId={id}
           lang={lang}
-          dict={dict}
+          dict={dictSlice(dict, ["common", "leadForm"])}
           kinds={leadKinds(store.category)}
         />
       </div>
@@ -867,19 +868,19 @@ export default async function StorePage({
 
     stay: store.isReal && experience.showStay && (
       <div className="mt-10">
-        <StaySearch storeId={id} lang={lang} dict={dict} />
+        <StaySearch storeId={id} lang={lang} dict={dictSlice(dict, ["common", "stay"])} />
       </div>
     ),
 
     rental: store.isReal && experience.showRental && rentalVehicles > 0 && (
       <div className="mt-10">
-        <RentalSearch storeId={id} lang={lang} dict={dict} />
+        <RentalSearch storeId={id} lang={lang} dict={dictSlice(dict, ["common", "rental"])} />
       </div>
     ),
 
     tickets: store.isReal && experience.showTickets && (
       <div className="mt-10">
-        <EventTickets storeId={id} lang={lang} dict={dict} />
+        <EventTickets storeId={id} lang={lang} dict={dictSlice(dict, ["common", "tickets"])} />
       </div>
     ),
 
@@ -887,7 +888,7 @@ export default async function StorePage({
       <TimeslotBooking
         storeId={id}
         lang={lang}
-        dict={dict}
+        dict={dictSlice(dict, ["auth", "booking", "timeslot"])}
         resources={resources}
         customerName={currentUser?.name ?? null}
         customerPhone={currentUser?.phone ?? null}
@@ -907,7 +908,7 @@ export default async function StorePage({
       <ClassesBooking
         storeId={id}
         lang={lang}
-        dict={dict}
+        dict={dictSlice(dict, ["booking", "classes"])}
         classes={classes}
         customerName={currentUser?.name ?? null}
         customerPhone={currentUser?.phone ?? null}
@@ -915,7 +916,7 @@ export default async function StorePage({
     ),
 
     reservations: store.isReal && enabledModules.has("reservations") && (
-      <ReservationForm storeId={id} lang={lang} dict={dict} />
+      <ReservationForm storeId={id} lang={lang} dict={dictSlice(dict, ["common", "reservations"])} />
     ),
 
     courses: courses.length > 0 && (
@@ -1233,7 +1234,7 @@ export default async function StorePage({
               entityType="store"
               entityId={id}
               lang={lang}
-              dict={dict}
+              dict={{ ...dictSlice(dict, ["reportContent"]), ...subDict(dict, "auth", ["errorGeneric"]) }}
             />
           </div>
         )}

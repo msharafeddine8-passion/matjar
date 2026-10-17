@@ -17,7 +17,7 @@ export function WishlistButton({
   productId: string;
   wishlisted: boolean;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "product">;
 }) {
   const router = useRouter();
   const [on, setOn] = useState(wishlisted);

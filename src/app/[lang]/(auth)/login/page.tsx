@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { LoginForm } from "@/components/auth-forms";
+import { dictSlice } from "@/lib/dict-slice";
 
 // The tab said only «متجر | Matjar» — the layout default — so a visitor
 // bounced here from «راسل البائع» could not tell from the tab what page it was.
@@ -26,5 +27,5 @@ export default async function LoginPage({
   if (!isLocale(lang)) notFound();
   const dict = await getDictionary(lang);
 
-  return <LoginForm lang={lang} dict={dict} />;
+  return <LoginForm lang={lang} dict={dictSlice(dict, ["auth", "common"])} />;
 }

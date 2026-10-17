@@ -9,6 +9,7 @@ import {
   CoursesManager,
   type CourseRow,
 } from "@/components/courses-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -68,7 +69,7 @@ export default async function StoreCoursesPage({
           <CoursesManager
             storeId={storeId}
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "catalogItem", "common", "courses", "merchant"])}
             courses={courses}
           />
         </div>

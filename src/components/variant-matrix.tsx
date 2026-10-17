@@ -80,7 +80,7 @@ export function VariantMatrix({
   groups,
   onChange,
 }: {
-  dict: Dictionary;
+  dict: Pick<Dictionary, "merchant">;
   groups: ColorGroup[];
   onChange: (next: ColorGroup[]) => void;
 }) {

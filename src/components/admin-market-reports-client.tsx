@@ -30,7 +30,7 @@ export function AdminMarketReportsClient({
   reports,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "common" | "market" | "moderation">;
   reports: AdminReport[];
 }) {
   const router = useRouter();

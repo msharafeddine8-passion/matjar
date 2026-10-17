@@ -246,7 +246,29 @@ export function SiteHeader({
           )}
           <MobileMenu
             lang={lang}
-            dict={dictSlice(dict, ["auth", "bestSellers", "common", "crafts", "dashboard", "delivery", "flash", "freelance", "jobs", "map", "market", "mobileNav", "offers", "pricing", "wholesale"])}
+            labels={{
+              shop: dict.mobileNav.shop,
+              explore: dict.common.explore,
+              market: dict.market.nav,
+              offers: dict.offers.title,
+              flash: dict.flash.title,
+              bestSellers: dict.bestSellers.title,
+              workServices: dict.common.workServices,
+              jobs: dict.jobs.title,
+              freelance: dict.freelance.title,
+              crafts: dict.crafts.title,
+              wholesale: dict.wholesale.title,
+              delivery: dict.delivery.title,
+              more: dict.mobileNav.more,
+              forMerchants: dict.common.forMerchants,
+              hub: dict.common.hub,
+              map: dict.map.title,
+              pricing: dict.pricing.title,
+              dashboard: dict.dashboard.panel,
+              login: dict.common.login,
+              menu: dict.common.menu,
+              logout: dict.auth.logout,
+            }}
             sections={sections}
             user={user}
             dashboardHref={dashboardHref}

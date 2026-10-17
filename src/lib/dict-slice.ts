@@ -26,3 +26,29 @@ export function dictSlice<K extends keyof Dictionary>(
   for (const k of keys) out[k] = dict[k];
   return out;
 }
+
+/**
+ * One namespace cut down to the entries a component reads. For the large
+ * namespaces (`os` is ~33K characters, `loyaltyCards` ~9K) where a storefront
+ * component prints a single sub-object, a whole-namespace slice would still
+ * ship tens of kilobytes.
+ */
+export type SubDict<
+  N extends keyof Dictionary,
+  K extends keyof Dictionary[N],
+> = { [P in N]: Pick<Dictionary[N], K> };
+
+/**
+ * Runtime half of {@link SubDict}. The picked entries keep their object
+ * identity, so several components sharing one still dedupe in the payload.
+ *
+ * @example { ...dictSlice(dict, ["store"]), ...subDict(dict, "os", ["track"]) }
+ */
+export function subDict<
+  N extends keyof Dictionary,
+  K extends keyof Dictionary[N],
+>(dict: Dictionary, ns: N, keys: readonly K[]): SubDict<N, K> {
+  const part = {} as Pick<Dictionary[N], K>;
+  for (const k of keys) part[k] = dict[ns][k];
+  return { [ns]: part } as SubDict<N, K>;
+}

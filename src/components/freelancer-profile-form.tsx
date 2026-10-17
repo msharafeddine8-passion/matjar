@@ -15,7 +15,7 @@ export function FreelancerProfileForm({
   dict,
   initial,
 }: {
-  dict: Dictionary;
+  dict: Pick<Dictionary, "account" | "auth" | "freelance" | "wholesale">;
   initial: { bio: string; skills: string[] };
 }) {
   const router = useRouter();

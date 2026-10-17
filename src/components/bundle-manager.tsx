@@ -44,7 +44,7 @@ export function BundleManager({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "merchant">;
   components: Component[];
   bundles: BundleRow[];
 }) {

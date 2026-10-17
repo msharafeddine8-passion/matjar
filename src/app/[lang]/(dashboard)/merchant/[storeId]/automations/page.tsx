@@ -16,6 +16,7 @@ import {
   type LocationOption,
 } from "@/components/automation-manager";
 import { requireModuleAccess } from "@/lib/staff-access";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -113,7 +114,7 @@ export default async function StoreAutomationsPage({
           storeId={storeId}
           storeName={(store as { name: string }).name}
           lang={lang}
-          dict={dict}
+          dict={dictSlice(dict, ["common", "os"])}
           initial={automations}
           runs={runs}
           locations={locations}

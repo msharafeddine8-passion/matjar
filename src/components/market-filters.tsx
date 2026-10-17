@@ -36,7 +36,7 @@ export function MarketFilters({
   initial,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "market">;
   categories: MarketCategory[];
   cities: MarketCity[];
   regions?: MarketRegion[];

@@ -48,7 +48,7 @@ export function DeleteAccount({
   preview,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "account" | "common">;
   email: string;
   preview: DeletionPreview;
 }) {

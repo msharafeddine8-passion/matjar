@@ -56,7 +56,7 @@ export function DeliveryWindow({
   onChange,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "store">;
   /** The store's own opening hours (stores.hours). The picker renders nothing
    *  at all when the merchant has not set any — a picker with nothing safe to
    *  offer is worse than none. */

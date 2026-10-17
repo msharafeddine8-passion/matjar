@@ -18,6 +18,7 @@ import {
 import { NextStepEmpty } from "@/components/os-dashboard/next-step-empty";
 import { requireModuleAccess } from "@/lib/staff-access";
 import { mergeCrmRows, type CrmRow } from "@/lib/crm-merge";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -176,7 +177,7 @@ export default async function StoreCustomersPage({
         <div className="mt-6">
           <CrmManager
             storeId={storeId}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "common", "merchant", "os"])}
             book={book}
             derived={derived}
             balances={balances}

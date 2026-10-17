@@ -42,7 +42,7 @@ export function UnitManager({
   initial,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "catalogItem" | "common" | "os">;
   initial: UnitRow[];
 }) {
   const router = useRouter();

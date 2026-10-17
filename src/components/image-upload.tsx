@@ -120,7 +120,7 @@ export function ImageUpload({
   /** CSS object-position for the preview, so it crops where the real one does. */
   objectPosition?: string;
   /** Optional — enables localized error text; falls back to Arabic if omitted. */
-  dict?: Dictionary;
+  dict?: Pick<Dictionary, "upload">;
   /**
    * Upload to this PRIVATE bucket instead of the public store-assets one.
    * `value` / `onChange` then carry the object PATH (`<folder>/<random>.<ext>`),

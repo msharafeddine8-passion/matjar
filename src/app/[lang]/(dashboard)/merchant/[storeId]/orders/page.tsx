@@ -29,6 +29,7 @@ import {
 } from "@/lib/wa-actions-server";
 import { requireModuleAccess } from "@/lib/staff-access";
 import { LoadError } from "@/components/load-error";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -367,7 +368,7 @@ export default async function StoreOrdersPage({
         ) : orders.length ? (
           <OrdersFilter
             orders={cards}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "common", "merchant", "orders", "os", "payments", "store", "waActions"])}
             lang={lang}
             storeId={storeId}
             storeName={(store as { name: string }).name}

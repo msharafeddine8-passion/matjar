@@ -39,7 +39,7 @@ export function MarketRegionManager({
   regions,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "common">;
   regions: MarketRegionRow[];
 }) {
   const router = useRouter();

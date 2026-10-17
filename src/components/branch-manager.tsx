@@ -64,7 +64,7 @@ export function BranchManager({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "os">;
   initial: BranchRow[];
   /** stores.branch_stock_separate — the merchant's own declaration (0301).
    *  Advisory: it changes the copy below and nothing about how stock moves. */

@@ -19,7 +19,7 @@ export function ReservationForm({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "reservations">;
 }) {
   const router = useRouter();
   const t = dict.reservations;

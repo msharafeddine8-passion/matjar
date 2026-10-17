@@ -39,7 +39,7 @@ export function InventoryManager({
   branchCount,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "os">;
   products: InventoryProduct[];
   movements: Movement[];
   /** How many branches this store has. ISS-023: every number on this screen is

@@ -16,7 +16,7 @@ export function ShareButton({
   compact = false,
 }: {
   title: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "store">;
   // Preferred share URL (e.g. the store's vanity link). Falls back to the
   // current page when omitted.
   url?: string;

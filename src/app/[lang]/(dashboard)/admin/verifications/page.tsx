@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AdminVerificationActions } from "@/components/admin-verification-actions";
+import { dictSlice } from "@/lib/dict-slice";
 
 type VerificationRow = {
   id: string;
@@ -151,7 +152,7 @@ export default async function AdminVerificationsPage({
                     </div>
                   </div>
 
-                  <AdminVerificationActions id={r.id} dict={dict} />
+                  <AdminVerificationActions id={r.id} dict={dictSlice(dict, ["admin", "auth", "common", "verifications"])} />
                 </div>
               ))}
             </div>

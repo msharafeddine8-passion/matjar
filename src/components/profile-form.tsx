@@ -13,7 +13,7 @@ export function ProfileForm({
   dict,
   initial,
 }: {
-  dict: Dictionary;
+  dict: Pick<Dictionary, "account" | "auth">;
   initial: { full_name: string; phone: string };
 }) {
   const router = useRouter();

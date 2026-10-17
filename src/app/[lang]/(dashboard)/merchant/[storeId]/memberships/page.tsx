@@ -10,6 +10,7 @@ import {
   MembershipsManager,
   type Plan,
 } from "@/components/memberships-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -71,7 +72,7 @@ export default async function StoreMembershipsPage({
           <MembershipsManager
             storeId={storeId}
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "catalogItem", "common", "memberships", "merchant"])}
             plans={plans}
           />
         </div>

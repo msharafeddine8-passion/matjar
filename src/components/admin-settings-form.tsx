@@ -17,7 +17,7 @@ export function AdminSettingsForm({
   dict,
   initialRate,
 }: {
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "common">;
   initialRate: string;
 }) {
   const router = useRouter();

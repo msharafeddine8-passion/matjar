@@ -7,6 +7,7 @@ import { regions } from "@/lib/catalog";
 import { Container } from "@/components/ui/container";
 import { EditStoreForm } from "@/components/edit-store-form";
 import { ChevronPrev } from "@/components/ui/directional-icon";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -101,7 +102,7 @@ export default async function EditStorePage({
           <EditStoreForm
             storeId={storeId}
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "merchant", "os", "store", "upload"])}
             businessTypes={businessTypes}
             regions={regionOptions}
             initial={store as StoreRow}

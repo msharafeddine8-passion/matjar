@@ -7,6 +7,7 @@ import {
   AdminDeliveryClient,
   type DeliveryCompany,
 } from "@/components/admin-delivery-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminDeliveryPage({
   params,
@@ -26,7 +27,7 @@ export default async function AdminDeliveryPage({
 
   return (
     <AdminDeliveryClient
-      dict={dict}
+      dict={dictSlice(dict, ["admin", "common"])}
       companies={(data ?? []) as DeliveryCompany[]}
     />
   );

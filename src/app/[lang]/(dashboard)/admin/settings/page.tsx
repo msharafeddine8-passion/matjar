@@ -7,6 +7,7 @@ import { requireAdminSection } from "@/lib/admin-guard";
 import { Container } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
 import { AdminSettingsForm } from "@/components/admin-settings-form";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminSettingsPage({
   params,
@@ -36,7 +37,7 @@ export default async function AdminSettingsPage({
           subtitle={dict.admin.platform.subtitle}
         />
         <div data-animate>
-          <AdminSettingsForm dict={dict} initialRate={rate} />
+          <AdminSettingsForm dict={dictSlice(dict, ["admin", "common"])} initialRate={rate} />
         </div>
       </Container>
     </div>

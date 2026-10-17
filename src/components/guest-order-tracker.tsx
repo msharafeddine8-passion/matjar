@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Search, Package } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Locale } from "@/i18n/config";
-import type { Dictionary } from "@/i18n/get-dictionary";
+import type { SubDict } from "@/lib/dict-slice";
 import { OrderTimeline, type OrderEvent } from "@/components/order-timeline";
 
 type Result = {
@@ -25,7 +25,7 @@ export function GuestOrderTracker({
 }: {
   orderId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: SubDict<"orders", "status"> & SubDict<"os", "track">;
 }) {
   const t = dict.os.track;
   const [phone, setPhone] = useState("");

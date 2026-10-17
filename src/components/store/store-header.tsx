@@ -25,6 +25,7 @@ import {
 } from "@/components/quick-action";
 import { StoreAbout } from "@/components/store/store-about";
 import { countLabel } from "@/lib/plural";
+import { dictSlice } from "@/lib/dict-slice";
 
 export function StoreHeader({
   store,
@@ -192,13 +193,13 @@ export function StoreHeader({
               storeId={id}
               following={isFollowing}
               lang={lang}
-              dict={dict}
+              dict={dictSlice(dict, ["store"])}
             />
           )}
           <ShareButton
             compact
             title={store.name}
-            dict={dict}
+            dict={dictSlice(dict, ["store"])}
             url={
               store.slug
                 ? `${SITE_URL}/${lang}/${store.slug}`
@@ -206,7 +207,7 @@ export function StoreHeader({
             }
           />
           {store.isReal && (
-            <MessageStoreButton compact storeId={id} lang={lang} dict={dict} />
+            <MessageStoreButton compact storeId={id} lang={lang} dict={dictSlice(dict, ["messages"])} />
           )}
           {store.phone && (
             <a

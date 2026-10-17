@@ -20,7 +20,7 @@ export function ListingFavoriteButton({
   favorited: boolean;
   savesCount: number;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "market">;
 }) {
   const router = useRouter();
   const [on, setOn] = useState(favorited);

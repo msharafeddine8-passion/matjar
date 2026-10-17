@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardBody } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { WholesaleForm } from "@/components/wholesale-form";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function NewWholesalePage({
   params,
@@ -53,7 +54,7 @@ export default async function NewWholesalePage({
 
         {store ? (
           <div className="mt-2">
-            <WholesaleForm lang={lang} dict={dict} sellerName={sellerName} />
+            <WholesaleForm lang={lang} dict={dictSlice(dict, ["account", "auth", "wholesale"])} sellerName={sellerName} />
           </div>
         ) : (
           // Wholesale posting is merchants-only: no store → show an upsell, not

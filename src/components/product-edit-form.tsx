@@ -109,7 +109,7 @@ export function ProductEditForm({
   productId: string;
   lang: Locale;
   category: CategoryKey;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "flash" | "merchant" | "store">;
   simplified?: boolean;
   initial: ProductInitial;
   sections?: SectionOption[];

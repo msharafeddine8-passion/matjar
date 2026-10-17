@@ -6,7 +6,7 @@ export function StatusPill({
   dict,
 }: {
   status: RunRow["status"];
-  dict: Dictionary;
+  dict: Pick<Dictionary, "os">;
 }) {
   const t = dict.os.automations.status;
   const map: Record<RunRow["status"], { cls: string; label: string }> = {

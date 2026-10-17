@@ -73,7 +73,7 @@ export function VerificationsManager({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "merchant" | "upload" | "verifications">;
   verifications: Verification[];
 }) {
   const router = useRouter();

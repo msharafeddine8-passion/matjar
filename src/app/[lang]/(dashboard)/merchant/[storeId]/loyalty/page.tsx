@@ -10,6 +10,7 @@ import { ChevronPrev } from "@/components/ui/directional-icon";
 import { SITE_URL } from "@/lib/site";
 import { programFromRow } from "@/lib/loyalty";
 import { LoyaltyManager, type LoyaltyMember } from "@/components/loyalty/loyalty-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -139,7 +140,7 @@ export default async function LoyaltyPage({
             storeId={storeId}
             storeName={store.name}
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["loyaltyCards"])}
             isOwner={isOwner}
             program={programRes.error ? null : programFromRow(programRes.data)}
             products={(productsRes.data ?? []) as { id: string; name: string }[]}

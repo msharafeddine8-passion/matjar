@@ -13,6 +13,7 @@ import {
   type Component,
   type BundleRow,
 } from "@/components/bundle-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -133,7 +134,7 @@ export default async function StoreBundlesPage({
             <BundleManager
               storeId={storeId}
               lang={lang}
-              dict={dict}
+              dict={dictSlice(dict, ["common", "merchant"])}
               components={components}
               bundles={bundles}
             />

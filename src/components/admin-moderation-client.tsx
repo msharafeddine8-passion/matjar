@@ -66,7 +66,7 @@ export function AdminModerationClient({
   items,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "common">;
   table: ModerationTable;
   title: string;
   subtitle: string;

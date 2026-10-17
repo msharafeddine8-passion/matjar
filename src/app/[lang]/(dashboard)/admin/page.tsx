@@ -30,6 +30,7 @@ import { AdminStoreActions } from "@/components/admin-store-actions";
 import { AdminReviewDelete } from "@/components/admin-review-delete";
 import { toCategoryKey } from "@/lib/catalog";
 import { validateStorePublic } from "@/lib/data-quality";
+import { dictSlice } from "@/lib/dict-slice";
 
 type ReviewRow = {
   id: string;
@@ -184,7 +185,7 @@ export default async function AdminOverviewPage({
             />
           </StatGrid>
 
-          <AdminBroadcast dict={dict} />
+          <AdminBroadcast dict={dictSlice(dict, ["auth", "common", "push"])} />
 
           <section>
             <div className="mb-4 flex items-center gap-2">

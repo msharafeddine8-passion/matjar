@@ -76,7 +76,7 @@ export function ServiceRequestManager({
 }: {
   request: ServiceRequestRow;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "os">;
 }) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -327,7 +327,7 @@ export function ServiceRequestIntakeSettings({
   category: string | null;
   /** stores.request_intake as stored: null, or a partial object. */
   initial: unknown;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "os">;
 }) {
   const t = dict.os.requests;
   const [config, setConfig] = useState<IntakeConfig>(() =>

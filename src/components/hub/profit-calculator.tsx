@@ -14,7 +14,7 @@ function money(n: number) {
 
 // Deterministic, client-only profit & margin calculator. Live-computes as the
 // merchant types; no server, no AI.
-export function ProfitCalculator({ dict }: { dict: Dictionary }) {
+export function ProfitCalculator({ dict }: { dict: Pick<Dictionary, "hub"> }) {
   const t = dict.hub.tools.profit;
   const [cost, setCost] = useState("");
   const [price, setPrice] = useState("");

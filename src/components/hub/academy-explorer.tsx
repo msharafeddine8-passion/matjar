@@ -50,7 +50,7 @@ export function AcademyExplorer({
 }: {
   guides: LightGuide[];
   featuredSlug: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "features" | "hub">;
   lang: Locale;
 }) {
   const a = dict.hub.academy;

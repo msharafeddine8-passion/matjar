@@ -37,6 +37,7 @@ import {
   DeleteAccount,
   type DeletionPreview,
 } from "@/components/delete-account";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AccountPage({
   params,
@@ -113,13 +114,13 @@ export default async function AccountPage({
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary-soft p-4">
           <p className="text-sm font-semibold">{dict.push.prompt}</p>
-          <PushOptIn dict={dict} />
+          <PushOptIn dict={dictSlice(dict, ["push"])} />
         </div>
 
         <div className="mt-6">
           <LoyaltyPanel
             lang={lang as Locale}
-            dict={dict}
+            dict={dictSlice(dict, ["loyalty"])}
             balance={(pointsBalance as number | null) ?? 0}
             code={(referralCode as string | null) ?? ""}
             referralCount={referralCount}
@@ -132,12 +133,12 @@ export default async function AccountPage({
           />
         </div>
         <div className="mt-6">
-          <ProfileForm dict={dict} initial={initial} />
+          <ProfileForm dict={dictSlice(dict, ["account", "auth"])} initial={initial} />
         </div>
         <div className="mt-6">
           <AddressManager
             lang={lang as Locale}
-            dict={dict}
+            dict={dictSlice(dict, ["account", "auth", "common"])}
             rows={(addressRows ?? []) as AddressRow[]}
           />
         </div>
@@ -158,14 +159,14 @@ export default async function AccountPage({
           <MyListingsManager
             listings={myListings}
             lang={lang as Locale}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "common", "market", "moderation"])}
           />
         </div>
 
         <SavedSearchesManager
           rows={(savedSearches ?? []) as SavedSearchRow[]}
           lang={lang as Locale}
-          dict={dict}
+          dict={dictSlice(dict, ["common", "savedSearch"])}
         />
 
         {[
@@ -278,7 +279,7 @@ export default async function AccountPage({
 
         <DeleteAccount
           lang={lang as Locale}
-          dict={dict}
+          dict={dictSlice(dict, ["account", "common"])}
           email={user.email ?? ""}
           preview={
             ((deletionPreview as DeletionPreview | null) ?? {

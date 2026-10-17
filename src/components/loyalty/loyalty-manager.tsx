@@ -45,7 +45,7 @@ type Option = { id: string; name: string };
 const field =
   "mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary";
 
-function errorText(dict: Dictionary, message: string | null | undefined): string {
+function errorText(dict: Pick<Dictionary, "loyaltyCards">, message: string | null | undefined): string {
   const t = dict.loyaltyCards;
   const m = (message ?? "").toLowerCase();
   if (m.includes("plan_required")) return t.common.planRequired;
@@ -75,7 +75,7 @@ export function LoyaltyManager({
   storeId: string;
   storeName: string;
   lang: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyaltyCards">;
   isOwner: boolean;
   program: LoyaltyProgram | null;
   products: Option[];
@@ -130,7 +130,7 @@ function ProgramForm({
   sections,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyaltyCards">;
   initial: LoyaltyProgram | null;
   products: Option[];
   sections: Option[];
@@ -369,7 +369,7 @@ function MemberList({
   storeId: string;
   storeName: string;
   lang: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyaltyCards">;
   program: LoyaltyProgram | null;
   members: LoyaltyMember[];
   siteUrl: string;
@@ -503,7 +503,7 @@ function MemberRow({
   program: LoyaltyProgram | null;
   storeName: string;
   lang: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyaltyCards">;
   siteUrl: string;
 }) {
   const t = dict.loyaltyCards;

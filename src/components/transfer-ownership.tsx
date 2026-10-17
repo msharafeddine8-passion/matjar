@@ -22,7 +22,7 @@ export function TransferOwnership({
   storeId: string;
   storeName: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "merchant">;
 }) {
   const router = useRouter();
   const confirm = useConfirm();

@@ -35,7 +35,7 @@ export function AdminDealsClient({
   rows,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "common">;
   rows: DealRow[];
 }) {
   const router = useRouter();

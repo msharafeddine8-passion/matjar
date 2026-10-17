@@ -105,7 +105,7 @@ async function dropWebPushOnThisDevice(): Promise<void> {
   }
 }
 
-export function PushOptIn({ dict }: { dict: Dictionary }) {
+export function PushOptIn({ dict }: { dict: Pick<Dictionary, "push"> }) {
   const t = dict.push;
   const [state, setState] = useState<State>("checking");
   const [channel, setChannel] = useState<Channel>("web");

@@ -34,7 +34,7 @@ export function UnitPricingFields({
   /** Current contents of the form's price input, so the readout is live. */
   priceInput,
 }: {
-  dict: Dictionary;
+  dict: Pick<Dictionary, "merchant">;
   lang: Locale;
   value: UnitPricingValue;
   onChange: (v: UnitPricingValue) => void;

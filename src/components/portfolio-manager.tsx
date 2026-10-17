@@ -48,7 +48,7 @@ const labelClass = "text-sm font-semibold";
 export function PortfolioManager(props: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "catalogItem" | "common" | "merchant" | "portfolio">;
   items: PortfolioItem[];
 }): JSX.Element {
   const { storeId, lang, dict, items } = props;

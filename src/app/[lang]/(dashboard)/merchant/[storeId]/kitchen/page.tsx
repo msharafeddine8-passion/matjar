@@ -11,6 +11,7 @@ import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
 import { KitchenBoard, type KitchenOrder } from "@/components/kitchen-board";
 import { requireModuleAccess } from "@/lib/staff-access";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -79,7 +80,7 @@ export default async function StoreKitchenPage({
         </h1>
 
         <div className="mt-6">
-          <KitchenBoard dict={dict} orders={orders} />
+          <KitchenBoard dict={dictSlice(dict, ["auth", "os", "store"])} orders={orders} />
         </div>
       </Container>
     </div>

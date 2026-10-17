@@ -23,6 +23,7 @@ import {
   DeliveryZonesManager,
   type ZoneRowM,
 } from "@/components/delivery-zones-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -161,7 +162,7 @@ export default async function StoreSettingsPage({
         <div className="mt-6">
           <StoreSettingsForm
             storeId={storeId}
-            dict={dict}
+            dict={dictSlice(dict, ["account", "auth", "merchant"])}
             initial={initial}
             isHealthcare={isHealthcare}
           />
@@ -188,12 +189,12 @@ export default async function StoreSettingsPage({
           </span>
         </Link>
         <div className="mt-6">
-          <DeliveryZonesManager storeId={storeId} dict={dict} initial={zones} />
+          <DeliveryZonesManager storeId={storeId} dict={dictSlice(dict, ["common", "merchant"])} initial={zones} />
         </div>
         <div className="mt-6">
           <StoreCouriersManager
             storeId={storeId}
-            dict={dict}
+            dict={dictSlice(dict, ["account", "auth", "common", "merchant"])}
             companies={(companies ?? []) as CourierCompany[]}
             selected={selectedCouriers}
             loadFailed={!!(companiesErr || couriersErr)}
@@ -202,7 +203,7 @@ export default async function StoreSettingsPage({
         <div className="mt-6">
           <CheckoutFieldsManager
             storeId={storeId}
-            dict={dict}
+            dict={dictSlice(dict, ["common", "merchant"])}
             initial={checkoutFields}
           />
         </div>
@@ -213,7 +214,7 @@ export default async function StoreSettingsPage({
             storeId={storeId}
             storeName={(store as { name: string }).name}
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["common", "merchant"])}
           />
         </div>
       </Container>

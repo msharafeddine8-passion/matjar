@@ -145,12 +145,12 @@ function GoogleIcon() {
 const GOOGLE_ENABLED =
   process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
 
-function GoogleButton({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+function GoogleButton({ lang, dict }: { lang: Locale; dict: Pick<Dictionary, "auth" | "common"> }) {
   if (!GOOGLE_ENABLED) return null;
   return <GoogleButtonInner lang={lang} dict={dict} />;
 }
 
-function GoogleButtonInner({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+function GoogleButtonInner({ lang, dict }: { lang: Locale; dict: Pick<Dictionary, "auth" | "common"> }) {
   const [loading, setLoading] = useState(false);
   async function onClick() {
     setLoading(true);
@@ -196,7 +196,7 @@ function safeNext(raw: string | null): string | null {
   return raw;
 }
 
-export function LoginForm({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+export function LoginForm({ lang, dict }: { lang: Locale; dict: Pick<Dictionary, "auth" | "common"> }) {
   const router = useRouter();
   // Why they are here («راسل البائع», favourites, …) — one honest line above
   // the form instead of only a generic welcome. Read after mount from the
@@ -323,7 +323,7 @@ export function LoginForm({ lang, dict }: { lang: Locale; dict: Dictionary }) {
   );
 }
 
-export function SignupForm({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+export function SignupForm({ lang, dict }: { lang: Locale; dict: Pick<Dictionary, "auth" | "common"> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -490,7 +490,7 @@ export function ForgotPasswordForm({
   linkError = false,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common">;
   /** Sent back here by /auth/confirm because the link was spent or opened in a
    *  different browser than the one that requested it. */
   linkError?: boolean;
@@ -576,7 +576,7 @@ export function ResetPasswordForm({
   dict,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common">;
 }) {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);

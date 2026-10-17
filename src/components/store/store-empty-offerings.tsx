@@ -3,6 +3,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { FollowButton } from "@/components/follow-button";
 import { MessageStoreButton } from "@/components/message-store-button";
+import { dictSlice } from "@/lib/dict-slice";
 
 /**
  * What a real store's page says where its offerings would be, while it has
@@ -47,9 +48,9 @@ export function StoreEmptyOfferings({
           storeId={storeId}
           following={isFollowing}
           lang={lang}
-          dict={dict}
+          dict={dictSlice(dict, ["store"])}
         />
-        <MessageStoreButton storeId={storeId} lang={lang} dict={dict} />
+        <MessageStoreButton storeId={storeId} lang={lang} dict={dictSlice(dict, ["messages"])} />
       </div>
     </section>
   );

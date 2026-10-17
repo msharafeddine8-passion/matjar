@@ -12,6 +12,7 @@ import {
   type ServiceRequestRow,
 } from "@/components/service-request-manager";
 import { NextStepEmpty } from "@/components/os-dashboard/next-step-empty";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -95,7 +96,7 @@ export default async function StoreRequestsPage({
                 .business_types?.slug ?? null
             }
             initial={(store as unknown as { request_intake: unknown }).request_intake}
-            dict={dict}
+            dict={dictSlice(dict, ["common", "os"])}
           />
         </div>
 
@@ -106,7 +107,7 @@ export default async function StoreRequestsPage({
                 key={r.id}
                 request={r}
                 lang={lang}
-                dict={dict}
+                dict={dictSlice(dict, ["common", "os"])}
               />
             ))}
           </div>

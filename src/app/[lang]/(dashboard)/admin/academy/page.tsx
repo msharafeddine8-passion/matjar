@@ -8,6 +8,7 @@ import {
   AdminAcademyClient,
   type GuideRow,
 } from "@/components/admin-academy-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminAcademyPage({
   params,
@@ -57,5 +58,5 @@ export default async function AdminAcademyPage({
     sort_order: r.sort_order ?? 0,
   }));
 
-  return <AdminAcademyClient lang={lang} dict={dict} guides={guides} />;
+  return <AdminAcademyClient lang={lang} dict={dictSlice(dict, ["admin", "auth", "common", "hub"])} guides={guides} />;
 }

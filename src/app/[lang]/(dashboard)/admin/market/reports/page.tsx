@@ -7,6 +7,7 @@ import {
   AdminMarketReportsClient,
   type AdminReport,
 } from "@/components/admin-market-reports-client";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminMarketReportsPage({
   params,
@@ -45,6 +46,6 @@ export default async function AdminMarketReportsPage({
   }));
 
   return (
-    <AdminMarketReportsClient lang={lang} dict={dict} reports={reports} />
+    <AdminMarketReportsClient lang={lang} dict={dictSlice(dict, ["admin", "common", "market", "moderation"])} reports={reports} />
   );
 }

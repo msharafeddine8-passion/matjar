@@ -21,7 +21,7 @@ export function LeadForm({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "leadForm">;
   kinds: string[];
 }) {
   const t = dict.leadForm;

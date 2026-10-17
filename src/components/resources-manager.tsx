@@ -52,7 +52,7 @@ export function ResourcesManager({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "catalogItem" | "common" | "merchant" | "resources">;
   resources: Resource[];
 }) {
   const router = useRouter();

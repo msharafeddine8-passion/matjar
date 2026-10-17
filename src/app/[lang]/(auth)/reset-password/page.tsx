@@ -5,6 +5,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { ResetPasswordForm } from "@/components/auth-forms";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { dictSlice } from "@/lib/dict-slice";
 
 // The form is only shown to someone the recovery link actually signed in.
 //
@@ -48,5 +49,5 @@ export default async function ResetPasswordPage({
     );
   }
 
-  return <ResetPasswordForm lang={lang} dict={dict} />;
+  return <ResetPasswordForm lang={lang} dict={dictSlice(dict, ["auth", "common"])} />;
 }

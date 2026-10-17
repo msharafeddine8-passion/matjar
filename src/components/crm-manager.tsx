@@ -97,7 +97,7 @@ export function CrmManager({
   balances = {},
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "merchant" | "os">;
   book: BookCustomer[];
   derived: DerivedCustomer[];
   // customerId (profiles.id) → available loyalty points. Only registered
@@ -599,7 +599,7 @@ function RedeemControl({
   customerId: string;
   balance: number;
   pointsPerUnit: number;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "merchant" | "os">;
 }) {
   const router = useRouter();
   const t = dict.os.crm;
@@ -717,7 +717,7 @@ function RedemptionSettings({
 }: {
   storeId: string;
   value: { enabled: boolean; rate: number };
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "merchant" | "os">;
   onSaved: (v: { enabled: boolean; rate: number }) => void;
 }) {
   const t = dict.os.crm;

@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { ContactFreelancerButton } from "@/components/contact-freelancer-button";
 import { TrustBadges } from "@/components/trust-badges";
 import { resolveProfessionalTrust } from "@/lib/trust";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -353,7 +354,7 @@ export default async function GigDetailPage({
                 <ContactFreelancerButton
                   freelancerId={gig.freelancer_id}
                   lang={lang as Locale}
-                  dict={dict}
+                  dict={dictSlice(dict, ["freelance"])}
                   label={pm.message}
                   variant="secondary"
                 />
@@ -473,7 +474,7 @@ export default async function GigDetailPage({
           <ContactFreelancerButton
             freelancerId={gig.freelancer_id}
             lang={lang as Locale}
-            dict={dict}
+            dict={dictSlice(dict, ["freelance"])}
             label={pm.message}
             variant="secondary"
             className="flex-1"

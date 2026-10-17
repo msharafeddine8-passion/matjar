@@ -24,7 +24,7 @@ export function FlashCountdown({
   className = "",
 }: {
   endsAt: number;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "flash">;
   className?: string;
 }) {
   const [remaining, setRemaining] = useState(() => endsAt - Date.now());

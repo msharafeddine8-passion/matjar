@@ -42,7 +42,7 @@ export function AdminQuestionsClient({
   rows,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "common">;
   rows: QuestionRow[];
 }) {
   const router = useRouter();

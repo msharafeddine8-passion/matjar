@@ -16,6 +16,7 @@ import {
 } from "@/components/campaign-manager";
 import { requireModuleAccess } from "@/lib/staff-access";
 import { parseAudienceCounts, type AudienceCounts } from "@/lib/audience-counts";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -98,7 +99,7 @@ export default async function StoreCampaignsPage({
         <CampaignManager
           storeId={storeId}
           lang={lang}
-          dict={dict}
+          dict={dictSlice(dict, ["common", "os"])}
           initial={campaigns}
           counts={counts}
         />

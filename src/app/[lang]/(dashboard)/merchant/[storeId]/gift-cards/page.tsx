@@ -11,6 +11,7 @@ import { ChevronPrev } from "@/components/ui/directional-icon";
 import { SITE_URL } from "@/lib/site";
 import { beirutToday, type GiftCardRow } from "@/lib/gift-cards";
 import { GiftCardManager } from "@/components/gift-cards/gift-card-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -87,7 +88,7 @@ export default async function GiftCardsPage({
               storeId={storeId}
               storeName={store.name}
               lang={lang}
-              dict={dict}
+              dict={dictSlice(dict, ["loyaltyCards"])}
               cards={cards}
               canIssue={isPro}
               lbpRate={lbpRate}

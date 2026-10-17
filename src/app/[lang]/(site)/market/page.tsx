@@ -19,6 +19,7 @@ import { MarketListingCard } from "@/components/market-listing-card";
 import { localeAlternates, shareImages } from "@/lib/site";
 import { getSectionSupply } from "@/lib/data/section-supply";
 import { sectionRobots } from "@/lib/seo-rules";
+import { dictSlice } from "@/lib/dict-slice";
 
 export async function generateMetadata({
   params,
@@ -118,7 +119,7 @@ export default async function MarketPage({
         <div className="mt-2">
           <MarketFilters
             lang={lang}
-            dict={dict}
+            dict={dictSlice(dict, ["common", "market"])}
             categories={categories}
             cities={cities}
             regions={marketRegions}

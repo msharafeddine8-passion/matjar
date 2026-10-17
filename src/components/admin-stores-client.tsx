@@ -84,7 +84,7 @@ export function AdminStoresClient({
   stores,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "auth" | "common" | "dataQuality">;
   stores: AdminStore[];
 }) {
   const router = useRouter();

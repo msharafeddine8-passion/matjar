@@ -18,7 +18,7 @@ export function StoreShareCard({
    *  a merchant would actually say out loud. Falls back to /s/<code>. */
   slug?: string | null;
   baseUrl: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "share">;
 }) {
   const t = dict.share;
   const shortUrl = slug ? `${baseUrl}/${slug}` : `${baseUrl}/s/${code}`;

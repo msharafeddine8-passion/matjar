@@ -8,6 +8,7 @@ import {
   MarketCityManager,
   type MarketCityRow,
 } from "@/components/market-city-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminMarketCitiesPage({
   params,
@@ -33,7 +34,7 @@ export default async function AdminMarketCitiesPage({
   return (
     <MarketCityManager
       lang={lang}
-      dict={dict}
+      dict={dictSlice(dict, ["admin", "common"])}
       cities={cities}
       regions={regions}
     />

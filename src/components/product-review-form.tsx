@@ -15,7 +15,7 @@ export function ProductReviewForm({
   commentPlaceholder,
 }: {
   productId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "productReviews">;
   /** Variant wording from the offering resolver (service / dish). */
   commentPlaceholder?: string;
 }) {

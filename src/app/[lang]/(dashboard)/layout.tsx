@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LogoutButton } from "@/components/logout-button";
 import { DashboardMobileMenu } from "@/components/dashboard-mobile-menu";
 import { HeaderBells } from "@/components/header-bells";
+import { dictSlice } from "@/lib/dict-slice";
 
 // Dedicated control-panel chrome for merchants and admins — distinct from the
 // customer marketplace. Logged-in only.
@@ -135,7 +136,7 @@ export default async function DashboardLayout({
           <div className="flex shrink-0 items-center gap-1 sm:gap-3">
             <HeaderBells
               lang={lang}
-              dict={dict}
+              dict={dictSlice(dict, ["common"])}
               userId={user.id}
               unreadNotifications={unread ?? 0}
               unreadMessages={(msgCount as number | null) ?? 0}
@@ -157,7 +158,7 @@ export default async function DashboardLayout({
             </div>
             <DashboardMobileMenu
               lang={lang}
-              dict={dict}
+              dict={dictSlice(dict, ["auth", "dashboard"])}
               isAdmin={isAdmin}
               name={name}
             />

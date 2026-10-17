@@ -44,7 +44,7 @@ export function GiftCardManager({
   storeId: string;
   storeName: string;
   lang: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyaltyCards">;
   cards: GiftCardRow[];
   canIssue: boolean;
   lbpRate: number;
@@ -140,7 +140,7 @@ function IssueForm({
   storeId: string;
   storeName: string;
   lang: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyaltyCards">;
   lbpRate: number;
   siteUrl: string;
   today: string;
@@ -292,7 +292,7 @@ function IssuedCard({
   storeId: string;
   storeName: string;
   lang: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyaltyCards">;
   siteUrl: string;
   card: { id: string; code: string; token: string; amount: number; currency: GiftCurrency };
   onClose: () => void;
@@ -355,7 +355,7 @@ function CardRow({
   storeId: string;
   storeName: string;
   lang: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyaltyCards">;
   siteUrl: string;
   today: string;
 }) {

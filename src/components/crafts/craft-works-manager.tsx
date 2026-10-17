@@ -32,7 +32,7 @@ export function CraftWorksManager({
 }: {
   providerId: string;
   works: CraftWork[];
-  dict: Dictionary;
+  dict: Pick<Dictionary, "upload">;
   labels: {
     title: string;
     body: string;

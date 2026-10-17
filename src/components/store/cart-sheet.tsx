@@ -36,7 +36,7 @@ export function CartSheet<T extends Line>({
   open: boolean;
   onClose: () => void;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "store">;
   lines: readonly CartSheetLine<T>[];
   /** Computed by the caller, which owns the cart. Not recomputed here — two
    *  places that add up a basket are two places that can disagree about it. */

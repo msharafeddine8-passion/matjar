@@ -41,7 +41,7 @@ export function LoyaltyPanel({
   siteUrl,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyalty">;
   balance: number;
   code: string;
   referralCount: number;

@@ -15,6 +15,7 @@ import { PrintInvoiceButton } from "@/components/print-invoice-button";
 import { ReviewForm } from "@/components/review-form";
 import { OrderTimeline, type OrderEvent } from "@/components/order-timeline";
 import { OrderStickyActions } from "@/components/order-sticky-actions";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -155,7 +156,7 @@ export default async function OrderDetailPage({
           </div>
           <div className="flex shrink-0 flex-wrap gap-2 print:hidden">
             {order.status === "pending" && (
-              <OrderCancelButton id={order.id} kind="order" dict={dict} />
+              <OrderCancelButton id={order.id} kind="order" dict={dictSlice(dict, ["auth", "booking", "common", "orders"])} />
             )}
             <ReorderButton
               orderId={order.id}
@@ -189,7 +190,7 @@ export default async function OrderDetailPage({
             </p>
             <ReviewForm
               storeId={order.store_id}
-              dict={dict}
+              dict={dictSlice(dict, ["common", "reviews"])}
               customerName={customerName}
             />
           </div>

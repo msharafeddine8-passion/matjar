@@ -10,6 +10,7 @@ import {
   type ModerationItem,
 } from "@/components/admin-moderation-client";
 import { FreelancerVerifyList } from "@/components/freelancer-verify-list";
+import { dictSlice } from "@/lib/dict-slice";
 
 export default async function AdminFreelancePage({
   params,
@@ -97,10 +98,10 @@ export default async function AdminFreelancePage({
 
   return (
     <div className="space-y-6">
-      <FreelancerVerifyList people={people} dict={dict} />
+      <FreelancerVerifyList people={people} dict={dictSlice(dict, ["auth", "freelance"])} />
       <AdminModerationClient
         lang={lang}
-        dict={dict}
+        dict={dictSlice(dict, ["admin", "common"])}
         table="gigs"
         title={dict.admin.freelance.title}
         subtitle={dict.admin.freelance.subtitle}

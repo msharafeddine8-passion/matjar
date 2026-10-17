@@ -52,7 +52,7 @@ export function PosExtrasFields({
   config: PosExtrasConfig;
   value: PosExtrasValue;
   onChange: (v: PosExtrasValue) => void;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyaltyCards">;
   storeId: string;
 }) {
   const t = dict.loyaltyCards.pos;
@@ -141,7 +141,7 @@ export async function applyPosExtras({
   saleId: string;
   value: PosExtrasValue;
   config: PosExtrasConfig;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "loyaltyCards">;
 }): Promise<PosExtrasLine[]> {
   const t = dict.loyaltyCards.pos;
   const out: PosExtrasLine[] = [];
@@ -218,7 +218,7 @@ export async function applyPosExtras({
   return out;
 }
 
-export function PosExtrasResult({ lines, dict }: { lines: PosExtrasLine[]; dict: Dictionary }) {
+export function PosExtrasResult({ lines, dict }: { lines: PosExtrasLine[]; dict: Pick<Dictionary, "loyaltyCards"> }) {
   if (lines.length === 0) return null;
   return (
     <ul className="mt-2 space-y-1.5">

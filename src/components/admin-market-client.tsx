@@ -79,7 +79,7 @@ export function AdminMarketClient({
   openReports,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "admin" | "common" | "moderation">;
   listings: AdminListing[];
   openReports: number;
 }) {

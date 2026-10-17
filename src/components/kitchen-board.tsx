@@ -29,7 +29,7 @@ export function KitchenBoard({
   dict,
   orders,
 }: {
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "os" | "store">;
   orders: KitchenOrder[];
 }) {
   const router = useRouter();

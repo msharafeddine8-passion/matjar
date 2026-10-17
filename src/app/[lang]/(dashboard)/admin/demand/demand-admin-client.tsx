@@ -74,7 +74,7 @@ export function AdminDemandClient({
   loadFailed,
 }: {
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "catalog" | "common" | "demand">;
   days: 30 | 90;
   summary: DemandSummaryRow[];
   recent: DemandRequestRow[];

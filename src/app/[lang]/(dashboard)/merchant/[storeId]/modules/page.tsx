@@ -11,6 +11,7 @@ import { effectivePlan, hasPlan, type StorePlan } from "@/lib/plan-tiers";
 import { sectorDefaultModules } from "@/lib/sectors";
 import { Container } from "@/components/ui/container";
 import { ModulesManager, type ModuleItem } from "@/components/modules-manager";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -103,7 +104,7 @@ export default async function StoreModulesPage({
         </h1>
         <p className="mt-2 text-muted-foreground">{t.subheading}</p>
         <div className="mt-6">
-          <ModulesManager storeId={storeId} dict={dict} items={items} />
+          <ModulesManager storeId={storeId} dict={dictSlice(dict, ["features", "os", "pricing"])} items={items} />
         </div>
       </Container>
     </div>

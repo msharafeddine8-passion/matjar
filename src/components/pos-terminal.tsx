@@ -71,7 +71,7 @@ export function PosTerminal({
   extras,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "loyaltyCards" | "os">;
   products: PosProduct[];
   customers: PosCustomer[];
   locations?: PosLocation[];

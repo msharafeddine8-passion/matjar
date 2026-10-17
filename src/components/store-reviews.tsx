@@ -3,6 +3,7 @@ import { Star, CornerDownLeft } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { ReviewForm } from "@/components/review-form";
+import { dictSlice } from "@/lib/dict-slice";
 
 // MP-010: no account id. This list is public and renders on a `select using
 // (true)` table, so a customer_id here was a stable per-person identifier handed
@@ -48,7 +49,7 @@ export function StoreReviews({
       {currentUser ? (
         <ReviewForm
           storeId={storeId}
-          dict={dict}
+          dict={dictSlice(dict, ["common", "reviews"])}
           customerName={currentUser.name}
           initialRating={mine?.rating}
           initialComment={mine?.comment ?? undefined}

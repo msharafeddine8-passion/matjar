@@ -57,7 +57,7 @@ export function CouponManager({
   coupons,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "merchant">;
   coupons: Coupon[];
 }) {
   const router = useRouter();

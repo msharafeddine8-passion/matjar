@@ -55,7 +55,7 @@ export function StaffManager({
   maxStaff,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "common" | "merchant">;
   staff: Staff[];
   maxStaff: number;
 }) {

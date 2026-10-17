@@ -16,7 +16,7 @@ export function MessageStoreButton({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "messages">;
   /** Phone presentation: icon only, one 44px target, label back from lg up. */
   compact?: boolean;
 }) {

@@ -27,7 +27,7 @@ export function EventTickets({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "tickets">;
 }) {
   const t = dict.tickets;
   const [types, setTypes] = useState<TicketType[] | null>(null);

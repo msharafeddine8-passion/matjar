@@ -30,7 +30,7 @@ export function ModulesManager({
   items,
 }: {
   storeId: string;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "features" | "os" | "pricing">;
   items: ModuleItem[];
 }) {
   const router = useRouter();

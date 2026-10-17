@@ -37,7 +37,7 @@ export function OrderPayments({
   orderTotal: number;
   orderStatus: string;
   payments: OrderPayment[];
-  dict: Dictionary;
+  dict: Pick<Dictionary, "common" | "payments">;
 }) {
   const router = useRouter();
   const confirm = useConfirm();

@@ -31,7 +31,7 @@ export function TimeslotBooking({
 }: {
   storeId: string;
   lang: Locale;
-  dict: Dictionary;
+  dict: Pick<Dictionary, "auth" | "booking" | "timeslot">;
   resources: Resource[];
   customerName: string | null;
   customerPhone?: string | null;

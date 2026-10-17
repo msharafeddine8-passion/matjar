@@ -9,6 +9,7 @@ import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
 import { StaffManager } from "@/components/staff-manager";
 import { ChevronPrev } from "@/components/ui/directional-icon";
+import { dictSlice } from "@/lib/dict-slice";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -71,7 +72,7 @@ export default async function StaffPage({
         <div className="mt-6">
           <StaffManager
             storeId={storeId}
-            dict={dict}
+            dict={dictSlice(dict, ["auth", "common", "merchant"])}
             staff={staff}
             maxStaff={planStaffLimit(plan)}
           />
