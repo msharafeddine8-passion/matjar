@@ -179,6 +179,14 @@ export function ProductEditForm({
     setError(null);
     const form = new FormData(e.currentTarget);
     const supabase = createClient();
+    // Every step below writes part of the product. One that fails silently
+    // would leave a half-saved product while the form reports success, so
+    // each is checked and stops the save with a message.
+    const stop = (step: string, err: unknown) => {
+      console.error(`[product-edit] ${step} failed`, err);
+      setError(p.saveStepFailed);
+      setLoading(false);
+    };
     // `attributes` is rebuilt from the fields this form rendered, so a key it
     // does not render is erased on save. Retired fields are therefore carried
     // across from what was stored: a clinic editing a service's price must not
@@ -312,10 +320,11 @@ export function ProductEditForm({
           .map((v) => v.label.trim()),
       );
 
-      const { data: existingRows } = await supabase
+      const { data: existingRows, error: existingErr } = await supabase
         .from("product_variants")
         .select("id, label")
         .eq("product_id", productId);
+      if (existingErr) return stop("variants read", existingErr);
       const existingByLabel = new Map(
         ((existingRows ?? []) as { id: string; label: string }[]).map((r) => [
           r.label,
@@ -329,7 +338,11 @@ export function ProductEditForm({
         .filter((r) => !keptLabels.has(r.label))
         .map((r) => r.id);
       if (goneIds.length) {
-        await supabase.from("product_variants").delete().in("id", goneIds);
+        const { error: goneErr } = await supabase
+          .from("product_variants")
+          .delete()
+          .in("id", goneIds);
+        if (goneErr) return stop("variant delete", goneErr);
       }
 
       const toInsert = cleanVariants.filter((v) => !existingByLabel.has(v.label));
@@ -344,18 +357,18 @@ export function ProductEditForm({
           sort_order: v.sort_order,
         };
         if (stockEdited.has(v.label)) patch.stock = v.stock;
-        await supabase.from("product_variants").update(patch).eq("id", id);
+        const { error: patchErr } = await supabase
+          .from("product_variants")
+          .update(patch)
+          .eq("id", id);
+        if (patchErr) return stop("variant update", patchErr);
       }
 
       if (toInsert.length) {
         const { error: variantsError } = await supabase
           .from("product_variants")
           .insert(toInsert);
-        if (variantsError) {
-          setError(dict.auth.errorGeneric);
-          setLoading(false);
-          return;
-        }
+        if (variantsError) return stop("variant insert", variantsError);
       }
     }
 
@@ -366,11 +379,16 @@ export function ProductEditForm({
       // name/price, so nothing references these rows). Delete options first
       // (they FK the groups), then groups; re-insert groups to get their ids,
       // then insert both grouped and ungrouped (flat) options.
-      await supabase.from("product_options").delete().eq("product_id", productId);
-      await supabase
+      const { error: optDelErr } = await supabase
+        .from("product_options")
+        .delete()
+        .eq("product_id", productId);
+      if (optDelErr) return stop("options delete", optDelErr);
+      const { error: grpDelErr } = await supabase
         .from("product_modifier_groups")
         .delete()
         .eq("product_id", productId);
+      if (grpDelErr) return stop("modifier groups delete", grpDelErr);
 
       let optSort = 0;
       const optionRows: {
@@ -405,11 +423,7 @@ export function ProductEditForm({
           })
           .select("id")
           .single();
-        if (grpErr || !grpRow) {
-          setError(dict.auth.errorGeneric);
-          setLoading(false);
-          return;
-        }
+        if (grpErr || !grpRow) return stop("modifier group insert", grpErr);
         for (const o of g.options) {
           optionRows.push({
             product_id: productId,
@@ -435,17 +449,14 @@ export function ProductEditForm({
         const { error: optionsError } = await supabase
           .from("product_options")
           .insert(optionRows);
-        if (optionsError) {
-          setError(dict.auth.errorGeneric);
-          setLoading(false);
-          return;
-        }
+        if (optionsError) return stop("options insert", optionsError);
       }
     }
 
     await revalidateProduct(productId);
     await revalidateStore(storeId);
-    router.push(`/${lang}/merchant/${storeId}`);
+    // Back to the catalogue the merchant came from, not the OS home.
+    router.push(`/${lang}/merchant/${storeId}/items`);
     router.refresh();
   }
 
