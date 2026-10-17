@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { dictSlice } from "@/lib/dict-slice";
 import { ShoppingBag } from "lucide-react";
 import type { Locale } from "@/i18n/config";
@@ -7,6 +7,49 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import { Container } from "@/components/ui/container";
 import { HeroSearch } from "@/components/hero-search";
 import { Mark3D } from "@/components/home/mark-3d";
+import type { CategoryKey } from "@/lib/catalog";
+import { getDiscoveryCoverage } from "@/lib/data/discovery";
+
+// The chips under the desktop search field. They used to be a hard-coded list
+// labelled «الأكثر بحثاً» — a claim nothing measured, and two of the six
+// (عقارات, سيارات) searched for sectors with no store behind them. They are now
+// links to sector pages, labelled for what they are (a way to browse), and a
+// sector is only offered when the same coverage read the category rail uses
+// says it has at least one live store. Order is the old list's intent.
+const BROWSE_CANDIDATES: CategoryKey[] = [
+  "food",
+  "healthcare",
+  "retail",
+  "beauty",
+  "services",
+  "contractors",
+  "realEstate",
+  "automotive",
+];
+const BROWSE_MAX = 6;
+
+async function HeroBrowse({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+  const coverage = await getDiscoveryCoverage().catch(() => null);
+  if (!coverage) return null;
+  const live = BROWSE_CANDIDATES.filter(
+    (k) => (coverage.bySector[k] ?? 0) > 0,
+  ).slice(0, BROWSE_MAX);
+  if (!live.length) return null;
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm">
+      <span className="text-muted-foreground">{dict.hero.popular}:</span>
+      {live.map((k) => (
+        <Link
+          key={k}
+          href={`/${lang}/category/${k}`}
+          className="rounded-full border border-border bg-surface px-3.5 py-1.5 font-medium shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:text-primary hover:shadow-sm"
+        >
+          {dict.catalog[k].name}
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 // V2 hero: one clear line, one supporting line, and search as the primary
 // action. No statistic wall (the live inventory cannot honestly support one),
@@ -47,10 +90,6 @@ export function Hero({
   dict: Dictionary;
   children?: ReactNode;
 }) {
-  const popular =
-    lang === "ar"
-      ? ["مطاعم", "عيادات", "ملابس", "عقارات", "سيارات", "صيانة"]
-      : ["Restaurants", "Clinics", "Clothing", "Real estate", "Cars", "Repair"];
   const t = dict.hero;
   // The mark's four chips: the same four doors as the gateway row below, in
   // the short form that fits a floating pill.
@@ -98,7 +137,15 @@ export function Hero({
             it is the taller of the two. Desktop has no such header field
             above the fold, so it keeps this one. */}
         <div className="hidden lg:block">
-          <HeroSearch lang={lang} dict={dictSlice(dict, ["hero"])} popular={popular} />
+          <HeroSearch
+            lang={lang}
+            dict={dictSlice(dict, ["hero"])}
+            browse={
+              <Suspense fallback={null}>
+                <HeroBrowse lang={lang} dict={dict} />
+              </Suspense>
+            }
+          />
         </div>
 
         {/* Location. Phone-only: at `lg` the same question is already asked by
