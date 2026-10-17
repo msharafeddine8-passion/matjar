@@ -339,12 +339,14 @@ export async function searchStores(
   q: string,
   region?: string,
   plan?: import("@/lib/search-intent").StoreSearchPlan,
-): Promise<Store[]> {
+  intent?: import("@/lib/search-intent").SearchIntent,
+): Promise<SearchStore[]> {
   const term = q.trim();
   if (!term) return [];
   const supabase = await createClient();
   const si = await import("@/lib/search-intent");
-  const p = plan ?? si.planStoreSearch(si.parseSearchIntent(term));
+  const it = intent ?? si.parseSearchIntent(term);
+  const p = plan ?? si.planStoreSearch(it);
   const explicitRegion = region && region !== "all" ? region : null;
   // One window for every read. The platform has a few dozen stores; the bound
   // is what keeps a broad sector pull from becoming an unbounded select.
@@ -440,10 +442,19 @@ export async function searchStores(
   );
   // Same batched facts the explore grid gets, so a store reads the same on a
   // search card as it does everywhere else.
-  const top = ranked.slice(0, 24).map((x) => x.store);
+  // A sector member that never mentions what was asked for («بيتزا» → a
+  // butcher) is a suggestion: the page shows it under «يمكن يعجبك» and does
+  // not count it as a result.
+  const top: (ListedStore & { suggested?: boolean })[] = ranked.slice(0, 24).map((x) => {
+    const suggested = si.isSuggestionOnly(x, it, p, doctorIds);
+    return suggested ? Object.assign(x.store, { suggested }) : x.store;
+  });
   await attachCardRollups(top);
   return markFavorites(top);
 }
+
+/** A search hit; `suggested` = shown as «يمكن يعجبك», not counted. */
+export type SearchStore = Store & { suggested?: boolean };
 
 // Homepage "featured" strip = PAYING stores only: a paid plan, or a store an
 // admin flagged featured (featured_until in the future). Free stores never

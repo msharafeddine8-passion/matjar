@@ -18,6 +18,7 @@ import {
 } from "@/lib/data/crafts";
 import { localeAlternates } from "@/lib/site";
 import { supplyRobots } from "@/lib/professional";
+import { countLabel } from "@/lib/plural";
 
 export async function generateMetadata({
   params,
@@ -248,7 +249,7 @@ export default async function CraftsPage({
                           {ar ? g.name_ar : g.name_en}
                         </h3>
                         <span className="shrink-0 text-xs font-semibold text-muted-foreground">
-                          {t.tradesCount.replace("{n}", String(g.trades.length))}
+                          {countLabel(t.tradesCount, g.trades.length)}
                         </span>
                       </span>
                       <span className="mt-0.5 block truncate text-xs text-muted-foreground">

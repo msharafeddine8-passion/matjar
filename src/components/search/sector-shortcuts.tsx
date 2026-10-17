@@ -3,6 +3,8 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import { categoryStyles, type CategoryKey } from "@/lib/catalog";
 import type { FacetOption } from "@/lib/discovery";
 import { categoryIcons } from "@/components/category-icon";
+import { CountText } from "@/components/ui/count-text";
+import type { CountForms } from "@/lib/plural";
 
 /**
  * Browse-by-sector, as a grid a thumb can hit.
@@ -33,8 +35,9 @@ export function SectorShortcuts({
   /** dict.catalog — the sector's name in the reader's language. */
   names: Dictionary["catalog"];
   /** The noun after the number (dict.discovery.storesCount). A bare "8" on a
-   *  tile could be a rank, a price or a distance. */
-  countLabel: string;
+   *  tile could be a rank, a price or a distance. Plural forms, because
+   *  «3 محل» is wrong Arabic. */
+  countLabel: CountForms;
   /** Where a tile goes. /explore narrows itself; search sends you to the
    *  sector's own page, because there is nothing on screen to narrow. */
   href: (key: CategoryKey) => string;
@@ -72,7 +75,11 @@ export function SectorShortcuts({
                     {names[key].name}
                   </span>
                   <span className="block text-xs text-muted-foreground">
-                    <span className="tabular-nums">{count}</span> {countLabel}
+                    <CountText
+                      forms={countLabel}
+                      n={count}
+                      numberClassName="tabular-nums"
+                    />
                   </span>
                 </span>
               </Link>

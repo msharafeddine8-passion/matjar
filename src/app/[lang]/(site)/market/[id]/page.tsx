@@ -31,6 +31,7 @@ import { BackButton } from "@/components/back-button";
 import { Money } from "@/components/ui/money";
 import { MessageSellerButton } from "@/components/message-seller-button";
 import { dictSlice } from "@/lib/dict-slice";
+import { countLabel } from "@/lib/plural";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -186,10 +187,13 @@ export default async function ListingPage({
                   .filter(Boolean)
                   .join(" · ")}
               </span>
-              <span className="flex items-center gap-1">
-                <Eye className="h-4 w-4" />
-                {listing.views} {dict.market.views}
-              </span>
+              {/* A zero view counter is noise, not information. */}
+              {listing.views > 0 && (
+                <span className="flex items-center gap-1">
+                  <Eye className="h-4 w-4" />
+                  {countLabel(dict.market.views, listing.views)}
+                </span>
+              )}
               <span>
                 {dict.market.postedOn} {fmtDate(listing.createdAt)}
               </span>

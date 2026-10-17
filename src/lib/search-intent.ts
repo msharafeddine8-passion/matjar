@@ -375,6 +375,12 @@ export type Concept = {
   /** A slice of its sector, not the sector: «ملابس» is some retailers, «مطاعم»
    *  is every food business. See the precision rule in rankStores(). */
   subtopic?: boolean;
+  /** For a concept whose triggers mix the sector's own name with specific
+   *  items («مطاعم» vs «بيتزا»): the triggers that name the SECTOR. Any other
+   *  trigger names an item, and a store that never mentions the item is a
+   *  suggestion, not a result — see isSuggestionOnly(). Omitted = every
+   *  trigger is sector-level. */
+  generic?: string[];
 };
 
 const FOOD_RELATED = ["مطعم", "مأكولات", "مشاوي", "وجبات", "اكل", "restaurant", "food"];
@@ -413,6 +419,10 @@ export const LEXICON: Concept[] = [
     ],
     meaning: { sector: "food" },
     related: FOOD_RELATED,
+    generic: [
+      "مطعم", "مطاعم", "اكل", "اكلات", "مأكولات", "ماكولات", "وجبات", "وجبة",
+      "restaurant", "restaurants", "food", "delivery food", "دليفري اكل",
+    ],
   },
   // ── healthcare + specialties ─────────────────────────────────────────────
   {
@@ -1127,6 +1137,56 @@ export function rankStores<T extends RankableStore>(
     return 0;
   });
   return kept.map((x) => x.row);
+}
+
+/**
+ * The typed words that name a specific ITEM rather than a sector: «بيتزا» in
+ * «بيتزا» or «مطعم بيتزا», nothing in «مطاعم». Only concepts that declare
+ * their sector-level triggers (`generic`) can have items.
+ */
+export function itemWords(intent: SearchIntent): string[] {
+  const byId = new Map(LEXICON.map((c) => [c.id, c]));
+  const generic = new Set(
+    intent.concepts.flatMap((id) => (byId.get(id)?.generic ?? []).map(foldArabic)),
+  );
+  const hasItems = intent.concepts.some((id) => byId.get(id)?.generic);
+  if (!hasItems) return [];
+  return uniq(
+    intent.intentWords
+      .map((w) => foldArabic(w))
+      .filter((w) => w.length >= 2 && !generic.has(w)),
+  );
+}
+
+/**
+ * Whether a kept store is only a SUGGESTION rather than an answer.
+ *
+ * «بيتزا» on a platform without a pizzeria still keeps the food sector — the
+ * butcher whose blurb says «المشاوي» matches the sector's related vocabulary
+ * — and the page printed that as «1 نتيجة». It is worth showing, but under
+ * «يمكن يعجبك», and not counted. Two cases:
+ *  - the query names an item (itemWords) and the store's own text never
+ *    mentions it, nor the leftover words, nor a specialty;
+ *  - a subtopic pull (plan.narrow) where the store matches no word at all.
+ * A sector-wide word («مطاعم») is never a suggestion: every member answers it.
+ */
+export function isSuggestionOnly(
+  row: RankableStore,
+  intent: SearchIntent,
+  plan: StoreSearchPlan,
+  doctorStoreIds: ReadonlySet<string> = new Set(),
+): boolean {
+  const r = rankStore(row, plan, doctorStoreIds);
+  if (!r.sector || r.residual > 0 || r.specialty) return false;
+  if (plan.pullRegion && (r.region || r.area)) return false;
+  const items = itemWords(intent);
+  if (items.length) {
+    const hay = foldArabic(
+      `${row.name} ${row.description ?? ""} ${row.specialties ?? ""}`,
+    );
+    return !items.some((w) => stemVariants(w).some((v) => hay.includes(v)));
+  }
+  return plan.narrow && r.intent === 0;
 }
 
 // ---------------------------------------------------------------------------

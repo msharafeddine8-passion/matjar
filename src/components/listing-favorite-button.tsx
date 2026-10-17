@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/analytics";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { countLabel } from "@/lib/plural";
 
 export function ListingFavoriteButton({
   listingId,
@@ -68,7 +69,8 @@ export function ListingFavoriteButton({
       }`}
     >
       <Heart className={`h-4 w-4 ${on ? "fill-primary" : ""}`} />
-      {count} {dict.market.saves}
+      {/* No «0 حفظ»: with nobody saving it yet, the button names its action. */}
+      {count > 0 ? countLabel(dict.market.saves, count) : dict.market.saveAction}
     </button>
   );
 }

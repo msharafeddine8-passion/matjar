@@ -12,6 +12,7 @@ import { formatUsd } from "@/lib/currency";
 import { sectorTeamMeta } from "@/lib/sectors";
 import type { SummaryRow, SummaryRowKey } from "@/lib/profile-engine";
 import { ChevronNext } from "@/components/ui/directional-icon";
+import { countLabel } from "@/lib/plural";
 
 // The at-a-glance block under a clinic's (or a trade's) name: WHO / WHAT / WHEN
 // / WHERE / HOW MUCH / WHY TRUST, one line each, so a patient knows whether this
@@ -123,7 +124,7 @@ export function StoreProfileSummary({
             fill(t.rating, { rating: row.rating.toFixed(1), n: row.reviewCount }),
           );
         if (row.fulfilled > 0)
-          parts.push(dict.store.ordersFulfilled.replace("{n}", String(row.fulfilled)));
+          parts.push(countLabel(dict.store.ordersFulfilled, row.fulfilled));
         return { main: parts[0] ?? "", sub: parts.slice(1).join(" · ") || null };
       }
     }

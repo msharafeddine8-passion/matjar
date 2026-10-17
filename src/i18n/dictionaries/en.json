@@ -1496,7 +1496,12 @@
     "emptyTitle": "No stores match these filters",
     "emptyBody": "Clear a filter to widen the search.",
     "alsoIn": "Also in this category",
-    "storesCount": "stores",
+    "storesCount": {
+      "one": "1 store",
+      "two": "2 stores",
+      "few": "{n} stores",
+      "many": "{n} stores"
+    },
     "offersBadge": "Offers",
     "nouns": {
       "products": "products",
@@ -1519,7 +1524,12 @@
     "allRegions": "All regions",
     "filters": "Filters",
     "clearFilters": "Clear",
-    "results": "stores",
+    "results": {
+      "one": "1 store",
+      "two": "2 stores",
+      "few": "{n} stores",
+      "many": "{n} stores"
+    },
     "empty": "No matching results. Try a different filter.",
     "nearest": "Nearest to you",
     "locating": "Locating…",
@@ -1556,7 +1566,12 @@
       "reviews": "Reviews"
     },
     "openNow": "Open now",
-    "ordersFulfilled": "{n} orders fulfilled",
+    "ordersFulfilled": {
+      "one": "1 order fulfilled",
+      "two": "2 orders fulfilled",
+      "few": "{n} orders fulfilled",
+      "many": "{n} orders fulfilled"
+    },
     "deliveryIn": "Delivers in {t}",
     "closed": "Closed",
     "call": "Call",
@@ -4255,7 +4270,12 @@
   "bestSellers": {
     "title": "Best sellers",
     "subtitle": "The most-ordered products on Matjar.",
-    "sold": "sold",
+    "sold": {
+      "one": "1 sold",
+      "two": "2 sold",
+      "few": "{n} sold",
+      "many": "{n} sold"
+    },
     "empty": "Not enough sales yet. Check back soon!"
   },
   "map": {
@@ -4432,7 +4452,14 @@
     "recent": "Recent searches",
     "clear": "Clear",
     "openSearch": "Search",
-    "resultsCount": "results",
+    "suggestionsNone": "We didn't find \"{q}\" — you might like:",
+    "suggestionsMore": "You might also like:",
+    "resultsCount": {
+      "one": "1 result",
+      "two": "2 results",
+      "few": "{n} results",
+      "many": "{n} results"
+    },
     "stores": "Stores",
     "products": "Products",
     "listings": "Sunday Market listings",
@@ -4475,8 +4502,19 @@
     "saveSearch": "Notify me of new ones 🔔",
     "searchSaved": "Saved — we'll notify you",
     "empty": "No matching listings.",
-    "views": "views",
-    "saves": "saves",
+    "views": {
+      "one": "1 view",
+      "two": "2 views",
+      "few": "{n} views",
+      "many": "{n} views"
+    },
+    "saves": {
+      "one": "Saved once",
+      "two": "Saved twice",
+      "few": "Saved {n} times",
+      "many": "Saved {n} times"
+    },
+    "saveAction": "Save",
     "postedOn": "Posted on",
     "sellerUser": "User",
     "sellerMerchant": "Merchant",
@@ -5106,7 +5144,12 @@
     "manageSaved": "Saved",
     "manageNeedTrade": "Pick at least one trade, or you will not appear in search.",
     "quickTitle": "Popular services",
-    "tradesCount": "{n} trades",
+    "tradesCount": {
+      "one": "1 trade",
+      "two": "2 trades",
+      "few": "{n} trades",
+      "many": "{n} trades"
+    },
     "viewProfile": "View profile",
     "relatedTrades": "Related trades",
     "requestHelpTitle": "Didn't find what you need?",
