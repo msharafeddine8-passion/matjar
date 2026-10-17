@@ -1134,11 +1134,13 @@ export default async function StoreOsHomePage({
                   )}
                 </p>
               </div>
-              {/* stores_select only exposes rows with status='active', so a
-                  store still in review has no public page at all — this link
-                  led to a 404 and the share/QR tools beside it minted codes
-                  pointing at the same nothing. A merchant who printed one on a
-                  shopfront had no way to find out. */}
+              {/* A new store is published (status 'active') the moment it is
+                  created, so a merchant lands here with the "view my page"
+                  link already showing. The non-active branches stay because
+                  stores_select only exposes active rows publicly: a suspended
+                  or rejected store — or one created before stores stopped
+                  waiting for approval and still at 'pending' — has no public
+                  page, and a link to it would be a 404. */}
               {isStopped ? (
                 // "قيد المراجعة" on a suspended shop is a false reassurance —
                 // nobody is reviewing it. The notice below says what happened.
@@ -1224,12 +1226,11 @@ export default async function StoreOsHomePage({
           {canOrders && <MatjarBroughtCard storeId={storeId} lang={lang} />}
 
           {/* The share card hands over a QR and a short link meant for a
-              shopfront or a receipt. Until the store is approved both resolve
+              shopfront or a receipt. For a page that is not live both resolve
               to nothing, so it stays hidden rather than inviting the merchant
               to print a dead link. */}
-          {/* Suppressed entirely for a stopped store: the "we will tell you the
-              moment it is approved" copy is written for a shop waiting its turn,
-              and a suspended one is not waiting. Its explanation is above. */}
+          {/* Suppressed entirely for a stopped store: its explanation is the
+              status notice above, not the "not live yet" note. */}
           {!isStopped && (
             <div className="mt-8">
               {isPending ? (

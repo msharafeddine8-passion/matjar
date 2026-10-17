@@ -135,9 +135,10 @@ export function StoreChecklist({
 
   const stage = publishStage(status, completeness.readyToPublish);
 
-  // Finished, and waiting on the review that is not the merchant's to do. This
-  // is the moment the old screen had no words for: the checklist simply went
-  // quiet and the merchant was left guessing whether that meant anything.
+  // Finished, but the page is not live. New stores no longer pass through an
+  // approval queue (they are published on creation), so this only reaches a
+  // store created before that change and still sitting at 'pending' — and the
+  // copy says to contact us rather than promising a review nobody is doing.
   if (stage === "review") {
     return (
       <div className="rounded-2xl border border-primary/30 bg-primary-soft/40 p-5">
@@ -248,9 +249,20 @@ export function StoreChecklist({
           suspended or rejected store is told nothing here: the reason its page
           is down is not a missing cover photo, and its own notice says so. */}
       {stage === "live" ? (
-        <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-success sm:text-sm">
+        // A store is published the moment it is created now, so this is the
+        // state a brand-new merchant lands in — and the link to the page they
+        // just opened belongs right here, not only once every box is ticked.
+        <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-success sm:text-sm">
           <CircleCheck className="h-4 w-4 shrink-0" />
           {t.publishLive}
+          <Link
+            href={storePath}
+            className="inline-flex min-h-[44px] items-center gap-1 text-primary underline-offset-2 hover:underline lg:min-h-0"
+          >
+            <span dir="ltr">{displayUrl}</span>
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            <span className="sr-only">{t.viewPage}</span>
+          </Link>
         </p>
       ) : stage === "setup" ? (
         blockers > 0 ? (

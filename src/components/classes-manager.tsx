@@ -1,15 +1,20 @@
 "use client";
-import { notifyError } from "@/lib/notify";
+import { notifyError, notifySuccess } from "@/lib/notify";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, X, CalendarClock } from "lucide-react";
+import { Plus, X, CalendarClock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { Input, Select, Textarea } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
-import { useConfirm } from "@/components/ui/confirm-dialog";
+import { Badge } from "@/components/ui/badge";
+import {
+  CatalogRowActions,
+  updateCatalogRow,
+  useCatalogRowOps,
+} from "@/components/catalog-row-actions";
 
 export type ClassRow = {
   id: string;
@@ -20,6 +25,7 @@ export type ClassRow = {
   start_time: string;
   capacity: number;
   price: number | null;
+  active: boolean;
 };
 
 type Draft = {
@@ -56,26 +62,44 @@ export function ClassesManager({
   classes: ClassRow[];
 }) {
   const router = useRouter();
-  const confirm = useConfirm();
   const t = dict.classes;
+  const c = dict.catalogItem;
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<Draft>(empty);
   const [busy, setBusy] = useState(false);
+  // The row being edited; null = the form adds a new class.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const ops = useCatalogRowOps("store_classes", dict);
 
   function startNew() {
     setDraft({ ...empty });
+    setEditingId(null);
     setAdding(true);
+  }
+  function startEdit(row: ClassRow) {
+    setDraft({
+      name: row.name,
+      name_en: row.name_en ?? "",
+      day_of_week: String(row.day_of_week),
+      // time columns come back as HH:MM:SS; <input type="time"> wants HH:MM.
+      start_time: row.start_time.slice(0, 5),
+      capacity: String(row.capacity),
+      price: row.price == null ? "" : String(row.price),
+      description: row.description ?? "",
+    });
+    setEditingId(row.id);
+    setAdding(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function cancel() {
     setAdding(false);
+    setEditingId(null);
     setDraft(empty);
   }
 
   async function save() {
     setBusy(true);
-    const supabase = createClient();
-    const { error } = await supabase.from("store_classes").insert({
-      store_id: storeId,
+    const values = {
       name: draft.name.trim(),
       name_en: draft.name_en.trim() || null,
       description: draft.description.trim() || null,
@@ -83,7 +107,22 @@ export function ClassesManager({
       start_time: draft.start_time || "18:00",
       capacity: Number(draft.capacity) || 10,
       price: draft.price === "" ? null : Number(draft.price),
-    });
+    };
+    if (editingId) {
+      const ok = await updateCatalogRow("store_classes", editingId, values);
+      setBusy(false);
+      if (!ok) {
+        notifyError(dict.common.actionFailed);
+        return;
+      }
+      notifySuccess(c.saved);
+      cancel();
+      router.refresh();
+      return;
+    }
+    const { error } = await createClient()
+      .from("store_classes")
+      .insert({ store_id: storeId, ...values });
     setBusy(false);
     if (error) {
       notifyError(dict.auth.errorGeneric);
@@ -93,23 +132,13 @@ export function ClassesManager({
     router.refresh();
   }
 
-  async function remove(id: string) {
-    if (!(await confirm({ message: dict.merchant.products.confirmDelete, confirmLabel: dict.common.confirm, cancelLabel: dict.common.cancel, danger: true }))) return;
-    setBusy(true);
-    const { error } = await createClient()
-      .from("store_classes")
-      .delete()
-      .eq("id", id);
-    setBusy(false);
-    if (error) {
-      notifyError(dict.auth.errorGeneric);
-      return;
-    }
-    router.refresh();
-  }
+  const editingName = classes.find((row) => row.id === editingId)?.name;
 
   const form = (
     <div className="space-y-3 rounded-2xl border border-primary/30 bg-surface p-5">
+      {editingName && (
+        <h3 className="font-bold">{c.editTitle.replace("{name}", editingName)}</h3>
+      )}
       <div>
         <label className={labelClass} htmlFor="cls-name">{t.name}</label>
         <Input
@@ -189,14 +218,14 @@ export function ClassesManager({
       </div>
       <div className="flex gap-2">
         <Button disabled={!draft.name.trim()} loading={busy} onClick={save}>
-          {t.save}
+          {editingId ? c.saveChanges : t.save}
         </Button>
         <Button
           variant="secondary"
           onClick={cancel}
           leftIcon={<X className="h-4 w-4" />}
         >
-          {dict.merchant.doctors.cancel}
+          {editingId ? c.cancelEdit : dict.merchant.doctors.cancel}
         </Button>
       </div>
     </div>
@@ -224,41 +253,51 @@ export function ClassesManager({
             {t.empty}
           </div>
         )}
-        {classes.map((c) => {
-          const primary = lang === "en" ? c.name_en || c.name : c.name;
+        {classes.map((row) => {
+          const primary = lang === "en" ? row.name_en || row.name : row.name;
           return (
             <div
-              key={c.id}
-              className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3"
+              key={row.id}
+              className={`flex items-center gap-3 rounded-2xl border bg-surface p-3 ${
+                editingId === row.id ? "border-primary" : "border-border"
+              }`}
             >
               <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-muted-foreground">
                 <CalendarClock className="h-6 w-6" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-bold">{primary}</p>
+                <p className="flex items-center gap-2">
+                  <span className="truncate font-bold">{primary}</span>
+                  {!row.active && (
+                    <Badge variant="neutral" size="sm">
+                      {c.hiddenBadge}
+                    </Badge>
+                  )}
+                </p>
                 <div className="mt-1 flex flex-wrap items-center gap-x-1 text-sm text-muted-foreground">
-                  <span>{t.days[c.day_of_week]}</span>
+                  <span>{t.days[row.day_of_week]}</span>
                   <span>·</span>
-                  <span>{c.start_time}</span>
+                  <span>{row.start_time}</span>
                   <span>·</span>
-                  <span>{c.capacity}</span>
-                  {c.price != null && <span>·</span>}
-                  {c.price != null && <span>{c.price}</span>}
+                  <span>{row.capacity}</span>
+                  {row.price != null && <span>·</span>}
+                  {row.price != null && <span>{row.price}</span>}
                 </div>
-                {c.description && (
+                {row.description && (
                   <p className="mt-1 truncate text-sm text-muted-foreground">
-                    {c.description}
+                    {row.description}
                   </p>
                 )}
               </div>
-              <button
-                disabled={busy}
-                onClick={() => remove(c.id)}
-                aria-label={t.delete}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-danger transition-colors hover:bg-danger-soft disabled:opacity-60"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <CatalogRowActions
+                dict={dict}
+                deleteLabel={t.delete}
+                busy={busy || ops.busyId === row.id}
+                active={row.active}
+                onEdit={() => startEdit(row)}
+                onToggleActive={() => ops.setActive(row.id, !row.active)}
+                onDelete={() => ops.remove(row.id, true)}
+              />
             </div>
           );
         })}

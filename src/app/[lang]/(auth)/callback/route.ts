@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isLocale } from "@/i18n/config";
 import { createClient } from "@/lib/supabase/server";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 // OAuth (Google) callback: exchange the PKCE code for a session, then land the
 // user in the app. The Supabase server client writes the session cookies onto
@@ -14,7 +15,9 @@ export async function GET(
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next");
-  const dest = next && next.startsWith("/") ? next : `/${locale}`;
+  // Same-origin paths only — `startsWith("/")` let `//evil.com` and
+  // `/%09/evil.com` through to another site (lib/safe-redirect.ts).
+  const dest = safeRedirectPath(next, url.origin, `/${locale}`);
 
   if (code) {
     const supabase = await createClient();

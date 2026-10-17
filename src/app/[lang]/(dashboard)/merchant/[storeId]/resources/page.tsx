@@ -39,7 +39,7 @@ export default async function StoreResourcesPage({
 
   const { data: rowsData } = await supabase
     .from("store_resources")
-    .select("id, name, name_en, price, open_hour, close_hour")
+    .select("id, name, name_en, price, open_hour, close_hour, active")
     .eq("store_id", storeId)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });

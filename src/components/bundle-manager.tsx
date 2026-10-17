@@ -123,10 +123,30 @@ export function BundleManager({
       .from("bundle_items")
       .insert(rows);
     if (itemsErr) {
-      // roll back the orphan bundle so a failed save leaves nothing behind
-      await supabase.from("products").delete().eq("id", prod.id);
+      // Roll back the half-made bundle. This used to be products.delete(), but
+      // products has no DELETE policy, so RLS matched zero rows, returned no
+      // error, and left a live, empty bundle on the storefront. Soft-delete is
+      // how every other product removal works here (product-row-actions,
+      // remove() below), and deleted_at is what every public read filters on.
+      // `.select` so a zero-row update (the same silent RLS miss that sank the
+      // delete) is seen as a failure instead of passing for success.
+      const { data: undone, error: undoErr } = await supabase
+        .from("products")
+        .update({
+          deleted_at: new Date().toISOString(),
+          is_available: false,
+        })
+        .eq("id", prod.id)
+        .select("id");
+      console.error("[bundle-manager] bundle_items insert failed", itemsErr);
       setBusy(false);
-      notifyError(dict.common.actionFailed);
+      if (undoErr || !undone?.length) {
+        console.error("[bundle-manager] rollback failed", undoErr);
+        notifyError(t.itemsFailedOrphan);
+        router.refresh();
+        return;
+      }
+      notifyError(t.itemsFailed);
       return;
     }
     setBusy(false);

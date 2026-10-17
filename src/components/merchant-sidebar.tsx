@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { CategoryKey } from "@/lib/catalog";
+import type { StorePlan } from "@/lib/plan-tiers";
 import {
   OS_MODULE_META,
   sectorTeamMeta,
@@ -55,6 +56,8 @@ export type SidebarNav = {
   supportLabel: string;
   viewStoreLabel: string;
   proBadge: string;
+  basicBadge: string;
+  businessBadge: string;
   freeBadge: string;
   trialBadge: string;
 };
@@ -137,7 +140,9 @@ export function MerchantSidebar({
   storeId: string;
   storeName: string;
   logoUrl: string | null;
-  plan: "free" | "pro";
+  /** The tier the store pays for (not the trial-raised effective plan). */
+  plan: StorePlan;
+  /** > 0 only while a trial is what unlocks Pro (the layout decides). */
   trialDaysLeft?: number;
   slug: string | null;
   /** The store's sector, so the roster module can carry its own glyph. */
@@ -146,9 +151,19 @@ export function MerchantSidebar({
   /** Phone bottom nav, resolved from the sector in the layout. Empty = none. */
   tabs?: MerchantNavItem[];
 }) {
-  // During an active trial the plan is "pro" (unlocked), but say so explicitly
-  // so the merchant knows it's temporary and counting down.
+  // During an active trial Pro is unlocked, but say so explicitly so the
+  // merchant knows it's temporary and counting down.
   const onTrial = trialDaysLeft > 0;
+  const paid = plan !== "free";
+  const planBadge = onTrial
+    ? nav.trialBadge
+    : plan === "business"
+      ? nav.businessBadge
+      : plan === "pro"
+        ? nav.proBadge
+        : plan === "basic"
+          ? nav.basicBadge
+          : nav.freeBadge;
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -222,16 +237,12 @@ export function MerchantSidebar({
             className={`rounded-full px-1.5 py-px text-[10px] font-bold ${
               onTrial
                 ? "bg-warning-soft text-warning"
-                : plan === "pro"
+                : paid
                   ? "bg-accent-soft text-accent-foreground"
                   : "bg-surface-muted text-muted-foreground"
             }`}
           >
-            {onTrial
-              ? nav.trialBadge
-              : plan === "pro"
-                ? nav.proBadge
-                : nav.freeBadge}
+            {planBadge}
           </span>
           <Link
             href={viewHref}

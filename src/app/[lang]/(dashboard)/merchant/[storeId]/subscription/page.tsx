@@ -1,22 +1,30 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Crown, Check, Sparkles } from "lucide-react";
+import { Crown, MessageCircle, Sparkles, Wallet } from "lucide-react";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { Container } from "@/components/ui/container";
-import { RequestProButton } from "@/components/request-pro-button";
+import {
+  RequestProButton,
+  type UpgradeOption,
+} from "@/components/request-pro-button";
 import { StartTrialButton } from "@/components/start-trial-button";
-import { PLAN_TIERS, promoState, annualPrice, planRank } from "@/lib/plan-tiers";
+import {
+  PLAN_ORDER,
+  PLAN_TIERS,
+  promoState,
+  annualPrice,
+  planRank,
+  type PlanKey,
+} from "@/lib/plan-tiers";
 import { planCopy } from "@/lib/plan-copy";
 import { PLAN_HIGHLIGHTS } from "@/lib/feature-availability";
 import { requestNow } from "@/lib/now";
+import { supportWaLink } from "@/lib/support";
 import { Money } from "@/components/ui/money";
 import { CardList, CardRow } from "@/components/ui/card";
-
-// Single source of truth for Pro pricing (promo-aware): plan-tiers.
-const PRO_PRICE_MONTHLY = PLAN_TIERS.pro.monthly;
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -65,7 +73,23 @@ export default async function StoreSubscriptionPage({
       string,
       string | undefined
     >)[plan] ?? t.free;
-  const proYearly = annualPrice(PLAN_TIERS.pro, promoState(new Date()).active);
+  // Every tier above the one being paid for. A Basic store can ask for Pro or
+  // Business and a Pro store for Business; this used to offer Pro alone, and
+  // only below Pro. Prices from PLAN_TIERS, annual promo-aware.
+  const promoActive = promoState(new Date()).active;
+  const upgradeOptions: UpgradeOption[] = PLAN_ORDER.filter(
+    (tier: PlanKey) => planRank(tier) > planRank(plan),
+  ).map((tier) => ({
+    tier,
+    name: t[tier],
+    monthly: PLAN_TIERS[tier].monthly,
+    yearly: annualPrice(PLAN_TIERS[tier], promoActive),
+    // Same list the /pricing cards show, from the availability config. The
+    // bare "products" line carries no number, so it says nothing here.
+    features: PLAN_HIGHLIGHTS[tier]
+      .filter((id) => id !== "products")
+      .map((id) => dict.pricing.features[id]),
+  }));
   const trialEndsAt =
     (store as { trial_ends_at: string | null }).trial_ends_at ?? null;
   const trialEnd = trialEndsAt ? new Date(trialEndsAt) : null;
@@ -86,6 +110,15 @@ export default async function StoreSubscriptionPage({
     .limit(1)
     .maybeSingle();
   const expiresAt = (sub as { expires_at: string | null } | null)?.expires_at ?? null;
+
+  // Prefill the call-back number with the one already on the owner's profile,
+  // so a request is rarely sent without a way to reach them.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("phone")
+    .eq("id", user.id)
+    .maybeSingle();
+  const ownerPhone = (profile as { phone: string | null } | null)?.phone ?? null;
 
   const { data: paymentsData } = await supabase
     .from("payments")
@@ -138,13 +171,23 @@ export default async function StoreSubscriptionPage({
               </span>
             )}
           </div>
+          {/* Paid plans now expire (subscriptions.expires_at); a nightly job
+              returns a lapsed store to Free, so the date is stated with what
+              happens after it. */}
           {isPaid && expiresAt && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              {t.expiresOn}: <span className="font-semibold text-foreground">{fmtDate(expiresAt)}</span>
-            </p>
+            <>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {t.expiresOn}:{" "}
+                <span className="font-semibold text-foreground">{fmtDate(expiresAt)}</span>
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{t.expiresNote}</p>
+            </>
           )}
           {isPro && (
             <p className="mt-3 font-semibold text-primary">{t.proActive}</p>
+          )}
+          {upgradeOptions.length === 0 && (
+            <p className="mt-1 text-sm text-muted-foreground">{t.topTier}</p>
           )}
         </div>
 
@@ -180,51 +223,67 @@ export default async function StoreSubscriptionPage({
           </div>
         )}
 
-        {/* Paid upgrade CTA — shown during/after the trial (a never-trialed store
-            sees the free-trial card above instead). */}
-        {!isPro && trialEndsAt !== null && (
+        {/* Upgrade CTA. A free store sees it during/after its trial (a
+            never-trialed one gets the free-trial card above instead) with the
+            Pro pitch it always had; a paying store sees every tier above its
+            own. It used to be `!isPro && trialEndsAt !== null`, which hid it
+            from Pro (no route to Business) and offered Basic only Pro. */}
+        {upgradeOptions.length > 0 && (isPaid || trialEndsAt !== null) && (
           <div className="mt-4 rounded-2xl border border-warning/30 bg-warning-soft p-6">
             <h2 className="flex items-center gap-2 text-lg font-extrabold">
               <Crown className="h-5 w-5 text-accent" />
-              {t.upgradeTitle}
+              {isPaid ? t.upgradeNextTitle : t.upgradeTitle}
             </h2>
-            <p className="mt-2 text-sm text-warning/80">{planCopy(t.upgradeBody)}</p>
-            <p className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-warning">
-                ${PRO_PRICE_MONTHLY}
-              </span>
-              <span className="text-sm font-semibold text-warning/70">
-                {dict.pricing.perMonth}
-              </span>
-              <span className="text-sm font-bold text-warning">
-                · ${proYearly}
-                {dict.pricing.perYear}
-              </span>
+            <p className="mt-2 text-sm text-warning/80">
+              {isPaid
+                ? t.upgradeNextBody.replace("{current}", planName)
+                : planCopy(t.upgradeBody)}
             </p>
-            {/* Same list the /pricing Pro card shows, from the availability
-                config — not the hand-written array this used to read, which
-                promised unlimited products and a verified badge that paying has
-                never granted. */}
-            <ul className="mt-3 grid gap-1.5">
-              {PLAN_HIGHLIGHTS.pro
-                .filter((id) => id !== "products")
-                .map((id) => (
-                  <li
-                    key={id}
-                    className="flex items-start gap-2 text-sm font-medium text-warning"
-                  >
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                    {dict.pricing.features[id]}
-                  </li>
-                ))}
-            </ul>
+            {/* Feature lines come from the availability config (the same list
+                the /pricing cards show) — not the hand-written array this used
+                to read, which promised unlimited products and a verified badge
+                that paying has never granted. */}
             <RequestProButton
               storeId={storeId}
-              requestLabel={t.requestUpgrade}
-              sentLabel={t.requestSent}
-              phonePlaceholder={t.requestPhone}
+              options={upgradeOptions}
+              defaultTier={isPaid ? upgradeOptions[0].tier : "pro"}
+              defaultPhone={ownerPhone}
+              labels={{
+                tierLabel: t.requestTierLabel,
+                request: t.requestUpgradeTo,
+                sent: t.requestSentTo,
+                phonePlaceholder: t.requestPhone,
+                perMonth: dict.pricing.perMonth,
+                perYear: dict.pricing.perYear,
+                failed: t.requestFailed,
+                notAllowed: t.requestNotAllowed,
+              }}
             />
             <p className="mt-2 text-xs text-warning/70">{t.requestNote}</p>
+          </div>
+        )}
+
+        {/* How the money actually moves. There is no card payment on Matjar:
+            saying so up front is what stops a merchant hunting for a checkout
+            that does not exist. */}
+        {(isPaid || (upgradeOptions.length > 0 && trialEndsAt !== null)) && (
+          <div className="mt-4 rounded-2xl border border-border bg-surface p-5">
+            <h2 className="flex items-center gap-2 font-extrabold">
+              <Wallet className="h-5 w-5 text-primary" />
+              {t.howToPayTitle}
+            </h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">{t.howToPayBody}</p>
+            <a
+              href={supportWaLink(
+                `${(store as { name: string }).name} — ${t.howToPayTitle}`,
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-bold transition-colors hover:border-primary hover:text-whatsapp lg:min-h-0"
+            >
+              <MessageCircle className="h-4 w-4" />
+              {t.howToPayWhatsapp}
+            </a>
           </div>
         )}
 

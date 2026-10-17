@@ -42,7 +42,7 @@ export default async function StoreCoursesPage({
 
   const { data: rowsData } = await supabase
     .from("store_courses")
-    .select("id, name, name_en, description, price, duration, schedule, level")
+    .select("id, name, name_en, description, price, duration, schedule, level, active")
     .eq("store_id", storeId)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });

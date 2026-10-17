@@ -1,5 +1,5 @@
 "use client";
-import { notifyError } from "@/lib/notify";
+import { notifyError, notifySuccess } from "@/lib/notify";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -8,7 +8,12 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/client";
 import { logAdminAction } from "@/lib/audit";
-import { planRank } from "@/lib/plan-tiers";
+import {
+  addPlanPeriod,
+  planCharge,
+  planRank,
+  type PlanKey,
+} from "@/lib/plan-tiers";
 import { Container } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardBody } from "@/components/ui/card";
@@ -40,8 +45,14 @@ function Row({
   const confirm = useConfirm();
   const t = dict.admin.subs;
   const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
-  const [amount, setAmount] = useState("12");
-  const [tier, setTier] = useState<"basic" | "pro" | "business">("pro");
+  const [tier, setTier] = useState<PlanKey>("pro");
+  // The default charge comes from PLAN_TIERS (annual = promo while the window
+  // is open, standard after) — it used to be a hardcoded 12 / 120, prices no
+  // tier has had since the repricing. Still editable: a negotiated amount is a
+  // real thing. Picking another tier or period resets it to that default.
+  const [amount, setAmount] = useState(() =>
+    String(planCharge("pro", "monthly", new Date())),
+  );
   const [busy, setBusy] = useState(false);
 
   // Read the clock once for the expiry badge; harmless in render for a status display.
@@ -67,7 +78,11 @@ function Row({
 
   function changePeriod(p: "monthly" | "yearly") {
     setPeriod(p);
-    setAmount(p === "yearly" ? "120" : "12");
+    setAmount(String(planCharge(tier, p, new Date())));
+  }
+  function changeTier(next: PlanKey) {
+    setTier(next);
+    setAmount(String(planCharge(next, period, new Date())));
   }
 
   async function activate() {
@@ -84,37 +99,55 @@ function Row({
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    const base =
-      expiresMs && expiresMs > now ? new Date(expiresMs) : new Date();
-    const expires = new Date(base);
-    if (period === "yearly") expires.setFullYear(expires.getFullYear() + 1);
-    else expires.setMonth(expires.getMonth() + 1);
+    // A renewal of the SAME tier extends from the current expiry, so paying
+    // early never costs the merchant the days they had left. A new tier (or a
+    // lapsed one) starts now: an upgrade bought today runs from today.
+    const nowDate = new Date();
+    const renewing =
+      row.plan === tier && expiresMs != null && expiresMs > nowDate.getTime();
+    const start = renewing ? new Date(expiresMs) : nowDate;
+    const expires = addPlanPeriod(start, period);
+    // A failed step stops the chain and is reported for what it was: these
+    // three writes used to run with their errors discarded, so a store could
+    // be shown upgraded with no subscription row behind it, which is exactly
+    // the row the nightly expiry job reads.
+    const fail = (msg: string, err: unknown) => {
+      console.error("[admin-subs] activate failed", err);
+      setBusy(false);
+      notifyError(msg);
+      router.refresh();
+    };
 
     let subId = row.subId;
     if (subId) {
-      await supabase
+      const { data: updated, error: subErr } = await supabase
         .from("subscriptions")
         .update({
           status: "active",
           plan: tier,
           expires_at: expires.toISOString(),
-          updated_at: new Date().toISOString(),
+          ...(renewing ? {} : { started_at: nowDate.toISOString() }),
+          updated_at: nowDate.toISOString(),
         })
-        .eq("id", subId);
+        .eq("id", subId)
+        .select("id");
+      if (subErr || !updated?.length) return fail(t.subFailed, subErr);
     } else {
-      const { data: created } = await supabase
+      const { data: created, error: subErr } = await supabase
         .from("subscriptions")
         .insert({
           store_id: row.id,
           plan: tier,
           status: "active",
+          started_at: nowDate.toISOString(),
           expires_at: expires.toISOString(),
         })
         .select("id")
         .single();
       subId = (created as { id: string } | null)?.id ?? null;
+      if (subErr || !subId) return fail(t.subFailed, subErr);
     }
-    await supabase.from("payments").insert({
+    const { error: payErr } = await supabase.from("payments").insert({
       store_id: row.id,
       subscription_id: subId,
       amount: Number(amount) || 0,
@@ -122,6 +155,7 @@ function Row({
       method: "manual",
       recorded_by: user?.id ?? null,
     });
+    if (payErr) return fail(t.paymentFailed, payErr);
     // Recording a payment sets the PLAN and nothing else.
     //
     // It used to also set is_verified, which made "موثّق" mean "paid". Those are
@@ -133,16 +167,19 @@ function Row({
     // tick from `is_verified` — so nothing is lost visually. And verification now
     // has a real path: the merchant submits to store_verifications and an admin
     // approves it (0272). That queue should be the only thing that moves this.
-    const { error } = await supabase
+    const { data: planned, error } = await supabase
       .from("stores")
       .update({ plan: tier })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .select("id");
+    if (error || !planned?.length) return fail(t.planFailed, error);
     setBusy(false);
-    if (error) {
-      notifyError(dict.auth.errorGeneric);
-      return;
-    }
-    void logAdminAction("activated", "subscription", row.id, { period });
+    void logAdminAction("activated", "subscription", row.id, {
+      period,
+      plan: tier,
+      expires_at: expires.toISOString(),
+    });
+    notifySuccess(t.activated.replace("{date}", fmt(expires.toISOString())));
     router.refresh();
   }
 
@@ -158,11 +195,19 @@ function Row({
       return;
     setBusy(true);
     const supabase = createClient();
-    await supabase
+    const { error: subErr } = await supabase
       .from("subscriptions")
       .update({ status: "cancelled", updated_at: new Date().toISOString() })
       .eq("store_id", row.id)
       .eq("status", "active");
+    if (subErr) {
+      // Leave the plan alone, so the store and its subscription row never
+      // disagree about whether it is paying.
+      console.error("[admin-subs] cancel subscription failed", subErr);
+      setBusy(false);
+      notifyError(dict.auth.errorGeneric);
+      return;
+    }
     const { error } = await supabase
       .from("stores")
       .update({ plan: "free" })
@@ -213,9 +258,7 @@ function Row({
           <Field label={t.plan} htmlFor="sub-tier" className="w-36">
             <Select
               value={tier}
-              onChange={(e) =>
-                setTier(e.target.value as "basic" | "pro" | "business")
-              }
+              onChange={(e) => changeTier(e.target.value as PlanKey)}
             >
               <option value="basic">{t.basic}</option>
               <option value="pro">{t.pro}</option>
