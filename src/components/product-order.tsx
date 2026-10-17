@@ -280,7 +280,6 @@ export function ProductOrder({
   useEffect(() => {
     const sync = () => setBasket(readCart(storeId));
     // localStorage only exists after mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     sync();
     window.addEventListener(CART_EVENT, sync);
     window.addEventListener("storage", sync);

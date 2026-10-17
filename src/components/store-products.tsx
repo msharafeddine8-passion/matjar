@@ -163,6 +163,8 @@ export function StoreProducts({
   const storeId = checkout.storeId;
   const [cart, setCart] = useState<Record<string, number>>({});
   const cartKey = `matjar-cart-${storeId}`;
+  // Declared before the load effect, which can open it (#cart).
+  const [cartOpen, setCartOpen] = useState(false);
 
   // Persist the cart per store so a refresh / accidental navigation doesn't
   // wipe it (a common drop-off point). Loaded on mount to avoid SSR mismatch.
@@ -217,7 +219,6 @@ export function StoreProducts({
     el.scrollIntoView({ behavior: "auto", block: "start" });
     el.focus({ preventScroll: true });
   }, [checkingOut]);
-  const [cartOpen, setCartOpen] = useState(false);
   // The chosen delivery window. Kept HERE rather than inside the picker
   // because the picker lives in the checkout panel and unmounts whenever the
   // basket empties — a shopper who clears their cart, changes their mind and

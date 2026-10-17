@@ -85,7 +85,6 @@ export function StoreStickyCta({
     const sync = () => setHasCart(cartCount(readCart(storeId)) > 0);
     // localStorage exists only after mount — reading it here, once, is the
     // documented way to avoid an SSR/hydration mismatch.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     sync();
     const onStorage = (e: StorageEvent) => {
       if (e.key === null || e.key === cartKey(storeId)) sync();

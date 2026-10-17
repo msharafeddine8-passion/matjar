@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Locale } from "@/i18n/config";
-import { toCategoryKey, type CategoryKey, type Store } from "@/lib/catalog";
+import { toCategoryKey, type CategoryKey } from "@/lib/catalog";
 import type { OfferingKind } from "@/lib/offering";
 import {
   listingSearchTerms,
