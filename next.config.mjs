@@ -74,13 +74,26 @@ const BUILD_ID = buildIdentity();
 // OpenStreetMap tiles (Leaflet map), Vercel Analytics, data:/blob: (QR + story
 // canvas + Leaflet marker), self-hosted fonts. Dev also needs 'unsafe-eval'
 // and ws: for Turbopack HMR — production stays without them.
+// Only this project's Supabase, not every *.supabase.co: any project on
+// that domain belongs to whoever made it, so the wildcard let an injected
+// script post data to an attacker's project (connect-src) or beacon through
+// images. Every stored image URL is on this host (checked 2026-10-17). Falls
+// back to the wildcard only when the env var is missing (e.g. a bare build).
+const SUPABASE_HOST = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").host || "*.supabase.co";
+  } catch {
+    return "*.supabase.co";
+  }
+})();
+
 const csp = [
   `default-src 'self'`,
   `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com${isDev ? " 'unsafe-eval'" : ""}`,
   `style-src 'self' 'unsafe-inline'`,
-  `img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org`,
+  `img-src 'self' data: blob: https://${SUPABASE_HOST} https://*.tile.openstreetmap.org`,
   `font-src 'self' data:`,
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.vercel-insights.com https://va.vercel-scripts.com${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
+  `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} https://*.vercel-insights.com https://va.vercel-scripts.com${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
   `worker-src 'self' blob:`,
   `frame-ancestors 'self'`,
   `base-uri 'self'`,
