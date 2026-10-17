@@ -1569,6 +1569,7 @@
     "from": "From",
     "noProducts": "No products listed yet.",
     "productsForSale": "Products for sale",
+    "browseProducts": "Browse products",
     "emptyOfferings": {
       "title": "This business is still adding what it offers",
       "body": "Nothing is listed here yet. Message them, or follow to hear as soon as something goes up."
@@ -4646,6 +4647,16 @@
     "soldCount": "Ordered {n} times",
     "bundleIncludes": "What's in the bundle",
     "buyNow": "Order now",
+    "addedToCart": "Added to cart",
+    "cartUnits": {
+      "one": "1 item in cart",
+      "two": "2 items in cart",
+      "few": "{n} items in cart",
+      "many": "{n} items in cart"
+    },
+    "viewCart": "View cart",
+    "separateFromCart": "You have items in this store's cart — this order is placed on its own.",
+    "orderAloneHint": "The cart can't keep a note or a time, so this item is ordered on its own.",
     "total": "Total",
     "visitStore": "Visit store",
     "backToStore": "Back to store",

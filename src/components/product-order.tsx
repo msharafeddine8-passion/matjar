@@ -1,7 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { Minus, Plus, ShoppingCart, Wallet } from "lucide-react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Check, Minus, Plus, ShoppingCart, Wallet } from "lucide-react";
+import {
+  CART_EVENT,
+  addToCartMap,
+  cartCanCarry,
+  cartCount,
+  readCart,
+  writeCart,
+  type CartMap,
+} from "@/lib/store-cart";
+import { countLabel, type CountForms } from "@/lib/plural";
 import { noteHintKey } from "@/lib/note-hint";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -248,6 +259,51 @@ export function ProductOrder({
     if (offering) assertAddableToCart(offering);
     setAttemptKey(newIdempotencyKey());
     setCheckingOut(true);
+  }
+
+  // ----- The store basket -----
+  // «أضف إلى السلة» used to open a one-item checkout: the customer added a
+  // second product, and the first one was gone. A plain product now goes into
+  // the SAME basket the store page keeps (`matjar-cart-<storeId>`). A product
+  // with variants, add-ons or modifier groups cannot be written there (the
+  // basket is id -> quantity), and neither can a per-item note or a scheduled
+  // time — those keep the single-item checkout, labelled «اطلب الآن».
+  const storeId = checkout.storeId;
+  const carryable = cartCanCarry({
+    variants: variants.length,
+    addons: addons.length,
+    modifierGroups: modifierGroups.length,
+  });
+  const cartMode = carryable && !itemNote.trim() && !scheduledFor;
+  const [basket, setBasket] = useState<CartMap>({});
+  const [justAdded, setJustAdded] = useState(false);
+  useEffect(() => {
+    const sync = () => setBasket(readCart(storeId));
+    // localStorage only exists after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    sync();
+    window.addEventListener(CART_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(CART_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, [storeId]);
+  const basketUnits = cartCount(basket);
+  const cartHref = `/${lang}/store/${storeId}#cart`;
+
+  function addToBasket() {
+    if (offering) assertAddableToCart(offering);
+    const next = addToCartMap(
+      readCart(storeId),
+      productId,
+      qty,
+      variantStock ?? null,
+    );
+    writeCart(storeId, next);
+    setBasket(next);
+    setJustAdded(true);
+    setQty(1);
   }
 
   // Same test, rendered: a page that handed a non-addable offering to the buy
@@ -505,7 +561,7 @@ export function ProductOrder({
           onChange={(e) => setItemNote(e.target.value)}
           placeholder={
             (dict.product.itemNoteHints as Record<string, string>)[
-              noteHintKey(category)
+              noteHintKey(category, offering?.cta)
             ] ?? dict.product.itemNotePlaceholder
           }
           className={fieldClass}
@@ -609,7 +665,7 @@ export function ProductOrder({
             <button
               type="button"
               disabled={soldOut || !modifiersOk}
-              onClick={startCheckout}
+              onClick={cartMode ? addToBasket : startCheckout}
               className="flex items-center gap-1.5 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ShoppingCart className="h-4 w-4" />
@@ -617,9 +673,61 @@ export function ProductOrder({
                 ? (soldOutLabel ?? dict.product.outOfStock)
                 : !modifiersOk
                   ? dict.product.modChoose
-                  : (ctaLabel ?? dict.product.buyNow)}
+                  : cartMode
+                    ? (ctaLabel ?? dict.offering.cta.addToCart)
+                    : dict.product.buyNow}
             </button>
           </div>
+
+          {/* A plain product can still be ordered on its own, the old way. */}
+          {cartMode && !soldOut && (
+            <button
+              type="button"
+              onClick={startCheckout}
+              className="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-bold transition-colors hover:bg-surface-muted"
+            >
+              {dict.product.buyNow}
+            </button>
+          )}
+
+          {/* A note or a time cannot ride in the basket: say why the button
+              changed instead of silently dropping what they typed. */}
+          {carryable && !cartMode && (
+            <p className="text-xs text-muted-foreground">
+              {dict.product.orderAloneHint}
+            </p>
+          )}
+
+          {basketUnits > 0 && (
+            <div
+              role="status"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface-muted/60 px-3.5 py-2.5 text-sm"
+            >
+              <span className="flex min-w-0 items-center gap-1.5 font-semibold">
+                {cartMode ? (
+                  <>
+                    {justAdded && (
+                      <Check className="h-4 w-4 shrink-0 text-success" />
+                    )}
+                    {justAdded && `${dict.product.addedToCart} · `}
+                    {countLabel(
+                      dict.product.cartUnits as unknown as CountForms,
+                      basketUnits,
+                    )}
+                  </>
+                ) : (
+                  // This order goes on its own; the basket waits untouched.
+                  dict.product.separateFromCart
+                )}
+              </span>
+              <Link
+                href={cartHref}
+                className="shrink-0 font-bold text-primary hover:underline"
+              >
+                {dict.product.viewCart}
+              </Link>
+            </div>
+          )}
         </>
       )}
 

@@ -1089,8 +1089,9 @@ export default async function StorePage({
     cheapest != null ? `${dict.store.from} ${formatUsd(cheapest)}` : null;
   const ctaLabel: Record<PrimaryAction, string> = {
     orderNow: dict.profile.cta.orderNow,
-    // The offering resolver's word for this sector's goods (أضف إلى السلة).
-    addToCart: dict.offering.cta[storeOffering.cta],
+    // This bar only SCROLLS to the catalogue, so it says so. It used to borrow
+    // the add-to-cart verb, and tapping «أضف إلى السلة» added nothing.
+    addToCart: dict.store.browseProducts,
     bookAppointment: dict.offering.cta.bookAppointment,
     contactStore: dict.offering.cta.contactStore,
   };
@@ -1241,6 +1242,7 @@ export default async function StorePage({
       {stickyCta && (
         <StoreStickyCta
           targetId={"targetId" in stickyCta ? stickyCta.targetId : undefined}
+          storeId={checkout?.storeId ?? id}
           href={"href" in stickyCta ? stickyCta.href : undefined}
           label={stickyCta.label}
           note={stickyCta.note}

@@ -50,6 +50,7 @@ import type {
   StoreCheckout,
 } from "@/lib/checkout";
 import { resolveOffering } from "@/lib/offering";
+import { notifyCartChange, parseCart } from "@/lib/store-cart";
 
 // Delivery zone (migration 0172). The type now lives with the rest of the
 // checkout contract in src/lib/checkout.ts — re-exported here only so the
@@ -169,7 +170,15 @@ export function StoreProducts({
   useEffect(() => {
     try {
       const saved = localStorage.getItem(cartKey);
-      if (saved) setCart(JSON.parse(saved));
+      if (saved) {
+        const parsed = parseCart(saved);
+        setCart(parsed);
+        // «اعرض السلة» on a product page links here with #cart: open the
+        // basket the customer just filled instead of the top of the store.
+        if (window.location.hash === "#cart" && Object.keys(parsed).length) {
+          setCartOpen(true);
+        }
+      }
     } catch {
       /* ignore corrupt storage */
     }
@@ -186,7 +195,10 @@ export function StoreProducts({
     } catch {
       /* ignore */
     }
-  }, [cart, cartKey]);
+    // Tell the store page's sticky bar the basket changed: it hides while
+    // there is something in it, so it never stacks on the cart bar.
+    notifyCartChange(storeId);
+  }, [cart, cartKey, storeId]);
 
   const [checkingOut, setCheckingOut] = useState(false);
   // The checkout form renders inline, under the whole product list. On a phone

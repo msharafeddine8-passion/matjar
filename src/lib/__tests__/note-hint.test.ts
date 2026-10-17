@@ -15,6 +15,12 @@ describe("noteHintKey", () => {
     expect(noteHintKey("retail")).toBe("retail");
   });
 
+  it("gives a menu item the kitchen example", () => {
+    expect(noteHintKey("retail", "addToOrder")).toBe("food");
+    expect(noteHintKey(null, "addToOrder")).toBe("food");
+    expect(noteHintKey("retail", "addToCart")).toBe("retail");
+  });
+
   it("falls back to the neutral prompt rather than inventing one", () => {
     expect(noteHintKey("realEstate")).toBe("default");
     expect(noteHintKey("contractors")).toBe("default");
