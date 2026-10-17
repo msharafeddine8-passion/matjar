@@ -8,7 +8,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
-import { LoadError } from "@/components/ui/load-error";
+import { LoadError } from "@/components/load-error";
 import {
   TicketTypeManager,
   type TicketTypeRow,
@@ -101,7 +101,7 @@ export default async function StoreTicketsPage({
         {/* A failed read must not open a manager that believes there are no
             ticket types (the merchant would re-create them). */}
         {typeErr ? (
-          <LoadError message={dict.common.loadError} className="mt-6" />
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-6" />
         ) : (
           <TicketTypeManager storeId={storeId} dict={dict} initial={types} />
         )}
@@ -110,7 +110,7 @@ export default async function StoreTicketsPage({
           {t.attendees}
         </h2>
         {saleErr ? (
-          <LoadError message={dict.common.loadError} className="mt-4" />
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-4" />
         ) : sales.length ? (
           <CardList className="mt-4">
             {sales.map((s) => (

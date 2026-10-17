@@ -7,7 +7,7 @@ import { isPro } from "@/lib/plan";
 import { getStorePlan } from "@/lib/plan-server";
 import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
-import { LoadError } from "@/components/ui/load-error";
+import { LoadError } from "@/components/load-error";
 import { TasksManager, type TaskRow } from "@/components/tasks-manager";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import { requireModuleAccess } from "@/lib/staff-access";
@@ -75,7 +75,7 @@ export default async function StoreTasksPage({
         </h1>
 
         {loadErr ? (
-          <LoadError message={dict.common.loadError} className="mt-6" />
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-6" />
         ) : (
           <div className="mt-6">
             <TasksManager

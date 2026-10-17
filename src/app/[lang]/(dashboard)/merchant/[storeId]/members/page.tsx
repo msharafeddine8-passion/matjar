@@ -9,7 +9,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
-import { LoadError } from "@/components/ui/load-error";
+import { LoadError } from "@/components/load-error";
 import { NextStepEmpty } from "@/components/os-dashboard/next-step-empty";
 
 const UUID_RE =
@@ -153,7 +153,7 @@ export default async function StoreMembersPage({
         <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
 
         {loadErr ? (
-          <LoadError message={dict.common.loadError} className="mt-8" />
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-8" />
         ) : empty ? (
           <NextStepEmpty
             lang={lang}

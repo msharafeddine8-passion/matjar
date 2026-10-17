@@ -15,7 +15,7 @@ import { isPro } from "@/lib/plan";
 import { getStorePlan } from "@/lib/plan-server";
 import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
-import { LoadError } from "@/components/ui/load-error";
+import { LoadError } from "@/components/load-error";
 import { NextStepEmpty } from "@/components/os-dashboard/next-step-empty";
 import { formatUsd } from "@/lib/currency";
 
@@ -361,7 +361,7 @@ export default async function StoreReportsPage({
             <BarChart3 className="h-7 w-7 text-primary" />
             {t.title}
           </h1>
-          <LoadError message={dict.common.loadError} className="mt-6" />
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-6" />
         </Container>
       </div>
     );

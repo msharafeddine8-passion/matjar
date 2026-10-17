@@ -47,7 +47,8 @@
     "back": "Back",
     "close": "Close",
     "skipToContent": "Skip to content",
-    "loadError": "Couldn't load this information — try refreshing the page"
+    "loadError": "Couldn't load this information — try refreshing the page",
+    "reload": "Refresh"
   },
   "catalogItem": {
     "edit": "Edit",

@@ -7,7 +7,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
-import { LoadError } from "@/components/ui/load-error";
+import { LoadError } from "@/components/load-error";
 import {
   BundleManager,
   type Component,
@@ -127,7 +127,7 @@ export default async function StoreBundlesPage({
           {dict.merchant.bundles.subtitle}
         </p>
         {loadErr ? (
-          <LoadError message={dict.common.loadError} className="mt-8" />
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-8" />
         ) : (
           <div className="mt-8">
             <BundleManager

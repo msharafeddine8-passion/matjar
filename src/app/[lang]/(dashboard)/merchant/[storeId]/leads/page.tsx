@@ -9,7 +9,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
-import { LoadError } from "@/components/ui/load-error";
+import { LoadError } from "@/components/load-error";
 import { LeadStatusControl } from "@/components/lead-status-control";
 import { CardList, CardRow } from "@/components/ui/card";
 import { NextStepEmpty } from "@/components/os-dashboard/next-step-empty";
@@ -88,7 +88,7 @@ export default async function StoreLeadsPage({
         <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
 
         {loadErr ? (
-          <LoadError message={dict.common.loadError} className="mt-8" />
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-8" />
         ) : leads.length ? (
           <CardList className="mt-8">
             {leads.map((l) => (

@@ -4,7 +4,7 @@ import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { requireModuleAccess } from "@/lib/staff-access";
-import { LoadError } from "@/components/ui/load-error";
+import { LoadError } from "@/components/load-error";
 import { toCategoryKey } from "@/lib/catalog";
 import { categoryModule } from "@/lib/modules";
 import { Container } from "@/components/ui/container";
@@ -219,7 +219,8 @@ export default async function EditProductPage({
         </Link>
         {partsFailed ? (
           <LoadError
-            message={dict.merchant.products.editLoadFailed}
+            title={dict.merchant.products.editLoadFailed}
+            retryLabel={dict.common.reload}
             className="mt-5"
           />
         ) : (

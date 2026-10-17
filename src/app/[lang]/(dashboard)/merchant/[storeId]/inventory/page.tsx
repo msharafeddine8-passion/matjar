@@ -7,7 +7,7 @@ import { isBusiness } from "@/lib/plan";
 import { getStorePlan } from "@/lib/plan-server";
 import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
-import { LoadError } from "@/components/ui/load-error";
+import { LoadError } from "@/components/load-error";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import {
   InventoryManager,
@@ -113,7 +113,7 @@ export default async function StoreInventoryPage({
         </h1>
 
         {loadErr ? (
-          <LoadError message={dict.common.loadError} className="mt-6" />
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-6" />
         ) : (
         <>
         <div className="mt-6">

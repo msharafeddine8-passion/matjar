@@ -9,7 +9,7 @@ import { isBusiness } from "@/lib/plan";
 import { getStorePlan } from "@/lib/plan-server";
 import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
-import { LoadError } from "@/components/ui/load-error";
+import { LoadError } from "@/components/load-error";
 import { ExpenseManager, type Expense } from "@/components/expense-manager";
 import { BooksLock } from "@/components/books-lock";
 import { requireModuleAccess } from "@/lib/staff-access";
@@ -115,7 +115,7 @@ export default async function AccountingPage({
         <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
 
         {loadFailed ? (
-          <LoadError message={dict.common.loadError} className="mt-6" />
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-6" />
         ) : (
         <>
         <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
