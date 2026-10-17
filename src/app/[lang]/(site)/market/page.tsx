@@ -16,7 +16,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MarketFilters } from "@/components/market-filters";
 import { MarketListingCard } from "@/components/market-listing-card";
-import { localeAlternates } from "@/lib/site";
+import { localeAlternates, shareImages } from "@/lib/site";
 import { getSectionSupply } from "@/lib/data/section-supply";
 import { sectionRobots } from "@/lib/seo-rules";
 
@@ -43,6 +43,8 @@ export async function generateMetadata({
       type: "website",
       title: dict.market.title,
       description: dict.market.subtitle,
+      // Replaces the layout's openGraph whole, so the card is restated.
+      images: shareImages().openGraph,
     },
     // No live listing → a thin page for a crawler (lib/seo-rules; the sitemap
     // leaves it out on the same count).

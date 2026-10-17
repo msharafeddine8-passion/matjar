@@ -17,7 +17,7 @@ import {
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
-import { localeAlternates, SITE_URL } from "@/lib/site";
+import { localeAlternates, shareImages, SITE_URL } from "@/lib/site";
 import { offeringJsonLd, jsonLdScript } from "@/lib/jsonld";
 import {
   getPublicProductView,
@@ -99,7 +99,9 @@ export async function generateMetadata({
   if (!isLocale(lang)) return {};
   const product = await loadProduct(id);
   if (!product) return { title: "Matjar" };
-  const name = localized(product.name, product.nameEn, lang);
+  // Trimmed: a stored trailing space rendered as a double space before the
+  // template's " · متجر".
+  const name = localized(product.name, product.nameEn, lang).trim();
   const localizedDesc = localized(
     product.description ?? "",
     product.descriptionEn,
@@ -110,7 +112,9 @@ export async function generateMetadata({
     (lang === "ar"
       ? `${name} من ${product.storeName} على متجر.`
       : `${name} from ${product.storeName} on Matjar.`);
-  const image = product.images[0];
+  // The product photo through the Supabase resizer (a share preview should
+  // not fetch the multi-hundred-KB original), or the platform card.
+  const images = shareImages(product.images[0], name);
   return {
     title: name,
     description,
@@ -120,12 +124,13 @@ export async function generateMetadata({
     openGraph: {
       title: name,
       description,
-      images: image ? [image] : undefined,
+      images: images.openGraph,
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title: name,
       description,
+      images: images.twitter,
     },
   };
 }

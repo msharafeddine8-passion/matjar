@@ -12,7 +12,7 @@
 
 import type { Metadata, MetadataRoute } from "next";
 import { hasEnough } from "@/lib/rail";
-import { SITE_URL, localeAlternates } from "@/lib/site";
+import { SITE_URL, localeAlternates, shareImages } from "@/lib/site";
 import type { GatedSection } from "@/lib/data/section-supply";
 
 export const SEO_LOCALES = ["ar", "en"] as const;
@@ -130,29 +130,34 @@ export function buildStoreMetadata(opts: {
 }): Metadata {
   const { lang, id, store } = opts;
   if (!store) return { robots: NOINDEX_FOLLOW };
+  // Trimmed: a stored trailing space rendered "Name  · متجر" in the tab.
+  const name = store.name.trim();
   const description = (
     store.description?.trim() ||
     (lang === "ar"
-      ? `${store.name} على متجر — اطلب أو تواصل مباشرةً.`
-      : `${store.name} on Matjar — order or contact directly.`)
+      ? `${name} على متجر — اطلب أو تواصل مباشرةً.`
+      : `${name} on Matjar — order or contact directly.`)
   ).slice(0, 160);
-  const image = store.coverUrl || store.logoUrl || undefined;
+  // Cover or logo through the Supabase resizer; the platform card when the
+  // store has neither (this object replaces the layout's openGraph whole).
+  const images = shareImages(store.coverUrl || store.logoUrl || null, name);
   const path = storeCanonicalPath(id, store.isReal ? store.slug : null);
   return {
-    title: store.name,
+    title: name,
     description,
     alternates: localeAlternates(lang, path),
     openGraph: {
       type: "website",
-      title: store.name,
+      title: name,
       description,
       url: `/${lang}${path}`,
-      images: image ? [{ url: image, alt: store.name }] : undefined,
+      images: images.openGraph,
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
-      title: store.name,
+      card: "summary_large_image",
+      title: name,
       description,
+      images: images.twitter,
     },
     ...(store.isReal ? {} : { robots: NOINDEX_FOLLOW }),
   };

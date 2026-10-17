@@ -46,7 +46,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { dictSlice } from "@/lib/dict-slice";
 import { createClient } from "@/lib/supabase/server";
-import { localeAlternates } from "@/lib/site";
+import { localeAlternates, shareImages } from "@/lib/site";
 import { formatUsd } from "@/lib/currency";
 import {
   hasRating,
@@ -115,23 +115,27 @@ export async function generateMetadata({
   if (!profile && !gigs.length) return {};
   const name = profile?.full_name?.trim() || gigs[0]?.freelancer_name?.trim() || "";
   if (!name) return {};
+  const description =
+    profile?.bio?.trim().slice(0, 160) ||
+    dict.freelance.pro.metaDescription
+      .replace("{name}", name)
+      .replace(
+        "{services}",
+        countLabel(dict.freelance.pro.servicesCount, gigs.length),
+      );
   return {
     title: name,
-    description:
-      profile?.bio?.trim().slice(0, 160) ||
-      dict.freelance.pro.metaDescription
-        .replace("{name}", name)
-        .replace(
-          "{services}",
-          countLabel(dict.freelance.pro.servicesCount, gigs.length),
-        ),
+    description,
     alternates: localeAlternates(lang, `/freelance/pro/${id}`),
+    // Replaces the layout's openGraph whole, so title, description and a card
+    // (the platform's when the profile has no picture) are restated.
     openGraph: {
-      images: profile?.avatar_url
-        ? [profile.avatar_url]
-        : gigs[0]?.image_url
-          ? [gigs[0].image_url]
-          : undefined,
+      title: name,
+      description,
+      images: shareImages(
+        profile?.avatar_url || gigs[0]?.image_url || null,
+        name,
+      ).openGraph,
     },
   };
 }
