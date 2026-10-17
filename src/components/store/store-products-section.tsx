@@ -144,6 +144,7 @@ export function StoreProductsSection({
               dict={dict}
               category={store.category}
               customerName={currentUser?.name ?? null}
+              signedIn={!!currentUser}
               customerPhone={currentUser?.phone ?? null}
               whatsapp={store.whatsapp ?? null}
               storeName={store.name}

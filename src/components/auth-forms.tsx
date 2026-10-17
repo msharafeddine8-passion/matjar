@@ -10,6 +10,7 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import { Card } from "@/components/ui/card";
 import { Field, Input, fieldClass } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
+import { loginReason, type LoginReason } from "@/lib/login-reason";
 
 /** Brand mark + title + subtitle centered atop each auth card. */
 function AuthHeader({
@@ -197,6 +198,16 @@ function safeNext(raw: string | null): string | null {
 
 export function LoginForm({ lang, dict }: { lang: Locale; dict: Dictionary }) {
   const router = useRouter();
+  // Why they are here («راسل البائع», favourites, …) — one honest line above
+  // the form instead of only a generic welcome. Read after mount from the
+  // live URL (not useSearchParams) so the form itself stays in the static
+  // HTML instead of bailing out to client rendering.
+  const [reason, setReason] = useState<LoginReason | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReason(loginReason(q.get("reason"), q.get("next")));
+  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -251,12 +262,21 @@ export function LoginForm({ lang, dict }: { lang: Locale; dict: Dictionary }) {
         subtitle={dict.auth.loginSubtitle}
         brand={dict.common.brand}
       />
+      {reason && (
+        <p
+          role="status"
+          className="mb-4 rounded-xl border border-info/30 bg-info-soft px-4 py-3 text-sm font-semibold text-info"
+        >
+          {dict.auth.loginReasons[reason]}
+        </p>
+      )}
       <form onSubmit={onSubmit} className="space-y-4">
         <Field label={dict.auth.email} htmlFor="email">
           <Input
             id="email"
             name="email"
             type="email"
+            dir="ltr"
             required
             autoComplete="email"
             placeholder="name@email.com"
@@ -427,6 +447,7 @@ export function SignupForm({ lang, dict }: { lang: Locale; dict: Dictionary }) {
             id="email"
             name="email"
             type="email"
+            dir="ltr"
             required
             autoComplete="email"
             placeholder="name@email.com"
@@ -523,6 +544,7 @@ export function ForgotPasswordForm({
             id="email"
             name="email"
             type="email"
+            dir="ltr"
             required
             autoComplete="email"
             placeholder="name@email.com"

@@ -70,8 +70,9 @@ export type PlacedOrder = {
 
 // min-h-11 is the 44px thumb minimum. These measured 42px at 390 — two pixels
 // short is still a miss, and every one of them is on the money path.
+// text-base below sm: iOS Safari zooms into any focused field under 16px.
 const fieldClass =
-  "mt-1.5 min-h-11 w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 placeholder:text-muted-foreground";
+  "mt-1.5 min-h-11 w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-base sm:text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 placeholder:text-muted-foreground";
 
 // ===== The stages =====
 //
@@ -771,6 +772,7 @@ export function CheckoutForm({
             id="address"
             name="address"
             type="text"
+            autoComplete="street-address"
             required
             value={addressValue}
             onChange={(e) => setAddressValue(e.target.value)}
@@ -850,6 +852,7 @@ export function CheckoutForm({
             id="name"
             name="name"
             type="text"
+            autoComplete="name"
             required
             placeholder={dict.store.namePlaceholder}
             className={fieldClass}
@@ -866,6 +869,8 @@ export function CheckoutForm({
           name="phone"
           type="tel"
           inputMode="tel"
+          autoComplete="tel"
+          dir="ltr"
           required
           placeholder="+961 …"
           className={fieldClass}

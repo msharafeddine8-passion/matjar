@@ -14,7 +14,9 @@ export const fieldClass =
   // border-strong, not border: a control's border is its only boundary cue and
   // must clear 3:1 against the surrounding surface (WCAG 1.4.11). Decorative
   // dividers keep the quieter --border.
-  "h-11 w-full rounded-xl border border-border-strong bg-surface px-4 text-sm text-foreground " +
+  // text-base below sm: iOS Safari zooms the page into any focused control
+  // whose text is under 16px (login, signup, every <Input>), and stays zoomed.
+  "h-11 w-full rounded-xl border border-border-strong bg-surface px-4 text-base sm:text-sm text-foreground " +
   "outline-none transition-[border-color,box-shadow] duration-150 " +
   "placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15 " +
   "disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-60";

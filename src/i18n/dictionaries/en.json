@@ -1787,6 +1787,12 @@
   "auth": {
     "loginTitle": "Log in",
     "loginSubtitle": "Welcome back! Log in to continue.",
+    "loginReasons": {
+      "message": "Log in to message the seller — you'll come back to the listing after.",
+      "favorites": "Log in to see the stores and products you saved.",
+      "activity": "Log in to follow your orders and bookings.",
+      "crafts": "Log in to continue in the crafts section."
+    },
     "signupTitle": "Create account",
     "signupSubtitle": "Join Matjar and start shopping or open your store.",
     "fullName": "Full name",
@@ -3766,7 +3772,8 @@
   "booking": {
     "title": "Book an appointment",
     "selectService": "Select a service",
-    "yourName": "Patient / booking name",
+    "yourName": "Your name",
+    "patientName": "Patient / booking name",
     "yourNamePlaceholder": "Full name",
     "yourPhone": "Phone number",
     "call": "Call",
@@ -3836,10 +3843,12 @@
     "confirmMode": {
       "requestTitle": "A request — the time is not final yet",
       "heldTitle": "Your time is held, awaiting confirmation",
-      "heldNote": "The slot is reserved for you and the place confirms the booking — you are notified the moment it does. Nothing is paid online."
+      "heldNote": "The slot is reserved for you and the place confirms the booking — you are notified the moment it does. Nothing is paid online.",
+      "heldNoteGuest": "The store will call you on your number to confirm. Nothing is paid online."
     },
     "cancelPolicy": {
       "anytime": "You can cancel this booking at any time, free of charge.",
+      "guest": "To cancel, call the store.",
       "hours": "You can cancel up to {n} hours before the appointment. After that, contact the place directly."
     },
     "submit": "Request booking",

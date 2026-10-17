@@ -63,7 +63,7 @@ export type ModifierGroup = {
 // close enough to look right and short enough to miss, which is the worst kind
 // of near-miss. Same constant the booking panel's fields already carry.
 const fieldClass =
-  "mt-1.5 min-h-11 w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 placeholder:text-muted-foreground";
+  "mt-1.5 min-h-11 w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-base sm:text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 placeholder:text-muted-foreground";
 
 export function ProductOrder({
   lang,

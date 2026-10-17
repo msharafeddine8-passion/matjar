@@ -44,3 +44,29 @@ export function groupBySection<T extends { sectionId?: string | null }>(
 
   return groups;
 }
+
+/**
+ * A flat picker (the booking panel's service <select>) in the order the
+ * catalogue shows: by section position — unsectioned items last, as in
+ * groupBySection — then alphabetically by the name the customer reads. The
+ * array the server hands over is in id order, which is no order at all.
+ */
+export function orderForPicker<T extends { sectionId?: string | null }>(
+  items: T[],
+  sections: SectionInfo[],
+  nameOf: (item: T) => string,
+  locale: string,
+): T[] {
+  const rank = new Map(sections.map((s) => [s.id, s.sortOrder]));
+  const collator = new Intl.Collator(locale, { sensitivity: "base", numeric: true });
+  const pos = (it: T) =>
+    it.sectionId != null && rank.has(it.sectionId)
+      ? (rank.get(it.sectionId) as number)
+      : Number.POSITIVE_INFINITY;
+  return [...items].sort((a, b) => {
+    const pa = pos(a);
+    const pb = pos(b);
+    if (pa !== pb) return pa < pb ? -1 : 1;
+    return collator.compare(nameOf(a), nameOf(b));
+  });
+}

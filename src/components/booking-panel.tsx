@@ -20,7 +20,12 @@ import { attributeSummary } from "@/lib/attributes";
 import { waLink } from "@/lib/whatsapp";
 import { daySpan, generateSlots, type WeekHours } from "@/lib/hours";
 import { localized } from "@/lib/i18n-field";
-import { groupBySection, type SectionInfo } from "@/lib/sections";
+import {
+  groupBySection,
+  orderForPicker,
+  type SectionInfo,
+} from "@/lib/sections";
+import { formatDay } from "@/lib/activity";
 import { categoryIcons } from "@/components/category-icon";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { formatUsd } from "@/lib/currency";
@@ -61,7 +66,9 @@ type Avail = {
 // min-h-11 is the 44px thumb target — every field here is also a tap target on
 // a phone, and a 40px select is a miss as often as a hit.
 const fieldClass =
-  "mt-1.5 min-h-11 w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 placeholder:text-muted-foreground";
+  // text-base below sm: iOS Safari zooms the page into any focused field
+  // under 16px, and never zooms back out.
+  "mt-1.5 min-h-11 w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-base sm:text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 placeholder:text-muted-foreground";
 const labelClass = "text-sm font-semibold";
 // A sheet trigger reads as the value it holds, not as an empty box: the
 // customer's own answer is the label once they've given one.
@@ -88,7 +95,12 @@ export function BookingPanel({
   sections = [],
   initialServiceId = null,
   cancelHours = 0,
+  signedIn,
 }: {
+  /** Whether a customer session exists. A guest gets no notifications and
+   *  has no "my bookings" page to cancel from, so the review step must not
+   *  promise either. Omitted = inferred from `customerName`. */
+  signedIn?: boolean;
   storeId: string;
   lang: Locale;
   dict: Dictionary;
@@ -175,6 +187,16 @@ export function BookingPanel({
   // else on that audit row was rejected — see migration 0297 for why.
   const [patientStatus, setPatientStatus] = useState("");
   const asksPatientStatus = category === "healthcare";
+  const isGuest = signedIn === undefined ? !customerName : !signedIn;
+  // «اسم المريض» belongs to a clinic or a vet; a salon customer is just a name.
+  const nameLabel =
+    category === "healthcare" || category === "petCare"
+      ? dict.booking.patientName
+      : dict.booking.yourName;
+  const phoneDigits = phone.replace(/\D/g, "").length;
+  // Same floor the submit applies to a guest (and the server re-checks):
+  // caught when leaving the details step, not after the review.
+  const guestPhoneShort = isGuest && phone.trim() !== "" && phoneDigits < 7;
   // Phone-only step cursor. Above `lg` every block is visible at once, so this
   // is inert there — nothing branches on it except which block is hidden.
   const [stepIdx, setStepIdx] = useState(0);
@@ -192,10 +214,16 @@ export function BookingPanel({
   };
   // Services shown in the picker are limited to what the chosen provider offers
   // ("any available" imposes no filter — the engine assigns at placement).
-  const visibleServices =
+  // Ordered the way the catalogue above lists them (section, then name) —
+  // the array arrives in id order, which read as a shuffled list.
+  const visibleServices = orderForPicker(
     doctorId && doctorId !== "any"
       ? services.filter((s) => offeredBy(s.id, doctorId))
-      : services;
+      : services,
+    sections,
+    (s) => localized(s.name, s.nameEn, lang),
+    lang,
+  );
 
   const selectedService = services.find((s) => s.id === serviceId) ?? null;
   const engineMode = selectedService?.allocationMode ?? null;
@@ -339,7 +367,9 @@ export function BookingPanel({
     provider: !!doctorId,
     date: !!pickedDate,
     time: !!time && !slotState(time).blocked,
-    details: !!name.trim() && !!phone.trim(),
+    details: isGuest
+      ? name.trim().length >= 2 && phoneDigits >= 7
+      : !!name.trim() && !!phone.trim(),
     review: true,
   };
   const stepLabels: Record<Step, string> = {
@@ -372,12 +402,10 @@ export function BookingPanel({
     setJumpToForm((n) => n + 1);
   }
 
-  const dateFmt = new Intl.DateTimeFormat(lang, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-  const dateLabel = (iso: string) => dateFmt.format(new Date(`${iso}T00:00:00`));
+  // The house day format (formatDay: ar-LB month names, Western digits). A
+  // bare Intl.DateTimeFormat("ar") printed Egyptian month names and Arabic-
+  // Indic digits next to the Levantine ones the rest of the site uses.
+  const dateLabel = (iso: string) => formatDay(iso, lang);
   // Three weeks of taps instead of a native date roller. Generated from the
   // same Beirut "today" the `min` attribute uses, so the sheet can never offer
   // a day the input itself would reject.
@@ -385,7 +413,7 @@ export function BookingPanel({
     const d = new Date(`${todayBeirut}T00:00:00`);
     d.setDate(d.getDate() + i);
     const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    return { iso, label: dateFmt.format(d), closed: !!hours && !daySpan(hours, d) };
+    return { iso, label: formatDay(iso, lang), closed: !!hours && !daySpan(hours, d) };
   });
 
   const providerLabel =
@@ -849,11 +877,13 @@ export function BookingPanel({
   const firstIncomplete = steps.find((s) => !stepReady[s]);
   // Every review line is also the way back to the step that set it.
   const reviewRows: { target: Step; label: string; value: string }[] = [
-    { target: "service", label: dict.booking.selectService, value: serviceLabel },
+    // A row label names what was chosen («الخدمة»), not the instruction
+    // that chose it («اختر الخدمة»).
+    { target: "service", label: dict.booking.steps.service, value: serviceLabel },
     { target: "date", label: dict.booking.date, value: whenLabel },
     {
       target: "details",
-      label: dict.booking.yourName,
+      label: nameLabel,
       value: [name, phone].filter(Boolean).join(" · "),
     },
   ];
@@ -894,7 +924,7 @@ export function BookingPanel({
           {dict.booking.title}
         </h3>
         {/* 0328: anyone can book — a guest leaves a name and a number. */}
-        {!customerName && (
+        {isGuest && (
           <p className="mb-3 text-sm text-muted-foreground">
             {dict.booking.guestHint}{" "}
             <Link
@@ -1196,12 +1226,13 @@ export function BookingPanel({
             <div className={`${stepShell("details")} space-y-4`}>
               <div>
                 <label className={labelClass} htmlFor="customer_name">
-                  {dict.booking.yourName}
+                  {nameLabel}
                 </label>
                 <input
                   id="customer_name"
                   name="customer_name"
                   type="text"
+                  autoComplete="name"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -1218,12 +1249,24 @@ export function BookingPanel({
                   name="customer_phone"
                   type="tel"
                   inputMode="tel"
+                  autoComplete="tel"
+                  dir="ltr"
                   required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+961 …"
+                  aria-invalid={guestPhoneShort || undefined}
+                  aria-describedby={guestPhoneShort ? "customer_phone_err" : undefined}
                   className={fieldClass}
                 />
+                {guestPhoneShort && (
+                  <p
+                    id="customer_phone_err"
+                    className="mt-1 text-xs font-semibold text-danger"
+                  >
+                    {dict.booking.guestPhoneRequired}
+                  </p>
+                )}
               </div>
               {/* Clinics only, and never preselected — a default here would be
                   the practice answering on the patient's behalf, and "new"
@@ -1368,11 +1411,18 @@ export function BookingPanel({
                 <p className="mt-1 text-xs font-medium text-info">
                   {engineMode === "request_based"
                     ? dict.booking.requestNote
-                    : dict.booking.confirmMode.heldNote}
+                    : isGuest
+                      ? // No account: no notification will ever arrive. The
+                        // merchant calls back on the number left above.
+                        dict.booking.confirmMode.heldNoteGuest
+                      : dict.booking.confirmMode.heldNote}
                 </p>
                 <p className="mt-2.5 flex items-start gap-2 border-t border-info/20 pt-2.5 text-xs font-semibold text-info">
                   <ShieldCheck className="h-4 w-4 shrink-0" />
-                  {cancelHours > 0
+                  {isGuest
+                    ? // A guest has no bookings page to cancel from.
+                      dict.booking.cancelPolicy.guest
+                    : cancelHours > 0
                     ? dict.booking.cancelPolicy.hours.replace(
                         "{n}",
                         String(cancelHours),
