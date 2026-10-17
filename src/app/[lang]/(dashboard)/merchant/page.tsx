@@ -164,9 +164,10 @@ export default async function MerchantPage({
           </Link>
         </div>
 
-        {/* Approval is the message that makes a shop real, and a merchant who
-            just signed up is exactly the person not yet in the habit of opening
-            this page to see whether it arrived. */}
+        {/* Stores are published on creation now, so there is no approval to
+            wait for — what a new merchant must not miss is their first order,
+            and they are exactly the person not yet in the habit of opening
+            this page to check. */}
         {allStores.length > 0 && (
           <div className="mt-6">
             <PushNotice

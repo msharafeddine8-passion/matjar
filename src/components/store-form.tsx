@@ -11,6 +11,7 @@ import { groupKeys, type CategoryKey, type GroupKey } from "@/lib/catalog";
 import { resolveStoreModules } from "@/lib/sectors";
 import { storeIntakeFields } from "@/lib/store-onboarding";
 import { phoneIssue } from "@/lib/phone";
+import { storeCreateErrorKey } from "@/lib/store-create-errors";
 
 type Option = { value: string; label: string };
 type BizOption = {
@@ -25,8 +26,10 @@ const field = `${fieldClass} mt-1.5`;
 const label = "text-sm font-semibold";
 
 // A URL-friendly slug from the store name (latin/digits only). Arabic-only names
-// yield "" — the merchant then just types their own handle. Kept in sync with the
-// DB format rule in migration 0115 (a-z0-9-, trimmed).
+// yield "" — and the form then SAYS so, under the link field, with an example
+// («ملحمة البركة» used to leave the field silently empty, and the merchant never
+// learnt they could have had matjarlb.com/<name>). Kept in sync with the DB
+// format rule in migration 0115 (a-z0-9-, trimmed).
 function slugify(s: string) {
   return s
     .toLowerCase()
@@ -73,6 +76,10 @@ export function StoreForm({
   // Vanity handle, auto-suggested from the name until the merchant edits it.
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
+  // The typed name, only to notice when it produced no suggestion (Arabic).
+  const [nameValue, setNameValue] = useState("");
+  const noSuggestedSlug =
+    nameValue.trim() !== "" && slugify(nameValue) === "" && slug === "";
   // The chosen sector, held in state because the rest of the form depends on it.
   const [typeId, setTypeId] = useState("");
   // Fulfilment (goods sectors only). Both default on: that is what the column
@@ -115,6 +122,20 @@ export function StoreForm({
       return;
     }
     const text = (key: string) => String(form.get(key) ?? "").trim() || null;
+    // WhatsApp is required here (see the field below for why). Missing or too
+    // short to be a number blocks; a number that is merely not Lebanese still
+    // only warns, as before — it may well be a real foreign number.
+    const waIssue = phoneIssue(text("whatsapp"));
+    if (waIssue === "missing" || waIssue === "tooShort") {
+      setError(
+        waIssue === "missing"
+          ? dict.merchant.whatsappRequired
+          : dict.merchant.whatsappTooShort,
+      );
+      setLoading(false);
+      document.getElementById("whatsapp")?.focus();
+      return;
+    }
     const { data: created, error } = await supabase
       .from("stores")
       .insert({
@@ -136,22 +157,11 @@ export function StoreForm({
       .select("id")
       .single();
     if (error || !created?.id) {
-      // Map the common failures to a clear message; fall back to the raw reason.
-      // A 23505 can come from the name OR the slug unique index — disambiguate.
-      const msg = error?.message ?? "";
-      setError(
-        msg.includes("stores_slug_unique")
-          ? dict.merchant.customLinkTaken
-          : msg.includes("slug_reserved")
-            ? dict.merchant.customLinkReserved
-            : msg.includes("slug_invalid")
-              ? dict.merchant.customLinkInvalid
-              : error?.code === "23505"
-                ? dict.merchant.storeNameTaken
-                : error?.message
-                  ? `${dict.merchant.createFailed} (${error.message})`
-                  : dict.auth.errorGeneric,
-      );
+      // Each known failure gets its own sentence (lib/store-create-errors.ts);
+      // anything else gets the generic one. The raw Postgres text goes to the
+      // console for whoever debugs it — never into the Arabic screen.
+      console.error("[store-form] store insert failed", error);
+      setError(dict.merchant[storeCreateErrorKey(error)]);
       setLoading(false);
       return;
     }
@@ -222,6 +232,7 @@ export function StoreForm({
           placeholder={dict.merchant.storeNamePlaceholder}
           className={field}
           onChange={(e) => {
+            setNameValue(e.target.value);
             if (!slugEdited) setSlug(slugify(e.target.value));
           }}
         />
@@ -248,12 +259,25 @@ export function StoreForm({
             }}
             placeholder="passion"
             maxLength={30}
+            aria-describedby={noSuggestedSlug ? "slug-arabic-note" : "slug-hint"}
             className="w-full bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {dict.merchant.customLinkHint}
-        </p>
+        {/* An Arabic name slugifies to nothing. Said out loud, with an example,
+            instead of leaving an empty box the merchant reads as "no link". */}
+        {noSuggestedSlug ? (
+          <p
+            id="slug-arabic-note"
+            aria-live="polite"
+            className="mt-1 text-xs font-semibold text-warning"
+          >
+            {dict.merchant.customLinkArabicName}
+          </p>
+        ) : (
+          <p id="slug-hint" className="mt-1 text-xs text-muted-foreground">
+            {dict.merchant.customLinkHint}
+          </p>
+        )}
       </div>
 
       {/* ---- Sector-specific, in the order store-onboarding.ts decided ---- */}
@@ -295,22 +319,36 @@ export function StoreForm({
       )}
 
       <div>
+        {/* Required. It is the store's main channel: the storefront's wa.me
+            order button and its contact button are both built from this one
+            number, and a store created without it opened with neither. Nothing
+            downstream needs it to be null-able at creation — the column stays
+            nullable and the edit form can still change it — so asking for it
+            here costs a merchant ten seconds and stops a dead storefront. */}
         <label className={label} htmlFor="whatsapp">
           {dict.merchant.whatsapp}
+          <span aria-hidden className="ms-0.5 text-danger">
+            *
+          </span>
         </label>
         <input
           id="whatsapp"
           name="whatsapp"
           type="tel"
           inputMode="tel"
+          dir="ltr"
+          aria-required="true"
           placeholder="+961 …"
           className={field}
           onBlur={(e) => {
             const v = e.target.value.trim();
             setWaWarn(!!v && phoneIssue(v) === "notDialable");
           }}
-          aria-describedby={waWarn ? "whatsapp-note" : undefined}
+          aria-describedby={waWarn ? "whatsapp-hint whatsapp-note" : "whatsapp-hint"}
         />
+        <p id="whatsapp-hint" className="mt-1 text-xs text-muted-foreground">
+          {dict.merchant.whatsappCreateHint}
+        </p>
         {/* This is the number a customer taps on the storefront, and here is
             the first time it is ever typed. Four of the eleven stored on live
             stores could not be turned into a working link, so the warning
