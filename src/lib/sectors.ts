@@ -111,7 +111,7 @@ export const OS_MODULE_META: Record<
     Icon: LucideIcon;
     path: string;
     ownerOnly?: boolean;
-    perm?: "orders" | "bookings" | "products" | "customers";
+    perm?: "orders" | "bookings" | "products" | "customers" | "expenses";
     /** Minimum paid tier to open this module (stores below see a lock +
      *  upsell). Absent = available on every plan. */
     minPlan?: "pro" | "business";
@@ -140,7 +140,9 @@ export const OS_MODULE_META: Record<
   members: { Icon: Users, path: "members", perm: "orders" },
   items: { Icon: Package, path: "items", perm: "products" },
   doctors: { Icon: Stethoscope, path: "doctors", perm: "bookings", minPlan: "pro" },
-  customers: { Icon: Users, path: "customers", perm: "orders", minPlan: "pro" },
+  // 0325: the customer list (names, phones, totals) is the customers
+  // permission in the database, not orders — the nav follows it.
+  customers: { Icon: Users, path: "customers", perm: "customers", minPlan: "pro" },
   // دفتر الدين. No minPlan: free on every plan (FEATURES.debtLedger). Gated on
   // the `customers` staff permission — the exact key the database has used for
   // customer_transactions and store_customers since 0211 — so the nav shows it
@@ -158,7 +160,8 @@ export const OS_MODULE_META: Record<
   suppliers: { Icon: Handshake, path: "suppliers", perm: "orders", minPlan: "business" },
   kitchen: { Icon: ChefHat, path: "kitchen", perm: "orders", minPlan: "business" },
   reports: { Icon: BarChart3, path: "reports", perm: "orders", minPlan: "pro" },
-  accounting: { Icon: Wallet, path: "accounting", perm: "orders", minPlan: "business" },
+  // 0325: store_accounting checks the expenses permission.
+  accounting: { Icon: Wallet, path: "accounting", perm: "expenses", minPlan: "business" },
   coupons: { Icon: Ticket, path: "coupons", ownerOnly: true, minPlan: "pro" },
   subscription: { Icon: CreditCard, path: "subscription", ownerOnly: true },
   branches: { Icon: MapPin, path: "branches", ownerOnly: true, minPlan: "business" },

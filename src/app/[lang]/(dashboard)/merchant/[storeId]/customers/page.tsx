@@ -67,7 +67,8 @@ export default async function StoreCustomersPage({
     return <ProGate lang={lang} dict={dict} storeId={storeId} />;
   }
 
-  // CRM contains customer data + spend: staff need the orders permission.
+  // CRM contains customer data + spend: staff need the customers permission
+  // (0325 — store_customer_order_totals checks the same one).
   const isOwner =
     (store as unknown as { owner_id: string }).owner_id === user.id;
   if (!isOwner) {
@@ -79,7 +80,7 @@ export default async function StoreCustomersPage({
       .maybeSingle();
     const perms =
       (staffRow?.permissions as Record<string, boolean> | null) ?? {};
-    if (!(perms.orders ?? false)) redirect(`/${lang}/merchant/${storeId}`);
+    if (!(perms.customers ?? false)) redirect(`/${lang}/merchant/${storeId}`);
   }
   const category = toCategoryKey(
     (store as unknown as { business_types: { slug: string } | null })

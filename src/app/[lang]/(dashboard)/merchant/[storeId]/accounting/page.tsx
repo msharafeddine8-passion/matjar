@@ -51,7 +51,8 @@ export default async function AccountingPage({
     return <ProGate lang={lang} dict={dict} storeId={storeId} requiredPlan="business" />;
   }
 
-  // Money data: staff need the orders permission.
+  // Money data: staff need the expenses permission (0325 — store_accounting
+  // checks the same one).
   const isOwner =
     (store as unknown as { owner_id: string }).owner_id === user.id;
   if (!isOwner) {
@@ -63,7 +64,7 @@ export default async function AccountingPage({
       .maybeSingle();
     const perms =
       (staffRow?.permissions as Record<string, boolean> | null) ?? {};
-    if (!(perms.orders ?? false)) redirect(`/${lang}/merchant/${storeId}`);
+    if (!(perms.expenses ?? false)) redirect(`/${lang}/merchant/${storeId}`);
   }
 
   const [{ data: acctData }, { data: expData }] = await Promise.all([
