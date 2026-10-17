@@ -657,7 +657,7 @@
     },
     "team": {
       "doctors": "Doctors",
-      "stylists": "Stylists",
+      "stylists": "Team",
       "trainers": "Trainers",
       "teachers": "Teachers",
       "vets": "Vets",
@@ -1481,8 +1481,6 @@
     "alsoIn": "Also in this category",
     "storesCount": "stores",
     "offersBadge": "Offers",
-    "sectionsLabel": "sections",
-    "teamLabel": "practitioners",
     "nouns": {
       "products": "products",
       "services": "services",
@@ -1641,7 +1639,12 @@
     "couponCode": "Discount code",
     "editOrder": "Edit",
     "haveCoupon": "Have a coupon?",
-    "itemsInCart": "{n} items in the cart",
+    "itemsInCart": {
+      "one": "1 item in the cart",
+      "two": "2 items in the cart",
+      "few": "{n} items in the cart",
+      "many": "{n} items in the cart"
+    },
     "couponApply": "Apply",
     "subtotal": "Subtotal",
     "discount": "Discount",
@@ -3724,7 +3727,7 @@
     "noPhone": "No phone",
     "newBadge": "New",
     "newBookingsCount": "You have {count} new booking(s) awaiting your reply.",
-    "payOnArrival": "Pay on arrival — cash at the clinic/store.",
+    "payOnArrival": "Pay on arrival — in cash.",
     "couponLabel": "Discount code",
     "couponPlaceholder": "Enter code",
     "couponApply": "Apply",
@@ -5163,6 +5166,22 @@
         "few": "{n} reviews",
         "many": "{n} reviews",
         "other": "{n} reviews"
+      },
+      "team": {
+        "zero": "{n} team members",
+        "one": "1 team member",
+        "two": "{n} team members",
+        "few": "{n} team members",
+        "many": "{n} team members",
+        "other": "{n} team members"
+      },
+      "sections": {
+        "zero": "{n} sections",
+        "one": "1 section",
+        "two": "{n} sections",
+        "few": "{n} sections",
+        "many": "{n} sections",
+        "other": "{n} sections"
       }
     },
     "delivery": "Delivery",

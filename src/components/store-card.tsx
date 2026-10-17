@@ -272,14 +272,17 @@ export function StoreCard({
             : f.key === "sections"
               ? LayoutGrid
               : Package;
-        const phrase =
-          f.key === "catalog" ? countWord(f.noun, f.count) : null;
-        const word =
-          f.key === "providers"
-            ? factsDict.teamLabel
-            : f.key === "sections"
-              ? factsDict.sectionsLabel
-              : factsDict.nouns[f.noun];
+        // Every count goes through the plural forms — «6 اختصاصي» and
+        // "1 practitioners" were a bare number glued to one fixed word.
+        const phrase = countWord(
+          f.key === "catalog"
+            ? f.noun
+            : f.key === "providers"
+              ? "team"
+              : "sections",
+          f.count,
+        );
+        const word = f.key === "catalog" ? factsDict.nouns[f.noun] : null;
         return (
           <li key={f.key} className="inline-flex items-center gap-1">
             <Glyph aria-hidden className="h-3.5 w-3.5" />
@@ -404,25 +407,28 @@ export function StoreCard({
           {paid.showsProMarker && <PaidPlanBadge dict={dict} lang={lang} />}
           <TrustBadges signals={trust} dict={dict} lang={lang} />
         </div>
-        {/* The sector, then the place. A clinic is chosen by where it is, so
-            its place gets a line of its own; everywhere else it rides after
-            the sector. A store with no area and no region gets no trailing
-            «·» — the old line printed one for four live stores. */}
+        {/* The sector, then the place, always joined by «·». A clinic is
+            chosen by where it is, so its place keeps the pin and the stronger
+            weight — but on the same line, after the separator: on a line of
+            its own the two read (and were announced) as one run,
+            "Health & clinics الضنية". A store with no area and no region gets
+            no trailing «·» — the old line printed one for four live stores. */}
         <p className="mt-1 text-[13px] text-muted-foreground">
           {cat.name}
-          {where && variant !== "clinic" && (
+          {where && (
             <>
               {" · "}
-              <bdi>{where}</bdi>
+              {variant === "clinic" ? (
+                <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                  <MapPin aria-hidden className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <bdi>{where}</bdi>
+                </span>
+              ) : (
+                <bdi>{where}</bdi>
+              )}
             </>
           )}
         </p>
-        {where && variant === "clinic" && (
-          <p className="mt-1 flex items-center gap-1 text-[13px] font-semibold text-foreground">
-            <MapPin aria-hidden className="h-3.5 w-3.5 shrink-0 text-primary" />
-            <bdi className="truncate">{where}</bdi>
-          </p>
-        )}
         {store.distanceKm != null && (
           <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-bold text-primary">
             <Navigation className="h-3 w-3" />

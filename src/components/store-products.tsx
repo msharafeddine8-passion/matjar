@@ -16,6 +16,7 @@ import { formatUsd } from "@/lib/currency";
 import { Money } from "@/components/ui/money";
 import type { WeekHours } from "@/lib/hours";
 import { localized } from "@/lib/i18n-field";
+import { countLabel } from "@/lib/plural";
 import { groupBySection, type SectionInfo } from "@/lib/sections";
 import { categoryIcons } from "@/components/category-icon";
 import { PriceTag, BundleIncludes } from "@/components/store/product-price";
@@ -642,9 +643,11 @@ export function StoreProducts({
                 aria-live="polite"
                 className="truncate text-sm text-muted-foreground"
               >
-                {dict.store.itemsInCart.replace(
-                  "{n}",
-                  String(items.reduce((n, p) => n + cart[p.id], 0)),
+                {/* «صنف واحد / صنفين / 3 أصناف»: the noun agrees with the
+                    count (lib/plural.ts), not «1 أصناف». */}
+                {countLabel(
+                  dict.store.itemsInCart,
+                  items.reduce((n, p) => n + cart[p.id], 0),
                 )}
               </p>
               {/* Through <Money>: `tabular-nums` alone leaves the "$" a bidi
