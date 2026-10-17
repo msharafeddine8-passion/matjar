@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { track } from "@/lib/analytics";
 import type { Locale } from "@/i18n/config";
+import { resolveFavorited } from "@/lib/viewer";
+import { useFollows } from "@/components/follows-context";
 
+// `favorited` is the server's answer and only a fallback now. Inside the
+// viewer island (every (site) page) the filled state comes from the shared
+// follow list (/api/me followedStoreIds), because static pages — Home — render
+// every heart empty. Pressing a heart writes to that shared state, so every
+// other heart for the same store on the page follows along.
 export function FavoriteButton({
   storeId,
   favorited,
@@ -18,8 +25,14 @@ export function FavoriteButton({
   className?: string;
 }) {
   const router = useRouter();
-  const [fav, setFav] = useState(favorited);
+  const follows = useFollows();
+  const [local, setLocal] = useState(favorited);
   const [busy, setBusy] = useState(false);
+  const fav = resolveFavorited(follows.state, storeId, local);
+  const setFav = (on: boolean) => {
+    setLocal(on);
+    follows.set(storeId, on);
+  };
 
   async function toggle(e: React.MouseEvent) {
     e.preventDefault();
@@ -49,12 +62,17 @@ export function FavoriteButton({
           .delete()
           .eq("store_id", storeId)
           .eq("user_id", user.id);
-    if (error) {
+    // 23505 = the (user_id, store_id) key: already followed — e.g. a follow
+    // older than the /api/me cap that this page showed empty. That is the
+    // state the viewer asked for, not a failure.
+    const alreadyFollowed =
+      next && (error as { code?: string } | null)?.code === "23505";
+    if (error && !alreadyFollowed) {
       setFav(!next); // revert on failure
       setBusy(false);
       return;
     }
-    if (next) track("favorite_added", { storeId, offeringType: "store", sourceSurface: "card" });
+    if (next && !alreadyFollowed) track("favorite_added", { storeId, offeringType: "store", sourceSurface: "card" });
     setBusy(false);
     router.refresh();
   }

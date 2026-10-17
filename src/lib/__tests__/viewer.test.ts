@@ -5,8 +5,12 @@ import {
   AUTH_HINT_SCRIPT,
   dashboardHrefFor,
   displayNameOf,
+  FOLLOWED_STORE_IDS_CAP,
+  followStateFrom,
   hasAuthCookie,
   parseMe,
+  resolveFavorited,
+  withFollow,
 } from "@/lib/viewer";
 import { countActionable } from "@/lib/viewer-badge";
 import { loadMe } from "@/lib/data/viewer";
@@ -92,6 +96,7 @@ describe("parseMe", () => {
       unreadNotifications: 0,
       unreadMessages: 2,
       activityCount: 0,
+      followedStoreIds: [],
     });
   });
 });
@@ -209,6 +214,7 @@ describe("loadMe (/api/me body)", () => {
         bookings: { data: [{ status: "accepted", requested_date: "2026-10-19" }] },
         service_requests: { count: 1 },
         listings: { count: 0 },
+        follows: { data: [{ store_id: "s9" }, { store_id: "s1" }, { store_id: null }] },
       },
       rpcs: {
         unread_conversation_count: { data: 3 },
@@ -225,10 +231,12 @@ describe("loadMe (/api/me body)", () => {
       unreadNotifications: 4,
       unreadMessages: 3,
       activityCount: 3, // order review + booking + quote
+      followedStoreIds: ["s9", "s1"],
     });
     expect(Object.keys(me).sort()).toEqual(
       [
         "activityCount",
+        "followedStoreIds",
         "id",
         "name",
         "role",
@@ -286,6 +294,95 @@ describe("loadMe (/api/me body)", () => {
       unreadNotifications: 0,
       unreadMessages: 0,
       activityCount: 2,
+      followedStoreIds: [],
     });
+  });
+});
+
+// --- followedStoreIds: the hearts on static pages ---------------------------
+
+describe("loadMe followedStoreIds", () => {
+  it("reads the caller's follows, newest first, capped", async () => {
+    const { client, calls } = fakeClient({
+      user: { id: "u4" },
+      tables: { follows: { data: [{ store_id: "a" }, { store_id: "b" }] } },
+    });
+    const me = await loadMe(client, NOW);
+    expect(me).toMatchObject({ signedIn: true, followedStoreIds: ["a", "b"] });
+    const f = calls.find((c) => c.table === "follows");
+    expect(f?.filters).toContainEqual(["eq", "user_id", "u4"]);
+    expect(f?.filters).toContainEqual(["order", "created_at", { ascending: false }]);
+    expect(f?.filters).toContainEqual(["limit", FOLLOWED_STORE_IDS_CAP]);
+  });
+
+  it("a failed follows read is an empty list, not an anonymous viewer", async () => {
+    const { client } = fakeClient({
+      user: { id: "u5" },
+      tables: { follows: { error: { message: "boom" }, data: [{ store_id: "x" }] } },
+    });
+    expect(await loadMe(client, NOW)).toMatchObject({
+      signedIn: true,
+      id: "u5",
+      followedStoreIds: [],
+    });
+  });
+});
+
+describe("parseMe followedStoreIds", () => {
+  const base = { signedIn: true, id: "u1" };
+  it("keeps only non-empty strings and caps the list", () => {
+    const many = Array.from({ length: FOLLOWED_STORE_IDS_CAP + 5 }, (_, i) => `s${i}`);
+    const me = parseMe({ ...base, followedStoreIds: ["a", 3, "", null, "b", ...many] });
+    expect(me.signedIn && me.followedStoreIds.slice(0, 3)).toEqual(["a", "b", "s0"]);
+    expect(me.signedIn && me.followedStoreIds.length).toBe(FOLLOWED_STORE_IDS_CAP);
+  });
+  it("is an empty list when missing or malformed", () => {
+    expect(parseMe(base)).toMatchObject({ followedStoreIds: [] });
+    expect(parseMe({ ...base, followedStoreIds: "a,b" })).toMatchObject({
+      followedStoreIds: [],
+    });
+  });
+});
+
+describe("follow state (shared hearts)", () => {
+  it("unknown viewer: the server's favorited decides", () => {
+    expect(resolveFavorited(null, "s1", true)).toBe(true);
+    expect(resolveFavorited(null, "s1", false)).toBe(false);
+  });
+
+  it("the follow list fills hearts a static page rendered empty", () => {
+    const st = followStateFrom(["s1"]);
+    expect(resolveFavorited(st, "s1", false)).toBe(true);
+    expect(resolveFavorited(st, "s2", false)).toBe(false);
+    // A dynamic page's server answer still counts (e.g. a follow past the cap).
+    expect(resolveFavorited(st, "s3", true)).toBe(true);
+  });
+
+  it("a toggle updates every heart for that store, and only that store", () => {
+    const st = followStateFrom(["s1"]);
+    const off = withFollow(st, "s1", false);
+    // Two cards for s1 on one page — both read the same state.
+    expect(resolveFavorited(off, "s1", false)).toBe(false);
+    expect(resolveFavorited(off, "s1", true)).toBe(false); // beats the server too
+    const on = withFollow(off, "s2", true);
+    expect(resolveFavorited(on, "s2", false)).toBe(true);
+    expect(resolveFavorited(on, "s1", false)).toBe(false);
+  });
+
+  it("never mutates the previous state", () => {
+    const st = followStateFrom(["s1"]);
+    withFollow(st, "s1", false);
+    expect(st.overrides.size).toBe(0);
+    expect(resolveFavorited(st, "s1", false)).toBe(true);
+  });
+
+  it("a refreshed /api/me answer keeps this tab's toggles", () => {
+    // Pressed before the answer that was read before the write landed.
+    const toggled = withFollow(followStateFrom([]), "s7", true);
+    const refreshed = followStateFrom(["s1"], toggled);
+    expect(resolveFavorited(refreshed, "s7", false)).toBe(true);
+    expect(resolveFavorited(refreshed, "s1", false)).toBe(true);
+    const unfollowed = followStateFrom(["s1", "s7"], withFollow(refreshed, "s1", false));
+    expect(resolveFavorited(unfollowed, "s1", false)).toBe(false);
   });
 });

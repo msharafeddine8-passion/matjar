@@ -239,8 +239,22 @@ describe("the whole-store and whole-seller reads are paged, not capped", () => {
       follows[0].text,
       "follows must be filtered by the store ids on the page",
     ).toContain('.in("store_id"');
-    // And nowhere else in the layer may read follows unscoped.
+    // And nowhere else in the layer may read follows unscoped — with ONE
+    // named exception: /api/me (viewer.ts) returns the follow list itself so a
+    // static page (Home, ISR) can fill its hearts client-side, and there is no
+    // page to scope by. It must stay a bounded newest-first read, and the
+    // client treats it as a hint: the server's `favorited` still counts as a
+    // fallback, and a re-follow past the cap is a no-op (resolveFavorited /
+    // FavoriteButton's 23505 case).
     for (const c of allChains.filter((c) => c.table === "follows")) {
+      if (c.file === "viewer.ts") {
+        expect(c.text, `${c.file}:${c.line} follow list is uncapped`).toContain(
+          ".limit(FOLLOWED_STORE_IDS_CAP)",
+        );
+        expect(c.text).toContain('.order("created_at", { ascending: false })');
+        expect(c.text).toContain('.eq("user_id", uid)');
+        continue;
+      }
       expect(c.text, `${c.file}:${c.line} reads follows unscoped`).toContain(
         '.in("store_id"',
       );

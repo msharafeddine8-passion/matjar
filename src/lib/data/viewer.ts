@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   ANONYMOUS,
   displayNameOf,
+  FOLLOWED_STORE_IDS_CAP,
   normaliseRole,
   type MeResponse,
 } from "@/lib/viewer";
@@ -19,7 +20,8 @@ import { countActionable } from "@/lib/viewer-badge";
 // where the status alone decides, minimal columns (no embeds of names) where a
 // date or review decides — plus the reviewed-stores RPC only when there is a
 // completed order that could still want a review. The old layout ran the full
-// eleven-table activity list on EVERY navigation for the same number.
+// eleven-table activity list on EVERY navigation for the same number. The
+// follow list rides along so static pages (Home) can fill their hearts in.
 
 /** Rows per kind, matching lib/data/activity.ts. */
 const PER_KIND = 50;
@@ -52,6 +54,7 @@ export async function loadMe(
     crafts,
     services,
     listings,
+    follows,
   ] = await Promise.all([
     supabase.from("profiles").select("role, is_active").eq("id", uid).maybeSingle(),
     supabase
@@ -107,6 +110,14 @@ export async function loadMe(
       .eq("seller_id", uid)
       .eq("status", "rejected")
       .is("deleted_at", null),
+    // The hearts on static pages' store cards. Newest first, capped — see
+    // FOLLOWED_STORE_IDS_CAP in lib/viewer.ts for what happens past the cap.
+    supabase
+      .from("follows")
+      .select("store_id")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(FOLLOWED_STORE_IDS_CAP),
   ]);
 
   const orderRows = rowsOf(
@@ -171,5 +182,8 @@ export async function loadMe(
       },
       nowMs,
     ),
+    followedStoreIds: rowsOf(follows as Res<{ store_id: string | null }[]>)
+      .map((f) => f.store_id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
   };
 }

@@ -300,17 +300,28 @@ export async function followedAmong(
 // Real active stores, optionally padded with demo samples so listings aren't
 // empty before the platform fills up.
 export async function getStoresForListing(): Promise<CardStore[]> {
-  // fetchActiveStores is cached (shared across requests), and markFavorites
-  // mutates `favorited` per user — so shallow-clone first to never write a
-  // viewer's favourites onto the shared cached objects. (Demo stores are
-  // module-level statics; clone them for the same reason.)
+  return markFavorites(await getPublicStoresForListing());
+}
+
+/**
+ * The same listing with NO per-user read: no cookies, no `favorited`. For
+ * statically rendered / ISR pages (Home's open-now rail), where reading the
+ * viewer would make the whole route dynamic. Hearts there are filled in
+ * client-side from the viewer island (/api/me `followedStoreIds`).
+ *
+ * Shallow clones: fetchActiveStores is cached and shared across requests, and
+ * getStoresForListing writes a viewer's `favorited` onto what this returns —
+ * never onto the shared cached objects. (Demo stores are module-level
+ * statics; cloned for the same reason.)
+ */
+export async function getPublicStoresForListing(): Promise<CardStore[]> {
   const real = (await fetchActiveStores()).map((s) => ({ ...s }));
-  if (!SHOW_DEMO_STORES) return markFavorites(real);
+  if (!SHOW_DEMO_STORES) return real;
   const realIds = new Set(real.map((s) => s.id));
-  return markFavorites<CardStore>([
+  return [
     ...real,
     ...demoStores.filter((s) => !realIds.has(s.id)).map((s) => ({ ...s })),
-  ]);
+  ];
 }
 
 // Store search for the unified search page.
@@ -469,30 +480,44 @@ export type SearchStore = Store & { suggested?: boolean };
 // from the placement its Pro competitor received. /pricing has always sold this
 // as included on both tiers (feature-availability.ts `homeFeatured`), so the
 // query was the thing that was wrong.
-export async function getFeaturedStores(limit = 4): Promise<CardStore[]> {
-  const supabase = await createClient();
-  const nowIso = new Date().toISOString();
-  const { data } = await supabase
-    .from("stores")
-    .select(LISTING_SELECT)
-    .eq("status", "active")
-    .is("deleted_at", null)
-    .or(`plan.in.(pro,business),featured_until.gt.${nowIso}`)
-    .limit(limit);
-  const real = listable(
-    ((data ?? []) as unknown as Parameters<typeof rowToStore>[0][]).map(
-      rowToStore,
-    ),
-  );
-  // Featured (paid placement) floats above plain Pro.
-  real.sort((a, b) => Number(b.featured ?? false) - Number(a.featured ?? false));
-  await attachCardRollups(real);
-  if (!SHOW_DEMO_STORES) return markFavorites(real.slice(0, limit));
-  const realIds = new Set(real.map((s) => s.id));
-  return markFavorites<CardStore>(
-    [...real, ...featuredStores.filter((s) => !realIds.has(s.id))].slice(
+//
+// Public and identical for every visitor, so it is cached cross-request with
+// the cookie-less client and carries NO `favorited`: Home is ISR, and a
+// per-user read here would make it dynamic again. Hearts are filled in
+// client-side from the viewer island (components/viewer.tsx, /api/me
+// `followedStoreIds`). Tagged "stores" so a merchant write (cache-actions.ts)
+// busts it; the 5-min TTL also bounds how late an expired featured_until
+// drops out of the strip.
+const fetchFeaturedStores = unstable_cache(
+  async (limit: number): Promise<CardStore[]> => {
+    const supabase = createPublicClient();
+    const nowIso = new Date().toISOString();
+    const { data } = await supabase
+      .from("stores")
+      .select(LISTING_SELECT)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .or(`plan.in.(pro,business),featured_until.gt.${nowIso}`)
+      .limit(limit);
+    const real = listable(
+      ((data ?? []) as unknown as Parameters<typeof rowToStore>[0][]).map(
+        rowToStore,
+      ),
+    );
+    // Featured (paid placement) floats above plain Pro.
+    real.sort((a, b) => Number(b.featured ?? false) - Number(a.featured ?? false));
+    await attachCardRollups(real);
+    if (!SHOW_DEMO_STORES) return real.slice(0, limit);
+    const realIds = new Set(real.map((s) => s.id));
+    return [...real, ...featuredStores.filter((s) => !realIds.has(s.id))].slice(
       0,
       limit,
-    ),
-  );
+    );
+  },
+  ["featured-stores-v1"],
+  { revalidate: 300, tags: ["stores"] },
+);
+
+export async function getFeaturedStores(limit = 4): Promise<CardStore[]> {
+  return fetchFeaturedStores(limit);
 }
