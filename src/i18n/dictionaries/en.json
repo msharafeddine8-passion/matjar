@@ -363,11 +363,15 @@
       "recentTitle": "Recent campaigns",
       "recentEmpty": "You haven't sent any campaigns yet.",
       "sentCount": "Sent to {n}",
+      "confirmSend": "This campaign will go to {n} ({audience}) and can't be taken back. Send it?",
+      "confirmSendYes": "Yes, send",
       "errors": {
         "rate_limited": "You already sent a campaign recently — please try again in a few hours.",
         "empty_body": "Write a message before sending.",
         "bad_audience": "Pick a valid audience.",
-        "not_authorized": "You're not allowed to send campaigns for this store."
+        "not_authorized": "You're not allowed to send campaigns for this store.",
+        "plan_required": "Campaigns are part of the Business plan. Upgrade to send.",
+        "bad_url": "The link must be a page on your store (starting with /)."
       }
     },
     "automations": {

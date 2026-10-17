@@ -27,6 +27,7 @@ import { computeCompleteness } from "@/lib/completeness";
 import { validateStorePublic } from "@/lib/data-quality";
 import { parseHours } from "@/lib/hours";
 import { SITE_URL } from "@/lib/site";
+import { parseAudienceCounts } from "@/lib/audience-counts";
 import { Container } from "@/components/ui/container";
 import { StoreShareCard } from "@/components/store-share-card";
 import { StoreChecklist } from "@/components/store-checklist";
@@ -385,11 +386,22 @@ export default async function StoreOsHomePage({
           .select("id", { count: "exact", head: true })
           .eq("store_id", storeId)
       : Promise.resolve(none),
+    // Followers from store_audience_counts (0334): RLS lets a user read only
+    // their OWN follow row, so counting `follows` here was always 0 or 1.
+    // Falls back to that count if the RPC is missing or gives no answer.
     isOwner
-      ? supabase
-          .from("follows")
-          .select("user_id", { count: "exact", head: true })
-          .eq("store_id", storeId)
+      ? (async () => {
+          const { data } = await supabase.rpc("store_audience_counts", {
+            p_store_id: storeId,
+          });
+          const c = parseAudienceCounts(data);
+          if (c) return { data: null, count: c.followers };
+          const { count } = await supabase
+            .from("follows")
+            .select("user_id", { count: "exact", head: true })
+            .eq("store_id", storeId);
+          return { data: null, count };
+        })()
       : Promise.resolve(none),
     // Cost prices are what the profit report runs on, and across the live
     // platform not one product carries one — so the report computes zero for

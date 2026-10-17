@@ -21,6 +21,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 // ===== Contract (matches migrations 0122 + 0164) =====
 export type Audience =
@@ -70,7 +71,7 @@ const AUDIENCE_ICON: Record<Audience, LucideIcon> = {
 
 function timeAgo(iso: string, lang: Locale) {
   const diff = Date.now() - new Date(iso).getTime();
-  const rtf = new Intl.RelativeTimeFormat(lang === "ar" ? "ar" : "en", {
+  const rtf = new Intl.RelativeTimeFormat(lang === "ar" ? "ar-LB-u-nu-latn" : "en", {
     numeric: "auto",
   });
   const mins = Math.round(diff / 60000);
@@ -98,6 +99,7 @@ export function CampaignManager({
   counts: AudienceCounts;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const t = dict.os.campaigns;
 
   const [title, setTitle] = useState("");
@@ -112,6 +114,19 @@ export function CampaignManager({
   async function send() {
     if (!body.trim()) {
       notifyError(t.errors.empty_body);
+      return;
+    }
+    // A campaign is a push + in-app message to real people; it can't be
+    // unsent. Say how many and to whom before it goes.
+    if (
+      !(await confirm({
+        message: t.confirmSend
+          .replace("{n}", String(targetCount))
+          .replace("{audience}", (t.audiences as Record<string, string>)[audience] ?? audience),
+        confirmLabel: t.confirmSendYes,
+        cancelLabel: dict.common.cancel,
+      }))
+    ) {
       return;
     }
     setBusy(true);
@@ -137,7 +152,11 @@ export function CampaignManager({
               ? t.errors.bad_audience
               : code.includes("not_authorized")
                 ? t.errors.not_authorized
-                : dict.common.actionFailed;
+                : code.includes("plan_required")
+                  ? t.errors.plan_required
+                  : code.includes("bad_url")
+                    ? t.errors.bad_url
+                    : dict.common.actionFailed;
       notifyError(friendly);
       return;
     }
