@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, X, Ticket } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { beirutEndOfDayIso, isoToBeirutYmd } from "@/lib/beirut-day";
 import { fieldClass as uiFieldClass } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -76,7 +77,7 @@ export function CouponManager({
       type: c.type,
       value: String(c.value),
       min_order: c.min_order != null ? String(c.min_order) : "",
-      expires_at: c.expires_at ? c.expires_at.slice(0, 10) : "",
+      expires_at: isoToBeirutYmd(c.expires_at),
       max_uses: c.max_uses != null ? String(c.max_uses) : "",
       is_active: c.is_active,
       once_per_customer: c.once_per_customer ?? false,
@@ -91,8 +92,11 @@ export function CouponManager({
   async function save() {
     // Percent coupons can't exceed 100% — otherwise the discount RPC
     // (subtotal * value / 100) would refund more than the order total.
-    if (draft.type === "percent" && Number(draft.value) > 100) {
-      notifyError(dict.auth.errorGeneric);
+    if (
+      draft.type === "percent" &&
+      (Number(draft.value) > 100 || Number(draft.value) < 0)
+    ) {
+      notifyError(t.percentTooHigh);
       return;
     }
     setBusy(true);
@@ -103,7 +107,11 @@ export function CouponManager({
       type: draft.type,
       value: Number(draft.value) || 0,
       min_order: draft.min_order.trim() === "" ? null : Number(draft.min_order),
-      expires_at: draft.expires_at === "" ? null : draft.expires_at,
+      // The END of that day in Beirut, with Beirut's offset for that date. A
+      // bare "YYYY-MM-DD" is stored as 00:00 UTC — the coupon died 2–3 hours
+      // into its last day.
+      expires_at:
+        draft.expires_at === "" ? null : beirutEndOfDayIso(draft.expires_at),
       max_uses: draft.max_uses.trim() === "" ? null : Number(draft.max_uses),
       is_active: draft.is_active,
       once_per_customer: draft.once_per_customer,
@@ -117,7 +125,17 @@ export function CouponManager({
             .eq("id", editingId!);
     setBusy(false);
     if (error) {
-      notifyError(dict.auth.errorGeneric);
+      // 23505 = the (store, code) unique index; 23514 = coupons_value_range
+      // (percent 0–100) or another CHECK on the row.
+      notifyError(
+        error.code === "23505"
+          ? t.duplicateCode
+          : error.code === "23514"
+            ? draft.type === "percent"
+              ? t.percentTooHigh
+              : t.invalidValue
+            : dict.auth.errorGeneric,
+      );
       return;
     }
     cancel();
@@ -125,7 +143,7 @@ export function CouponManager({
   }
 
   async function remove(id: string) {
-    if (!(await confirm({ message: dict.merchant.products.confirmDelete, confirmLabel: dict.common.confirm, cancelLabel: dict.common.cancel, danger: true }))) return;
+    if (!(await confirm({ message: t.confirmDelete, confirmLabel: dict.common.confirm, cancelLabel: dict.common.cancel, danger: true }))) return;
     setBusy(true);
     const { error } = await createClient()
       .from("coupons")
@@ -251,7 +269,7 @@ export function CouponManager({
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {c.used_count} {t.used}
                   {c.max_uses != null ? ` / ${c.max_uses}` : ""}
-                  {c.expires_at ? ` · ${c.expires_at.slice(0, 10)}` : ""}
+                  {c.expires_at ? ` · ${isoToBeirutYmd(c.expires_at)}` : ""}
                 </p>
               </div>
               <button onClick={() => startEdit(c)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-border transition-colors hover:bg-surface-muted">
