@@ -8,6 +8,8 @@ import { notifyError, notifySuccess } from "@/lib/notify";
 import { fieldClass } from "@/components/ui/field";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { beirutYmd } from "@/lib/quick-panel";
+import { checkWeek } from "@/lib/provider-hours";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 export type HourRule = {
   id: string;
@@ -40,6 +42,7 @@ export function ProviderHours({
   initialExceptions: HourException[];
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const t = dict.merchant.providerHours;
   const [doctorId, setDoctorId] = useState(doctors[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
@@ -72,37 +75,59 @@ export function ProviderHours({
 
   async function saveWeek() {
     if (busy || !doctorId) return;
+    const check = checkWeek(draft);
+    if (!check.ok) {
+      notifyError(t.badRange.replace("{day}", dayNames[check.badDay] ?? ""));
+      return;
+    }
+    // No rules = no restriction (the engine offers every store hour), so an
+    // all-unticked week opens the provider rather than closing them.
+    if (
+      check.empty &&
+      !(await confirm({
+        message: t.noDaysWarn,
+        confirmLabel: t.noDaysConfirm,
+        cancelLabel: t.noDaysKeep,
+      }))
+    ) {
+      return;
+    }
     setBusy(true);
     const supabase = createClient();
-    // Replace-all: simplest correct write for a 7-row config.
-    const { error: delErr } = await supabase
-      .from("provider_availability_rules")
-      .delete()
-      .eq("doctor_id", doctorId);
-    if (!delErr) {
-      const rows = Object.entries(draft)
-        .filter(([, v]) => v.on && v.from && v.to && v.from < v.to)
-        .map(([d, v]) => ({
-          store_id: storeId,
-          doctor_id: doctorId,
-          weekday: Number(d),
-          start_time: v.from,
-          end_time: v.to,
-        }));
-      if (rows.length) {
-        const { error: insErr } = await supabase
-          .from("provider_availability_rules")
-          .insert(rows);
-        if (insErr) {
-          setBusy(false);
-          notifyError(dict.common.actionFailed);
-          return;
-        }
-      }
-    } else {
+    // Replace without a gap: note the current rows, write the new ones, and
+    // only then delete the old ids. Deleting first meant a failed insert left
+    // the provider with no rules — i.e. bookable around the clock.
+    const fail = (step: string, err: unknown) => {
+      console.error(`[provider-hours] ${step} failed`, err);
       setBusy(false);
       notifyError(dict.common.actionFailed);
-      return;
+    };
+    const { data: oldRows, error: readErr } = await supabase
+      .from("provider_availability_rules")
+      .select("id")
+      .eq("doctor_id", doctorId);
+    if (readErr) return fail("read", readErr);
+    if (check.rows.length) {
+      const { error: insErr } = await supabase
+        .from("provider_availability_rules")
+        .insert(
+          check.rows.map((r) => ({ ...r, store_id: storeId, doctor_id: doctorId })),
+        );
+      if (insErr) return fail("insert", insErr);
+    }
+    const oldIds = ((oldRows ?? []) as { id: string }[]).map((r) => r.id);
+    if (oldIds.length) {
+      const { error: delErr } = await supabase
+        .from("provider_availability_rules")
+        .delete()
+        .in("id", oldIds);
+      if (delErr) {
+        // New windows are in; the old ones linger beside them. Refresh so
+        // the merchant sees both and can save again.
+        fail("delete old", delErr);
+        router.refresh();
+        return;
+      }
     }
     setBusy(false);
     notifySuccess(t.saved);

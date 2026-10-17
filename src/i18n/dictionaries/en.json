@@ -2406,6 +2406,10 @@
       "blockReason": "Reason (optional)",
       "blockAdd": "Add",
       "blockAdded": "Day off added ✓",
+      "badRange": "{day}: the start time must be before the end time.",
+      "noDaysWarn": "No day is ticked. That removes every restriction for this person — they'll show as available during all of the store's hours. Continue?",
+      "noDaysConfirm": "Yes, no restrictions",
+      "noDaysKeep": "Let me pick a day",
       "blockRemove": "Remove"
     },
     "checklist": {
