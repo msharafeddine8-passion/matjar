@@ -32,7 +32,7 @@ import { Container } from "@/components/ui/container";
 //
 //   The terms half is fact this repository DOES know, because it is a
 //   description of what the code already does: cash on delivery, no commission,
-//   the merchant is the seller, every store reviewed before it publishes, a free
+//   the merchant is the seller, every new store followed up after it publishes, a free
 //   tier capped at three products, plans settled by hand. Every clause below is
 //   traceable to something in the product. Nothing was invented to fill a
 //   heading, and where the honest answer is "this is not built yet" it says so.
@@ -100,7 +100,7 @@ const AR = {
         "فتح المتجر مجّاني، وبتقدر تضيف لحدّ {freeProducts} منتجات على الخطة المجانية. الخطط المدفوعة سعرها منشور على صفحة الأسعار.",
         "ما منطلب منّك بطاقة ولا رقم حساب لتفتح متجر. الاشتراك المدفوع بينحسب بالاتفاق معنا ويداً بيد — ما في دفع أونلاين على المنصّة.",
         "٠٪ عمولة على مبيعاتك. مصاري طلباتك بتوصلك إنت.",
-        "كل متجر بينراجع قبل ما ينشر. إذا المتجر خالف القانون اللبناني أو ضحّك على زباينو، فينا نوقّفو أو نشيلو عن المنصّة.",
+        "المتجر بيصير منشور أوّل ما ينفتح، ومنتابع كل متجر جديد. إذا المتجر خالف القانون اللبناني أو ضحّك على زباينو، فينا نوقّفو أو نشيلو عن المنصّة.",
         "منتجاتك وأرقام زباينك ملكك إنت. ما منبيعها ولا منشاركها. لسّا ما في زرّ تصدير ذاتي — احكينا ومنبعتلك بياناتك أو منسكّرلك المتجر.",
         "إذا بدّك تترك، انقل ملكيّة المتجر لحدا أو احكينا نسكّرو. لا تحذف حسابك وإنت لسّا مالك متجر — بياخد معو المتجر وكل طلبات زباينك.",
       ],
@@ -173,7 +173,7 @@ const EN = {
         "Opening a store is free, and the free plan lets you list up to {freeProducts} products. Paid plan prices are published on the pricing page.",
         "We never ask you for a card or bank details to open a store. A paid subscription is settled by arrangement with us, by hand — there is no online payment on the platform.",
         "0% commission on your sales. Your customers' money goes to you.",
-        "Every store is reviewed before it publishes. If a store breaks Lebanese law or deceives its customers, we can suspend it or remove it from the platform.",
+        "A store goes live as soon as it opens, and we follow up on every new store. If a store breaks Lebanese law or deceives its customers, we can suspend it or remove it from the platform.",
         "Your products and your customers' numbers belong to you. We do not sell or share them. There is no self-service export button yet — message us and we will send you your data or close your store.",
         "If you want to leave, transfer the store to someone else or ask us to close it. Do not delete your account while you still own a store — it would take the store and every order your customers placed with it.",
       ],

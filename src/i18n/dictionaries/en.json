@@ -1526,7 +1526,7 @@
     "locationError": "Couldn't get your location. Enable location permission.",
     "km": "km",
     "earlyTitle": "Matjar is still early",
-    "earlyBody": "Every shop here is a real Lebanese business we reviewed before letting it onto the site. We add them one at a time, so the list is still short — that is on purpose, not a fault. If you're looking for something and can't find it, tell us and we'll go find it.",
+    "earlyBody": "The shops here are Lebanese businesses that open their own pages; we follow up on every new one and remove anything that doesn't belong. It's early, so the list is still short — that is on purpose, not a fault. If you're looking for something and can't find it, tell us and we'll go find it.",
     "earlyCta": "Tell us what's missing",
     "earlyWaPrefill": "Hello, I was looking for something on Matjar and couldn't find it:"
   },
@@ -3637,7 +3637,7 @@
       "nativeApp": "Matjar app on the App Store and Google Play"
     },
     "featureNotes": {
-      "verifiedBadge": "Send us your documents and we review them. It is a stricter check than the store review every shop already passes, no plan buys it, and no business has earned it yet.",
+      "verifiedBadge": "Send us your documents and we review them. No plan buys it, and no business has earned it yet.",
       "onlinePayment": "Orders are cash on delivery. Your plan is paid by arrangement with us, by hand.",
       "nativeApp": "The site works on any phone and installs to the home screen. It is not on the app stores yet."
     },
@@ -3656,7 +3656,7 @@
       { "q": "Is opening a store free?", "a": "Yes — creating your store and account is free, and you get a full {days}-day trial with no card. The plan is only for the extra features." },
       { "q": "What's the difference between the three plans?", "a": "Basic to start (up to {basicProducts} products), Pro for active shops (POS, sales and profit reports, the customer book, offers, and we build the store with you), and Business for chains & branches (inventory, kitchen, suppliers, accounting, automation, campaigns, attendance & payroll). Your store page, orders and bookings are on every plan — Pro and Business add the management screens behind them." },
       { "q": "Do I need Pro to take bookings?", "a": "No. Appointments, table reservations, classes and court slots work on every plan, including a store that never subscribed. Pro adds the team page and the reports on top of them." },
-      { "q": "Does paying make my store verified?", "a": "No. Every store is reviewed before it goes live, on any plan. The verified badge is a separate, stricter check of a business's documents — no plan buys it, and it has not been awarded to anyone yet." },
+      { "q": "Does paying make my store verified?", "a": "No. A plan doesn't buy verification. The verified badge comes only after we check a business's documents — no plan buys it, and it has not been awarded to anyone yet." },
       { "q": "How long does the annual offer last?", "a": "The annual promo prices (${basicAnnual} / ${proAnnual} / ${businessAnnual}) run for a limited time — the countdown above shows how long is left. After that, annual reverts to the standard yearly price." },
       { "q": "Is there a commission on sales?", "a": "Never — Matjar takes 0% commission on your orders, on any plan. Only the plan subscription." },
       { "q": "Can I change or cancel my plan?", "a": "Of course — upgrade, downgrade, or cancel anytime, and your store and products stay." },
@@ -3697,14 +3697,14 @@
   },
   "trustPage": {
     "metaTitle": "Trust & Safety",
-    "metaDesc": "How Matjar protects merchants and customers: cash on delivery, every store reviewed before it goes live, a returns policy, and direct support.",
+    "metaDesc": "How Matjar protects merchants and customers: cash on delivery, follow-up on every new store, a returns policy, and direct support.",
     "kicker": "Your trust matters",
     "title": "Trust & Safety on Matjar",
     "intro": "We work to make every order and every interaction on Matjar safe and clear — for both merchant and customer.",
     "customerTitle": "For customers",
     "customer": [
       { "t": "Cash on delivery", "d": "You pay when you receive your order — no risk." },
-      { "t": "Every store is reviewed before it goes live", "d": "No store appears on Matjar until we have reviewed it. The \"verified\" badge is a separate, stricter check of a business's documents — and it has not been awarded to anyone yet." },
+      { "t": "We follow up on every new store", "d": "A store goes live as soon as it opens; we follow up on every new store and suspend any that doesn't belong. If you see something wrong, contact us. The \"verified\" badge is a separate check of a business's documents — and it has not been awarded to anyone yet." },
       { "t": "Direct contact", "d": "Call or message the store on WhatsApp before you order." },
       { "t": "Report a problem", "d": "If something goes wrong, contact us and we'll help." }
     ],
@@ -4271,7 +4271,7 @@
       },
       {
         "q": "Is the store I'm buying from checked?",
-        "a": "Every store is reviewed by us before it appears on Matjar, whatever plan it is on. The \"verified\" badge is a separate, stricter check of a business's documents — it has not been awarded to anyone yet, so no store on Matjar carries it today."
+        "a": "A store goes live as soon as its owner opens it; we follow up on every new store and suspend any that doesn't belong — if you notice something wrong, contact us. The \"verified\" badge is a stricter check of a business's documents — it has not been awarded to anyone yet, so no store on Matjar carries it today."
       },
       {
         "q": "What is Sunday Market?",
