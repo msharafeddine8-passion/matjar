@@ -40,9 +40,9 @@ describe("bookingWaHref", () => {
 });
 
 describe("stored vs default-only template keys", () => {
-  it("the two new booking keys are not stored (0309 CHECKs)", () => {
-    expect(isWaStoredKey("booking_declined")).toBe(false);
-    expect(isWaStoredKey("booking_rescheduled")).toBe(false);
+  it("the booking follow-up keys are stored since 0336 widened the CHECKs", () => {
+    expect(isWaStoredKey("booking_declined")).toBe(true);
+    expect(isWaStoredKey("booking_rescheduled")).toBe(true);
     expect(isWaStoredKey("booking_reminder")).toBe(true);
     expect(WA_TEMPLATE_KEYS).toContain("booking_declined");
   });

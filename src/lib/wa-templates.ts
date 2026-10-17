@@ -84,9 +84,7 @@ export const WA_TEMPLATE_KEYS = [
 export type WaTemplateKey = (typeof WA_TEMPLATE_KEYS)[number];
 
 /** The keys public.store_wa_templates and public.wa_action_log accept (0309
- *  CHECK constraints). booking_declined / booking_rescheduled are default-
- *  wording only until a migration widens those checks: the editor does not
- *  offer them and their taps are not logged (the insert would be refused). */
+ *  CHECK constraints, widened for the two booking follow-ups by 0336). */
 export const WA_STORED_KEYS = [
   "order_confirmation",
   "order_status",
@@ -95,6 +93,8 @@ export const WA_STORED_KEYS = [
   "booking_confirmation",
   "booking_reminder",
   "debt_reminder",
+  "booking_declined",
+  "booking_rescheduled",
 ] as const satisfies readonly WaTemplateKey[];
 
 export function isWaStoredKey(v: string): boolean {
