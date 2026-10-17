@@ -23,6 +23,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
 import { beirutYmd } from "@/lib/quick-panel";
+import { formatMoneyAmount } from "@/lib/currency";
 
 export type Employee = {
   id: string;
@@ -62,11 +63,6 @@ export type PayrollRun = {
 
 type L = Record<string, string>;
 
-function money(n: number, c: string) {
-  return c === "LBP"
-    ? `${Math.round(n).toLocaleString("en-US")} ل.ل`
-    : `$${Number(n).toFixed(2)}`;
-}
 
 // People, hours and pay for a shop that runs on six workers and a notebook.
 //
@@ -83,6 +79,7 @@ export function HrManager({
   employees,
   runs,
   labels,
+  lang = "ar",
 }: {
   storeId: string;
   /** Public link the employee opens on their own phone. */
@@ -97,7 +94,11 @@ export function HrManager({
   employees: Employee[];
   runs: PayrollRun[];
   labels: L;
+  /** Names the lira per language (ل.ل. / LBP); digits are Western in both. */
+  lang?: string;
 }) {
+  // The English screen used to print «ل.ل» and "$1250.00" with no grouping.
+  const money = (n: number, c: string) => formatMoneyAmount(n, c, lang);
   const router = useRouter();
   const confirm = useConfirm();
   const [busy, setBusy] = useState<string | null>(null);

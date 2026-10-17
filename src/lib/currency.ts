@@ -12,6 +12,10 @@ export type FormatUsdOptions = {
    *  have always rendered; this option exists to centralise their arithmetic,
    *  not to restyle them. Catalog prices leave it off. */
   cents?: boolean;
+  /** Always two decimals, grouped: "$12.50", "$1,234.00". For printed
+   *  receipts and invoices, where a column of amounts must line up and
+   *  "$12.5" reads as a typo. Implies `cents`. */
+  fixed?: boolean;
 };
 
 /** "$1,200" / "$50" — canonical USD price formatter (thousands separator ≥1000).
@@ -20,6 +24,14 @@ export type FormatUsdOptions = {
  *  With `{ cents: true }` the amount is rounded to 2 decimals first, so
  *  1234.5678 renders "$1,234.57" instead of "$1,234.568". */
 export function formatUsd(price: number, opts?: FormatUsdOptions): string {
+  if (opts?.fixed) {
+    const n = Number(Number(price).toFixed(2));
+    const abs = Math.abs(n).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return `${n < 0 ? "-" : ""}$${abs}`;
+  }
   if (opts?.cents) {
     return `$${Number(Number(price).toFixed(2)).toLocaleString("en-US")}`;
   }
@@ -40,6 +52,25 @@ export function formatUsd(price: number, opts?: FormatUsdOptions): string {
   return rounded >= 1000
     ? `$${rounded.toLocaleString("en-US")}`
     : `$${rounded}`;
+}
+
+/**
+ * An amount in its own currency, never converted: "$1,250.00" or
+ * "4,475,000 ل.ل." / "4,475,000 LBP". USD keeps two decimals (payroll,
+ * advances — amounts of record); LBP has no subunit in practice and is
+ * rounded. Western digits in both languages; the sign is kept.
+ */
+export function formatMoneyAmount(
+  amount: number,
+  currency: string,
+  lang: string,
+): string {
+  const n = Number(amount) || 0;
+  if (currency === "LBP") {
+    const r = Math.round(n);
+    return `${r.toLocaleString("en-US")} ${lang === "ar" ? "ل.ل." : "LBP"}`;
+  }
+  return formatUsd(n, { fixed: true });
 }
 
 /** "≈ 4,475,000 ل.ل." — an approximate LBP value for a USD amount. */

@@ -9,8 +9,9 @@ import { OrderStatusControl } from "@/components/order-status-control";
 import { OrderPayments, type OrderPayment } from "@/components/order-payments";
 import { OrderNoteEditor } from "@/components/order-note-editor";
 import { OrderAssignTags } from "@/components/order-assign-tags";
-import { formatUsd } from "@/lib/currency";
 import { Money } from "@/components/ui/money";
+import { formatBeirutDateTime } from "@/lib/datetime";
+import { formatQuantityMeasure, unitPricingOf } from "@/lib/unit-pricing";
 import {
   OrderDispatch,
   type DispatchCourier,
@@ -27,6 +28,14 @@ type OrderItem = {
   quantity: number;
   unit_price: number;
   note: string | null;
+  /** How the product is sold (0299), joined off order_items.product_id. Null
+   *  for piece-priced products and for staff who cannot read the catalogue —
+   *  the line then falls back to "2×", exactly like the mobile card. */
+  products?: {
+    sold_by: string | null;
+    unit_measure: string | null;
+    unit_amount: number | null;
+  } | null;
 };
 
 // One order, fully shaped on the server: money ledger and branch label resolved
@@ -49,6 +58,8 @@ export type OrderCard = {
   assigned_to: string | null;
   tags: string[];
   delivery_fee: number | null;
+  /** Coupon / merchant discount already taken off `total`. */
+  discount?: number | null;
   change_for: number | null;
   delivery_instructions: string | null;
   custom_fields: Record<string, string> | null;
@@ -116,14 +127,25 @@ export function OrdersFilter({
   const filtered = useMemo(() => {
     // Strip a leading "#" so searching the displayed "#a1b2c3d4" id still matches.
     const q = query.trim().toLowerCase().replace(/^#/, "");
+    // A merchant types the number the way the customer said it ("03 123
+    // 456"), so compare digits with digits. Ignored below three digits, where
+    // "1" would match every order.
+    const qDigits = q.replace(/\D/g, "");
+    // "+961 3 123456" typed against a stored "03123456": compare the national
+    // part, without the country code or trunk zero, on both sides.
+    const local = (d: string) => d.replace(/^(00)?961/, "").replace(/^0+/, "");
+    const qLocal = local(qDigits);
     return orders.filter((o) => {
       if (status !== "all" && o.status !== status) return false;
       if (!q) return true;
       const name = (o.customer_name ?? "").toLowerCase();
+      const phoneDigits = (o.phone ?? "").replace(/\D/g, "");
       return (
         name.includes(q) ||
         o.id.toLowerCase().includes(q) ||
-        o.tags.some((t) => t.toLowerCase().includes(q))
+        o.tags.some((t) => t.toLowerCase().includes(q)) ||
+        (qDigits.length >= 3 && phoneDigits.includes(qDigits)) ||
+        (qLocal.length >= 3 && local(phoneDigits).includes(qLocal))
       );
     });
   }, [orders, status, query]);
@@ -173,15 +195,7 @@ export function OrdersFilter({
                       </span>
                     )}
                     <span className="ms-2 text-xs">
-                      {new Date(order.created_at).toLocaleString(
-                        lang === "ar" ? "ar" : "en",
-                        {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )}
+                      {formatBeirutDateTime(order.created_at, lang)}
                     </span>
                     {branch && (
                       <span className="ms-2 whitespace-nowrap rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
@@ -194,7 +208,7 @@ export function OrdersFilter({
                   <span className="flex shrink-0 items-center gap-2">
                     <Link
                       href={`/${lang}/merchant/${storeId}/orders/${order.id}/invoice`}
-                      className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-bold transition-colors hover:border-primary hover:text-primary"
+                      className="flex min-h-10 items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-bold transition-colors hover:border-primary hover:text-primary"
                     >
                       <Printer className="h-3.5 w-3.5" />
                       {dict.os.invoice.link}
@@ -202,23 +216,47 @@ export function OrdersFilter({
                     <OrderStatusControl
                       orderId={order.id}
                       status={order.status}
+                      fulfillment={order.fulfillment}
                       labels={dict.orders.status}
                       errorLabel={dict.auth.errorGeneric}
+                      errorLabels={{
+                        closed: dict.orders.ops.errClosedIsFinal,
+                        completed: dict.orders.ops.errCompletedIsFinal,
+                      }}
                       confirmLabels={{
                         message: dict.orders.confirmStatusDestructive,
                         confirm: dict.common.confirm,
                         cancel: dict.common.cancel,
                       }}
                       finalNote={dict.orders.completedIsFinal}
+                      closedNote={dict.orders.ops.closedIsFinal}
+                      ariaLabel={dict.orders.ops.statusLabel}
                     />
                   </span>
                 </div>
                 <ul className="mt-3 space-y-1 border-t border-border pt-3 text-sm">
-                  {order.order_items.map((item, i) => (
+                  {order.order_items.map((item, i) => {
+                    // A butcher's "2×" is two kilos: say so, as the mobile
+                    // card does (src/lib/unit-pricing.ts).
+                    const u = unitPricingOf({
+                      soldBy: item.products?.sold_by ?? null,
+                      unitMeasure: item.products?.unit_measure ?? null,
+                      unitAmount: item.products?.unit_amount ?? null,
+                    });
+                    return (
                     <li key={i} className="flex flex-col gap-0.5">
                       <div className="flex justify-between gap-4">
                         <span>
-                          {item.quantity}× {item.name}
+                          <span dir="ltr" className="font-semibold tabular-nums">
+                            {u
+                              ? formatQuantityMeasure(
+                                  u,
+                                  item.quantity,
+                                  lang === "ar" ? "ar" : "en",
+                                )
+                              : `${item.quantity}×`}
+                          </span>{" "}
+                          {item.name}
                         </span>
                         <span className="text-muted-foreground">
                           <Money value={item.unit_price * item.quantity} />
@@ -230,20 +268,26 @@ export function OrdersFilter({
                         </span>
                       )}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
                 {order.scheduled_for && (
                   <p className="mt-3 flex items-center gap-1.5 rounded-lg bg-warning-soft px-3 py-2 text-sm font-bold text-warning">
                     🕒 {dict.orders.scheduledFor}:{" "}
-                    {new Date(order.scheduled_for).toLocaleString(
-                      lang === "ar" ? "ar" : "en",
-                      { dateStyle: "medium", timeStyle: "short" },
-                    )}
+                    {formatBeirutDateTime(order.scheduled_for, lang, "long")}
                   </p>
+                )}
+                {/* Without this row the lines visibly did not add up to the
+                    total on every couponed order. */}
+                {order.discount != null && Number(order.discount) > 0 && (
+                  <div className="mt-3 flex justify-between border-t border-border pt-3 text-sm text-danger">
+                    <span>{dict.orders.discount}</span>
+                    <Money value={Number(order.discount)} cents prefix="−" />
+                  </div>
                 )}
                 <div className="mt-3 flex justify-between border-t border-border pt-3 font-bold">
                   <span>{dict.orders.total}</span>
-                  <span>{formatUsd(order.total)}</span>
+                  <Money value={Number(order.total)} cents />
                 </div>
                 <div className="mt-3 space-y-1 border-t border-border pt-3 text-sm text-muted-foreground">
                   <p>
@@ -259,8 +303,8 @@ export function OrdersFilter({
                     {order.delivery_fee != null &&
                       Number(order.delivery_fee) > 0 && (
                         <span className="ms-2 font-semibold text-foreground">
-                          {dict.orders.deliveryFeeLabel}: $
-                          {Number(order.delivery_fee)}
+                          {dict.orders.deliveryFeeLabel}:{" "}
+                          <Money value={Number(order.delivery_fee)} cents />
                         </span>
                       )}
                   </p>
@@ -272,8 +316,8 @@ export function OrdersFilter({
                   )}
                   {order.change_for != null && Number(order.change_for) > 0 && (
                     <p className="font-semibold text-foreground">
-                      💵 {dict.orders.changeForLabel}: $
-                      {Number(order.change_for)}
+                      💵 {dict.orders.changeForLabel}:{" "}
+                      <Money value={Number(order.change_for)} cents />
                     </p>
                   )}
                   {order.customer_note && (
@@ -360,6 +404,7 @@ export function OrdersFilter({
                       storeId={storeId}
                       storeName={storeName}
                       customerName={order.customer_name}
+                      customerPhone={order.phone}
                       address={order.address}
                       couriers={couriers}
                       request={order.delivery}

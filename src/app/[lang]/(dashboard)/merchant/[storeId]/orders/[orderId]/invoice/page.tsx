@@ -7,15 +7,35 @@ import { createClient } from "@/lib/supabase/server";
 import { Container } from "@/components/ui/container";
 import { IssueInvoiceButton } from "@/components/issue-invoice-button";
 import { PrintInvoiceButton } from "@/components/print-invoice-button";
-import { formatUsd } from "@/lib/currency";
+import { Money } from "@/components/ui/money";
 import { ChevronPrev } from "@/components/ui/directional-icon";
+import { formatBeirutDateTime } from "@/lib/datetime";
+import { invoicePaymentState } from "@/lib/order-payment-labels";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function money(n: number) {
-  return formatUsd(n, { cents: true });
-}
+// A receipt is printed, and a merchant using the dark theme printed white text
+// on a page the printer leaves white. The receipt pins the light palette for
+// print only; on screen it follows the theme like everything else.
+const PRINT_LIGHT = `@media print {
+  html, body { background: #ffffff !important; }
+  .invoice-print {
+    --background: #ffffff;
+    --surface: #ffffff;
+    --surface-muted: #f4f5f3;
+    --foreground: #0b1620;
+    --muted-foreground: #5d6b72;
+    --border: #e8e8e2;
+    --border-strong: #8a8f88;
+    --primary: #1556c2;
+    --success: #0b7a35;
+    --warning: #a15607;
+    --danger: #b91c1c;
+    color: #0b1620;
+    background: #ffffff;
+  }
+}`;
 
 // Print-friendly order invoice for the merchant (print → Save as PDF).
 export default async function OrderInvoicePage({
@@ -41,7 +61,7 @@ export default async function OrderInvoicePage({
   });
   if (!canManage) redirect(`/${lang}/merchant`);
 
-  const [{ data: store }, { data: orderData }] = await Promise.all([
+  const [{ data: store }, { data: orderData }, { data: payData }] = await Promise.all([
     supabase
       .from("stores")
       // The legal identity printed below comes from the issued invoice's own
@@ -53,11 +73,18 @@ export default async function OrderInvoicePage({
     supabase
       .from("orders")
       .select(
-        "id, status, subtotal, discount, total, fulfillment, address, phone, customer_name, created_at, order_items(name, unit_price, quantity)",
+        "id, status, subtotal, discount, delivery_fee, total, fulfillment, address, phone, customer_name, created_at, order_items(name, unit_price, quantity)",
       )
       .eq("id", orderId)
       .eq("store_id", storeId)
       .maybeSingle(),
+    // The order's own money ledger decides the payment line — not a constant.
+    supabase
+      .from("order_payments")
+      .select("kind, amount, method")
+      .eq("order_id", orderId)
+      .eq("store_id", storeId)
+      .order("created_at", { ascending: true }),
   ]);
   if (!store || !orderData) redirect(`/${lang}/merchant/${storeId}/orders`);
 
@@ -103,6 +130,7 @@ export default async function OrderInvoicePage({
     status: string;
     subtotal: number;
     discount: number | null;
+    delivery_fee: number | null;
     total: number;
     fulfillment: string;
     address: string | null;
@@ -112,19 +140,37 @@ export default async function OrderInvoicePage({
     order_items: { name: string; unit_price: number; quantity: number }[];
   };
 
-  const fmtDate = new Date(order.created_at).toLocaleString(
-    lang === "ar" ? "ar" : "en",
-    {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    },
+  // Beirut wall-clock with Western digits. The server renders in UTC, so a
+  // 9pm order used to print "6:00 PM" — three hours off on a legal document.
+  const fmtDate = formatBeirutDateTime(order.created_at, lang, "long");
+
+  // An issued invoice's frozen figures win over the live order's.
+  const deliveryFee = Number(
+    (inv ? inv.delivery_fee : order.delivery_fee) ?? 0,
   );
+  const discount = Number((inv ? inv.discount : order.discount) ?? 0);
+  const grandTotal = Number(inv ? inv.total : order.total);
+
+  const pay = invoicePaymentState(
+    (payData ?? []) as { kind: string; amount: number; method: string | null }[],
+    grandTotal,
+    { giftCard: dict.payments.giftCard },
+  );
+  const payLabel =
+    pay.kind === "cod"
+      ? t.cod
+      : [
+          pay.kind === "paid"
+            ? t.paidFull
+            : pay.kind === "partial"
+              ? t.paidPartial
+              : t.paidRefunded,
+          ...(pay.methods.length ? [pay.methods.join(" + ")] : []),
+        ].join(" · ");
 
   return (
-    <div className="py-8 print:py-0">
+    <div className="invoice-print py-8 print:py-0">
+      <style>{PRINT_LIGHT}</style>
       <Container className="max-w-2xl">
         <div className="flex items-center justify-between gap-3 print:hidden">
           <Link
@@ -220,12 +266,14 @@ export default async function OrderInvoicePage({
             </div>
             <div className="text-end">
               <p className="font-bold">{t.date}</p>
-              <p className="text-muted-foreground">{fmtDate}</p>
+              <p className="text-muted-foreground">
+                <bdi dir="ltr">{fmtDate}</bdi>
+              </p>
               <p className="mt-1 text-muted-foreground">
                 {order.fulfillment === "delivery"
                   ? dict.store.delivery
                   : dict.store.pickup}{" "}
-                · {t.cod}
+                · {payLabel}
               </p>
             </div>
           </div>
@@ -246,11 +294,11 @@ export default async function OrderInvoicePage({
                   <td className="py-2.5 text-center tabular-nums">
                     {it.quantity}
                   </td>
-                  <td className="py-2.5 text-end tabular-nums">
-                    {money(it.unit_price)}
+                  <td className="py-2.5 text-end">
+                    <Money value={Number(it.unit_price)} fixed />
                   </td>
-                  <td className="py-2.5 text-end font-bold tabular-nums">
-                    {money(it.unit_price * it.quantity)}
+                  <td className="py-2.5 text-end font-bold">
+                    <Money value={Number(it.unit_price) * it.quantity} fixed />
                   </td>
                 </tr>
               ))}
@@ -260,14 +308,25 @@ export default async function OrderInvoicePage({
           <div className="ms-auto mt-4 max-w-56 space-y-1 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>{t.subtotal}</span>
-              <span className="tabular-nums">{money(order.subtotal)}</span>
+              <Money
+                value={Number(inv ? inv.subtotal : order.subtotal)}
+                fixed
+              />
             </div>
-            {Number(order.discount) > 0 && (
+            {/* The sign belongs inside the LTR isolate: written outside it,
+                the Arabic run put it on the wrong end ("$12−"). */}
+            {discount > 0 && (
               <div className="flex justify-between text-danger">
                 <span>{t.discount}</span>
-                <span className="tabular-nums">
-                  -{money(Number(order.discount))}
-                </span>
+                <Money value={discount} fixed prefix="−" />
+              </div>
+            )}
+            {/* Without this row a delivery order's lines did not add up to
+                its total on the customer's own receipt. */}
+            {deliveryFee > 0 && (
+              <div className="flex justify-between text-muted-foreground">
+                <span>{t.deliveryFee}</span>
+                <Money value={deliveryFee} fixed />
               </div>
             )}
             {inv && Number(inv.tax_amount) > 0 && (
@@ -276,16 +335,12 @@ export default async function OrderInvoicePage({
                   {t.vat} {Number(inv.tax_rate)}%
                   {inv.vat_inclusive ? ` (${t.vatIncludedShort})` : ""}
                 </span>
-                <span className="tabular-nums">
-                  {money(Number(inv.tax_amount))}
-                </span>
+                <Money value={Number(inv.tax_amount)} fixed />
               </div>
             )}
             <div className="flex justify-between border-t border-border pt-2 text-base font-extrabold">
               <span>{t.total}</span>
-              <span className="tabular-nums">
-                {money(inv ? Number(inv.total) : order.total)}
-              </span>
+              <Money value={grandTotal} fixed />
             </div>
           </div>
 

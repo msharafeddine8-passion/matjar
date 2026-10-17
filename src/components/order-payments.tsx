@@ -7,6 +7,11 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/client";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { Money } from "@/components/ui/money";
+import {
+  paymentMethodLabel,
+  paymentNoteLabel,
+} from "@/lib/order-payment-labels";
 
 export type OrderPayment = {
   id: string;
@@ -16,10 +21,6 @@ export type OrderPayment = {
   note: string | null;
   created_at: string;
 };
-
-function money(n: number) {
-  return n >= 1000 ? `$${Number(n).toLocaleString("en-US")}` : `$${n}`;
-}
 
 // Per-order money ledger: recorded payments and refunds, plus a form to add one.
 // Writes go through the server RPC record_order_payment (re-validates authority
@@ -113,23 +114,29 @@ export function OrderPayments({
           {t.title}
         </span>
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold">
+          {/* Sums of floats: 0.1 + 0.2 must not print as $0.30000000000000004. */}
           <span className="text-success">
-            {t.paid}: {money(settled)}
+            {t.paid}: <Money value={settled} cents />
           </span>
           {refunded > 0 && (
             <span className="text-danger">
-              {t.refunded}: {money(refunded)}
+              {t.refunded}: <Money value={refunded} cents />
             </span>
           )}
           <span>
-            {t.net}: {money(net)}
+            {t.net}: <Money value={net} cents />
           </span>
         </span>
       </div>
 
       {payments.length > 0 && (
         <ul className="mt-2 space-y-1">
-          {payments.map((p) => (
+          {payments.map((p) => {
+            // The gift-card writer (0310) stores a bilingual method and an
+            // English note; show both in the merchant's language.
+            const methodText = paymentMethodLabel(p.method, t);
+            const noteText = paymentNoteLabel(p.note, t);
+            return (
             <li
               key={p.id}
               className="flex items-center justify-between gap-3 text-xs text-muted-foreground"
@@ -143,21 +150,22 @@ export function OrderPayments({
                 <span className="font-semibold text-foreground">
                   {p.kind === "refund" ? t.refund : t.payment}
                 </span>
-                {p.method ? ` · ${p.method}` : ""}
-                {p.note ? ` · ${p.note}` : ""}
+                {methodText ? ` · ${methodText}` : ""}
+                {noteText ? ` · ${noteText}` : ""}
               </span>
-              <span
+              <Money
+                value={Number(p.amount)}
+                cents
+                prefix={p.kind === "refund" ? "−" : "+"}
                 className={
                   p.kind === "refund"
                     ? "font-bold text-danger"
                     : "font-bold text-success"
                 }
-              >
-                {p.kind === "refund" ? "−" : "+"}
-                {money(Number(p.amount))}
-              </span>
+              />
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 
@@ -222,7 +230,7 @@ export function OrderPayments({
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="mt-2 inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-bold transition-colors hover:border-primary hover:text-primary"
+          className="mt-2 inline-flex min-h-10 items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-bold transition-colors hover:border-primary hover:text-primary"
         >
           <Plus className="h-3.5 w-3.5" />
           {t.record}
