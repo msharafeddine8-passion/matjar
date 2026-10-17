@@ -353,9 +353,9 @@ export default async function StoreOsLayout({
         hoursNote={dict.merchant.mobile.hoursNote}
         hoursUnsetNote={dict.merchant.mobile.hoursUnset}
         // The weekly hours grid lives on the store edit screen — the one place
-        // that actually decides open/closed. Owner-only, and a staff member
-        // who lands there is redirected by that page's own guard.
-        hoursHref={`${base}/edit`}
+        // that actually decides open/closed. Owner-only, so staff get the
+        // status as plain text rather than a link that bounces them home.
+        hoursHref={isOwner ? `${base}/edit` : null}
         viewHref={`/${lang}/${s.slug ?? `store/${storeId}`}`}
         viewLabel={dict.os.viewPublic}
       />

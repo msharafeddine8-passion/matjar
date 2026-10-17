@@ -19,11 +19,15 @@ export function StoreCouriersManager({
   dict,
   companies,
   selected,
+  loadFailed = false,
 }: {
   storeId: string;
   dict: Dictionary;
   companies: CourierCompany[];
   selected: Record<string, { price: string }>;
+  /** The store's current couriers failed to load: saving would act on a
+   *  blank picture, so the form shows an error and refuses to save. */
+  loadFailed?: boolean;
 }) {
   const router = useRouter();
   const t = dict.merchant.couriers;
@@ -43,13 +47,17 @@ export function StoreCouriersManager({
   const [saved, setSaved] = useState(false);
 
   async function save() {
+    if (loadFailed) {
+      // The current choices never loaded, so we can't tell what to keep.
+      notifyError(dict.common.loadError);
+      return;
+    }
     setBusy(true);
     setSaved(false);
     const supabase = createClient();
-    const del = await supabase
-      .from("store_couriers")
-      .delete()
-      .eq("store_id", storeId);
+    // Upsert what is ticked, then delete only what was unticked. Deleting
+    // everything first meant a failed insert wiped the store's couriers, and
+    // it also threw away each row's `note`, which this form never shows.
     const rows = companies
       .filter((c) => state[c.id]?.enabled)
       .map((c) => ({
@@ -59,11 +67,31 @@ export function StoreCouriersManager({
           state[c.id].price.trim() === "" ? null : Number(state[c.id].price),
       }));
     const ins = rows.length
-      ? await supabase.from("store_couriers").insert(rows)
+      ? await supabase
+          .from("store_couriers")
+          .upsert(rows, { onConflict: "store_id,company_id" })
+      : { error: null };
+    if (ins.error) {
+      setBusy(false);
+      console.error("[couriers] upsert failed", ins.error);
+      notifyError(dict.auth.errorGeneric);
+      return;
+    }
+    const unticked = companies
+      .filter((c) => !state[c.id]?.enabled)
+      .map((c) => c.id);
+    const del = unticked.length
+      ? await supabase
+          .from("store_couriers")
+          .delete()
+          .eq("store_id", storeId)
+          .in("company_id", unticked)
       : { error: null };
     setBusy(false);
-    if (del.error || ins.error) {
+    if (del.error) {
+      console.error("[couriers] delete failed", del.error);
       notifyError(dict.auth.errorGeneric);
+      router.refresh();
       return;
     }
     setSaved(true);
@@ -77,7 +105,9 @@ export function StoreCouriersManager({
           <Truck className="h-5 w-5 text-primary" />
           <h2 className="font-bold">{t.title}</h2>
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">{t.noneAvailable}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {loadFailed ? dict.common.loadError : t.noneAvailable}
+        </p>
       </div>
     );
   }
@@ -92,6 +122,11 @@ export function StoreCouriersManager({
         </div>
       </div>
 
+      {loadFailed && (
+        <p role="alert" className="rounded-xl border border-danger/30 bg-danger-soft p-3 text-sm font-semibold text-danger">
+          {dict.common.loadError}
+        </p>
+      )}
       <ul className="space-y-2">
         {companies.map((c) => {
           const row = state[c.id];
@@ -148,7 +183,7 @@ export function StoreCouriersManager({
         <button
           type="button"
           onClick={save}
-          disabled={busy}
+          disabled={busy || loadFailed}
           className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-60"
         >
           <Check className="h-4 w-4" />

@@ -135,6 +135,10 @@ export default async function StoreStaysPage({
                       status={s.status}
                       labels={statusLabels}
                       errorLabel={dict.common.actionFailed}
+                      copy={{
+                        ...dict.booking.statusControl,
+                        cancel: dict.common.cancel,
+                      }}
                     />
                   </div>
                 </div>

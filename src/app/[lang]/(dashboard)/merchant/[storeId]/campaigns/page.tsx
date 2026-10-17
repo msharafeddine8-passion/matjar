@@ -15,6 +15,7 @@ import {
   type CampaignRow,
 } from "@/components/campaign-manager";
 import { requireModuleAccess } from "@/lib/staff-access";
+import { parseAudienceCounts, type AudienceCounts } from "@/lib/audience-counts";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -59,32 +60,68 @@ export default async function StoreCampaignsPage({
   // Staff: the permission the module's own tables check (requireModuleAccess).
   await requireModuleAccess(supabase, storeId, "campaigns", lang);
 
-  // Recent campaigns + audience counts. Follower/customer id sets are fetched
-  // (capped, matching the RPC's 5000 send cap) so we can show accurate live
-  // recipient counts for the three audiences, including the deduped union.
-  const [{ data: campData }, { data: followData }, { data: custData }] =
-    await Promise.all([
-      supabase
-        .from("store_campaigns")
-        .select("id, title, body, url, audience, sent_count, created_at")
-        .eq("store_id", storeId)
-        .order("created_at", { ascending: false })
-        .limit(20),
-      supabase
-        .from("follows")
-        .select("user_id")
-        .eq("store_id", storeId)
-        .limit(5000),
-      supabase
-        .from("orders")
-        .select("customer_id, created_at")
-        .eq("store_id", storeId)
-        .not("customer_id", "is", null)
-        .limit(5000),
-    ]);
+  // Recent campaigns + audience counts. The counts come from
+  // store_audience_counts (0334): RLS lets a merchant read only their OWN
+  // follow row, so counting `follows` here always said 0 followers.
+  const [{ data: campData }, { data: audienceData }] = await Promise.all([
+    supabase
+      .from("store_campaigns")
+      .select("id, title, body, url, audience, sent_count, created_at")
+      .eq("store_id", storeId)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase.rpc("store_audience_counts", { p_store_id: storeId }),
+  ]);
 
   const campaigns = (campData ?? []) as unknown as CampaignRow[];
+  const counts =
+    parseAudienceCounts(audienceData) ?? (await legacyCounts(supabase, storeId));
 
+  return (
+    <div className="py-8 sm:py-10">
+      <Container className="max-w-3xl">
+        <Link
+          href={`/${lang}/merchant/${storeId}`}
+          className="inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronPrev className="h-4 w-4" />
+          {(store as { name: string }).name}
+        </Link>
+        <h1 className="mt-3 flex items-center gap-2.5 text-3xl font-extrabold tracking-tight">
+          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-info text-white shadow-sm shadow-primary/30">
+            <Megaphone className="h-5 w-5" />
+          </span>
+          {t.title}
+        </h1>
+        <p className="mt-2 max-w-xl text-muted-foreground">{t.subtitle}</p>
+
+        <CampaignManager
+          storeId={storeId}
+          lang={lang}
+          dict={dict}
+          initial={campaigns}
+          counts={counts}
+        />
+      </Container>
+    </div>
+  );
+}
+
+// Fallback for before store_audience_counts exists (or when it gives no
+// answer): the old client-side count. Its follower figure is RLS-limited.
+async function legacyCounts(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  storeId: string,
+): Promise<AudienceCounts> {
+  const [{ data: followData }, { data: custData }] = await Promise.all([
+    supabase.from("follows").select("user_id").eq("store_id", storeId).limit(5000),
+    supabase
+      .from("orders")
+      .select("customer_id, created_at")
+      .eq("store_id", storeId)
+      .not("customer_id", "is", null)
+      .limit(5000),
+  ]);
   const followers = new Set(
     ((followData ?? []) as { user_id: string }[]).map((r) => r.user_id),
   );
@@ -115,7 +152,7 @@ export default async function StoreCampaignsPage({
     if (s.count >= 3) vip += 1;
     if (new Date(s.last).getTime() < inactiveBefore) inactive += 1;
   }
-  const counts = {
+  return {
     followers: followers.size,
     customers: customers.size,
     all: all.size,
@@ -123,33 +160,4 @@ export default async function StoreCampaignsPage({
     vip,
     inactive,
   };
-
-  return (
-    <div className="py-8 sm:py-10">
-      <Container className="max-w-3xl">
-        <Link
-          href={`/${lang}/merchant/${storeId}`}
-          className="inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ChevronPrev className="h-4 w-4" />
-          {(store as { name: string }).name}
-        </Link>
-        <h1 className="mt-3 flex items-center gap-2.5 text-3xl font-extrabold tracking-tight">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-info text-white shadow-sm shadow-primary/30">
-            <Megaphone className="h-5 w-5" />
-          </span>
-          {t.title}
-        </h1>
-        <p className="mt-2 max-w-xl text-muted-foreground">{t.subtitle}</p>
-
-        <CampaignManager
-          storeId={storeId}
-          lang={lang}
-          dict={dict}
-          initial={campaigns}
-          counts={counts}
-        />
-      </Container>
-    </div>
-  );
 }

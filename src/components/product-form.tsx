@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Plus, X, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { notifyError } from "@/lib/notify";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import type { CategoryKey } from "@/lib/catalog";
@@ -228,6 +229,27 @@ export function ProductForm({
       return;
     }
 
+    // A variants/options insert that fails after the product row was written
+    // would leave a half-made product live on the storefront (no sizes, no
+    // add-ons). Soft-delete it the way every product removal works here —
+    // products has no DELETE policy — and `.select` so a zero-row update (an
+    // RLS miss) is seen as a failure instead of passing for success.
+    const abandon = async () => {
+      const { data: undone, error: undoErr } = await supabase
+        .from("products")
+        .update({ deleted_at: new Date().toISOString(), is_available: false })
+        .eq("id", product.id)
+        .select("id");
+      if (undoErr || !undone?.length) {
+        console.error("[product-form] rollback failed", undoErr);
+        setError(p.partsFailedOrphan);
+      } else {
+        setError(p.partsFailed);
+      }
+      setLoading(false);
+      router.refresh();
+    };
+
     const sourceVariants: (VariantRow & { color?: string | null; size?: string | null })[] =
       isService ? variants : useMatrix ? variantsFromGroups(colorGroups) : variants;
     const cleanVariants = sourceVariants
@@ -251,8 +273,8 @@ export function ProductForm({
         .from("product_variants")
         .insert(cleanVariants);
       if (variantsError) {
-        setError(dict.auth.errorGeneric);
-        setLoading(false);
+        console.error("[product-form] variantsError", variantsError);
+        await abandon();
         return;
       }
     }
@@ -270,12 +292,13 @@ export function ProductForm({
         .from("product_options")
         .insert(cleanOptions);
       if (optionsError) {
-        setError(dict.auth.errorGeneric);
-        setLoading(false);
+        console.error("[product-form] optionsError", optionsError);
+        await abandon();
         return;
       }
     }
 
+    let marketFailed = false;
     // Cross-post to سوق الأحد if selected (a pending listing derived from the
     // product; the merchant can refine it later from "My listings").
     if (inMarket) {
@@ -295,7 +318,15 @@ export function ProductForm({
           })
         : null;
       if (built?.ok) {
-        await supabase.from("listings").insert(built.listing);
+        const { error: listingError } = await supabase
+          .from("listings")
+          .insert(built.listing);
+        if (listingError) {
+          console.error("[product-form] market cross-post failed", listingError);
+          marketFailed = true;
+        }
+      } else {
+        marketFailed = true;
       }
     }
 
@@ -315,6 +346,8 @@ export function ProductForm({
     setInMarket(false);
     setMarketCategoryId("");
     setLoading(false);
+    // The product itself is saved; say plainly that the market listing isn't.
+    if (marketFailed) notifyError(p.marketCrossPostFailed);
     await revalidateProduct();
     await revalidateStore(storeId);
     router.refresh();

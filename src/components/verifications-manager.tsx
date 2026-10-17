@@ -115,24 +115,40 @@ export function VerificationsManager({
     // claim is for shoppers, the paperwork is for the review queue. Written
     // second, so a failure here leaves a verification without its document
     // rather than a document with no verification to hang off.
-    if (!error && created && draft.doc_url) {
-      await supabase.from("store_verification_docs").insert({
-        verification_id: (created as { id: string }).id,
-        store_id: storeId,
-        doc_url: draft.doc_url,
-      });
-    }
-    setBusy(false);
-    if (error) {
+    if (error || !created) {
+      setBusy(false);
       notifyError(dict.auth.errorGeneric);
       return;
     }
+    if (draft.doc_url) {
+      const vid = (created as { id: string }).id;
+      const { error: docErr } = await supabase
+        .from("store_verification_docs")
+        .insert({ verification_id: vid, store_id: storeId, doc_url: draft.doc_url });
+      if (docErr) {
+        // A claim the review queue can never check is worse than none: undo
+        // it and ask for the document again. `.select` so an RLS miss isn't
+        // mistaken for a successful undo.
+        console.error("[verifications] document insert failed", docErr);
+        const { data: undone } = await supabase
+          .from("store_verifications")
+          .delete()
+          .eq("id", vid)
+          .select("id");
+        setBusy(false);
+        setDraft({ ...draft, doc_url: null });
+        notifyError(undone?.length ? t.docFailed : t.docFailedOrphan);
+        if (!undone?.length) router.refresh();
+        return;
+      }
+    }
+    setBusy(false);
     cancel();
     router.refresh();
   }
 
   async function remove(id: string) {
-    if (!(await confirm({ message: dict.merchant.products.confirmDelete, confirmLabel: dict.common.confirm, cancelLabel: dict.common.cancel, danger: true }))) return;
+    if (!(await confirm({ message: t.confirmDelete, confirmLabel: dict.common.confirm, cancelLabel: dict.common.cancel, danger: true }))) return;
     setBusy(true);
     const { error } = await createClient()
       .from("store_verifications")

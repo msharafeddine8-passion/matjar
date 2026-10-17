@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   isWaLocale,
+  isWaStoredKey,
   pluralForm,
   sinceParts,
   type WaLocale,
@@ -161,6 +162,9 @@ export function logWaAction(entry: {
   targetType: WaTargetType;
   targetId: string;
 }): void {
+  // wa_action_log's CHECK only knows the stored keys (0309); a newer key's
+  // insert would just be refused.
+  if (!isWaStoredKey(entry.key)) return;
   try {
     void Promise.resolve(
       createClient()

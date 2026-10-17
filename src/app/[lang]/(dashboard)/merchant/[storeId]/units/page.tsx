@@ -5,6 +5,7 @@ import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
 import { UnitManager, type UnitRow } from "@/components/unit-manager";
 
@@ -39,6 +40,8 @@ export default async function StoreUnitsPage({
     .eq("id", storeId)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
+  // Staff: the module's own permission (owner-only modules: the owner).
+  await requireModuleAccess(supabase, storeId, "units", lang);
 
   const { data } = await supabase
     .from("accommodation_units")

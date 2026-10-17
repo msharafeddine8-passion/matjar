@@ -15,6 +15,7 @@ import { isPro } from "@/lib/plan";
 import { getStorePlan } from "@/lib/plan-server";
 import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
+import { LoadError } from "@/components/load-error";
 import { NextStepEmpty } from "@/components/os-dashboard/next-step-empty";
 import { formatUsd } from "@/lib/currency";
 
@@ -191,7 +192,7 @@ export default async function StoreReportsPage({
 
   // Everything is aggregated server-side (see migration 0087) so revenue can't
   // silently truncate past PostgREST's 1000-row cap as a store grows.
-  const { data: report } = await supabase.rpc("store_report", {
+  const { data: report, error: reportErr } = await supabase.rpc("store_report", {
     p_store_id: storeId,
     p_days: 14,
   });
@@ -213,10 +214,12 @@ export default async function StoreReportsPage({
   const totalSales = Number(r.online_realized ?? 0) + Number(r.pos_total ?? 0);
   const pendingSales = Number(r.online_pending ?? 0);
 
+  // Date-only day keys: formatted at UTC midnight in UTC so no zone shifts
+  // them; Western digits like the rest of the merchant screens.
   const dayLabel = (iso: string) =>
     new Date(`${iso}T00:00:00Z`).toLocaleDateString(
-      lang === "ar" ? "ar" : "en",
-      { month: "numeric", day: "numeric" },
+      lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
+      { month: "numeric", day: "numeric", timeZone: "UTC" },
     );
   const perDay = (r.per_day ?? []).map((d) => ({
     label: dayLabel(d.day),
@@ -259,7 +262,7 @@ export default async function StoreReportsPage({
   // what was left. It only counts lines whose cost was known at the moment of
   // sale and reports the coverage separately, so a half-filled catalogue
   // understates profit rather than inventing it (0248).
-  const { data: marginData } = await supabase.rpc("store_margin_report", {
+  const { data: marginData, error: marginErr } = await supabase.rpc("store_margin_report", {
     p_store_id: storeId,
     p_days: 30,
   });
@@ -279,7 +282,7 @@ export default async function StoreReportsPage({
       ? (grossProfit / Number(m.revenue)) * 100
       : 0;
 
-  const { data: delivery } = await supabase.rpc("store_delivery_report", {
+  const { data: delivery, error: deliveryErr } = await supabase.rpc("store_delivery_report", {
     p_store_id: storeId,
     p_days: 14,
   });
@@ -303,7 +306,7 @@ export default async function StoreReportsPage({
   ];
 
   // ===== Audience side (visits / sources / conversion), from migration 0161.
-  const { data: audience } = await supabase.rpc("store_audience", {
+  const { data: audience, error: audienceErr } = await supabase.rpc("store_audience", {
     p_store_id: storeId,
     p_days: 14,
   });
@@ -336,6 +339,33 @@ export default async function StoreReportsPage({
     { label: t.productViews, value: String(a.product_views ?? 0) },
   ];
   const hasVisits = Number(a.total_visits ?? 0) > 0;
+
+  // A failed report RPC used to render as a page of honest-looking zeros.
+  const loadFailed = !!(reportErr || marginErr || deliveryErr || audienceErr);
+  if (loadFailed) {
+    console.error(
+      "[reports] read failed",
+      reportErr ?? marginErr ?? deliveryErr ?? audienceErr,
+    );
+    return (
+      <div className="py-10">
+        <Container className="max-w-4xl">
+          <Link
+            href={`/${lang}/merchant/${storeId}`}
+            className="inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronPrev className="h-4 w-4" />
+            {(store as { name: string }).name}
+          </Link>
+          <h1 className="mt-3 flex items-center gap-2 text-3xl font-extrabold tracking-tight">
+            <BarChart3 className="h-7 w-7 text-primary" />
+            {t.title}
+          </h1>
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-6" />
+        </Container>
+      </div>
+    );
+  }
 
   return (
     <div className="py-10">

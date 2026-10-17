@@ -15,7 +15,12 @@ describe("module access follows the database's permission keys", () => {
     expect(modulePerms("pos")).toEqual(["pos", "orders"]);
     expect(modulePerms("customers")).toEqual(["customers"]);
     expect(modulePerms("accounting")).toEqual(["expenses"]);
+    // store_memberships / course_enrollments are read with `customers`.
     expect(modulePerms("members")).toEqual(["customers"]);
+    // Catalogue screens (items, bundles, product edit, units, vehicles,
+    // tickets) are the products permission; leads are orders.
+    expect(modulePerms("items")).toEqual(["products"]);
+    expect(modulePerms("leads")).toEqual(["orders"]);
   });
 
   it("a default staffer (orders/bookings/products) no longer sees suppliers, inventory, tasks or classes", () => {
@@ -36,6 +41,8 @@ describe("module access follows the database's permission keys", () => {
 
   it("owner-only modules stay closed to staff", () => {
     expect(staffMayOpen("subscription", { orders: true })).toBe(false);
+    expect(staffMayOpen("verifications", { orders: true, products: true })).toBe(false);
+    expect(staffMayOpen("memberships", { orders: true, customers: true })).toBe(false);
   });
 });
 

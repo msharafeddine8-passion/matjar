@@ -9,6 +9,7 @@ import { isBusiness } from "@/lib/plan";
 import { getStorePlan } from "@/lib/plan-server";
 import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
+import { LoadError } from "@/components/load-error";
 import { ExpenseManager, type Expense } from "@/components/expense-manager";
 import { BooksLock } from "@/components/books-lock";
 import { requireModuleAccess } from "@/lib/staff-access";
@@ -57,7 +58,10 @@ export default async function AccountingPage({
   const isOwner =
     (store as unknown as { owner_id: string }).owner_id === user.id;
 
-  const [{ data: acctData }, { data: expData }] = await Promise.all([
+  const [
+    { data: acctData, error: acctErr },
+    { data: expData, error: expErr },
+  ] = await Promise.all([
     // Money totals aggregated server-side (migration 0087) so they can't
     // truncate past the 1000-row cap. The expense LIST below is display-only and
     // bounded — its total comes from the RPC, not from summing the fetched rows.
@@ -90,6 +94,9 @@ export default async function AccountingPage({
   const totalExpenses = Number(acct.total_expenses ?? 0);
   const profit = revenue - totalExpenses;
   const supplierDues = Number(acct.supplier_dues ?? 0);
+  // A failed read showed $0 revenue / $0 profit — a lie a merchant acts on.
+  const loadFailed = !!(acctErr || expErr);
+  if (loadFailed) console.error("[accounting] read failed", acctErr ?? expErr);
 
   return (
     <div className="py-10">
@@ -107,6 +114,10 @@ export default async function AccountingPage({
         </h1>
         <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
 
+        {loadFailed ? (
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-6" />
+        ) : (
+        <>
         <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-border bg-surface p-4">
             <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -162,6 +173,8 @@ export default async function AccountingPage({
         <div className="mt-6">
           <ExpenseManager storeId={storeId} dict={dict} expenses={expenses} />
         </div>
+        </>
+        )}
 
         {/* Owner only: closing a period is not a day-to-day action, and staff
             should not be able to seal or unseal the books they work in. */}

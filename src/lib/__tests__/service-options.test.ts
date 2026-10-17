@@ -53,7 +53,10 @@ describe("the merchant forms save a service's options (regression, 2026-09-30)",
     const variantsGate = edit.indexOf("if (!simplified || isServiceItem) {");
     const addonsGate = edit.indexOf("if (!simplified) {", variantsGate);
     expect(addonsGate).toBeGreaterThan(variantsGate);
-    expect(edit.indexOf('from("product_options").delete()')).toBeGreaterThan(addonsGate);
+    // Whitespace-tolerant: the delete is now checked for an error, which
+    // splits the chain across lines.
+    const optionsDelete = edit.search(/from\("product_options"\)\s*\.delete\(\)/);
+    expect(optionsDelete).toBeGreaterThan(addonsGate);
   });
 });
 

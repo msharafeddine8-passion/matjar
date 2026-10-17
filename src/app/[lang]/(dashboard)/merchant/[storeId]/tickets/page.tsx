@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Ticket, Phone } from "lucide-react";
+import { formatInstant } from "@/lib/activity";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
+import { LoadError } from "@/components/load-error";
 import {
   TicketTypeManager,
   type TicketTypeRow,
@@ -53,8 +56,10 @@ export default async function StoreTicketsPage({
     .eq("id", storeId)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
+  // Staff: the module's own permission (owner-only modules: the owner).
+  await requireModuleAccess(supabase, storeId, "tickets", lang);
 
-  const { data: typeData } = await supabase
+  const { data: typeData, error: typeErr } = await supabase
     .from("event_ticket_types")
     .select("id, name, name_en, description, price, capacity, sold, active")
     .eq("store_id", storeId)
@@ -62,7 +67,7 @@ export default async function StoreTicketsPage({
     .order("created_at", { ascending: true });
   const types = (typeData ?? []) as TicketTypeRow[];
 
-  const { data: saleData } = await supabase
+  const { data: saleData, error: saleErr } = await supabase
     .from("event_tickets")
     .select(
       "id, attendee_name, phone, quantity, status, created_at, event_ticket_types(name)",
@@ -71,11 +76,11 @@ export default async function StoreTicketsPage({
     .order("created_at", { ascending: false });
   const sales = (saleData ?? []) as unknown as SaleRow[];
 
-  const fmt = (d: string) =>
-    new Date(d).toLocaleDateString(lang === "ar" ? "ar" : "en", {
-      month: "short",
-      day: "numeric",
-    });
+  if (typeErr || saleErr) {
+    console.error("[tickets] read failed", typeErr ?? saleErr);
+  }
+  // Beirut calendar day, Western digits.
+  const fmt = (d: string) => formatInstant(d, lang);
 
   return (
     <div className="py-10">
@@ -93,12 +98,20 @@ export default async function StoreTicketsPage({
         </h1>
         <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
 
-        <TicketTypeManager storeId={storeId} dict={dict} initial={types} />
+        {/* A failed read must not open a manager that believes there are no
+            ticket types (the merchant would re-create them). */}
+        {typeErr ? (
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-6" />
+        ) : (
+          <TicketTypeManager storeId={storeId} dict={dict} initial={types} />
+        )}
 
         <h2 className="mt-12 text-xl font-extrabold tracking-tight">
           {t.attendees}
         </h2>
-        {sales.length ? (
+        {saleErr ? (
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-4" />
+        ) : sales.length ? (
           <CardList className="mt-4">
             {sales.map((s) => (
               <CardRow key={s.id} className="flex flex-wrap items-start justify-between gap-3">

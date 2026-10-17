@@ -2,6 +2,7 @@
 
 import type { Dictionary } from "@/i18n/get-dictionary";
 import {
+  DEFAULT_WA_TEMPLATES,
   WA_LOCALES,
   bookingLinkPath,
   formatWaDate,
@@ -25,6 +26,7 @@ export type BookingWaData = {
 
 const CONFIRMABLE = new Set(["pending", "accepted", "scheduled"]);
 const REMINDABLE = new Set(["accepted", "scheduled"]);
+const DECLINED = new Set(["rejected", "cancelled"]);
 
 /**
  * «تأكيد الموعد» and «تذكير قبل بيوم» on a booking. The reminder only appears
@@ -50,6 +52,8 @@ export function BookingWaActions({
   templates: {
     booking_confirmation: Record<WaLocale, string>;
     booking_reminder: Record<WaLocale, string>;
+    /** Default wording only (not yet a stored/editable key). */
+    booking_declined?: Record<WaLocale, string>;
   };
   lastSent: Record<string, string>;
   t: Dictionary["waActions"];
@@ -57,7 +61,10 @@ export function BookingWaActions({
   const canConfirm = CONFIRMABLE.has(booking.status);
   const canRemind =
     REMINDABLE.has(booking.status) && !!booking.date && booking.date >= today;
-  if (!canConfirm && !canRemind) return null;
+  // A rejected/cancelled booking: tell the customer — for a guest this is the
+  // only way they find out.
+  const canDecline = DECLINED.has(booking.status);
+  if (!canConfirm && !canRemind && !canDecline) return null;
 
   const values = {} as Record<WaLocale, WaValues>;
   const linkPath = {} as Record<WaLocale, string | null>;
@@ -109,6 +116,16 @@ export function BookingWaActions({
           label={t.keys.booking_reminder}
           bodies={templates.booking_reminder}
           lastSentAt={at("booking_reminder")}
+        />
+      )}
+      {canDecline && (
+        <WaActionButton
+          {...common}
+          full
+          templateKey="booking_declined"
+          label={t.keys.booking_declined}
+          bodies={templates.booking_declined ?? DEFAULT_WA_TEMPLATES.booking_declined}
+          lastSentAt={null}
         />
       )}
     </div>

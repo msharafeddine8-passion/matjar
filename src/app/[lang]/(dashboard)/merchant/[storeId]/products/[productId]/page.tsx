@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { requireModuleAccess } from "@/lib/staff-access";
+import { LoadError } from "@/components/load-error";
 import { toCategoryKey } from "@/lib/catalog";
 import { categoryModule } from "@/lib/modules";
 import { Container } from "@/components/ui/container";
@@ -45,6 +47,8 @@ export default async function EditProductPage({
     .eq("id", storeId)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
+  // Staff: the module's own permission (owner-only modules: the owner).
+  await requireModuleAccess(supabase, storeId, "items", lang);
   const category = toCategoryKey(
     (store as unknown as { business_types: { slug: string } | null })
       .business_types?.slug,
@@ -79,7 +83,11 @@ export default async function EditProductPage({
     name_en: string | null;
   }[];
 
-  const [{ data: variants }, { data: options }, { data: modGroups }] =
+  const [
+    { data: variants, error: variantsErr },
+    { data: options, error: optionsErr },
+    { data: modGroups, error: groupsErr },
+  ] =
     await Promise.all([
       supabase
         .from("product_variants")
@@ -105,6 +113,17 @@ export default async function EditProductPage({
   warnIfTruncated(variants, FETCH_BOUNDS.productVariants, `product_variants (merchant editor, product ${productId})`);
   warnIfTruncated(options, FETCH_BOUNDS.productOptions, `product_options (merchant editor, product ${productId})`);
   warnIfTruncated(modGroups, FETCH_BOUNDS.productModifierGroups, `product_modifier_groups (merchant editor, product ${productId})`);
+
+  // The form saves back exactly what it loaded (delete-then-insert), so a
+  // failed read would turn the next save into "delete every size and add-on".
+  // Refuse to open the editor instead of offering that.
+  const partsFailed = !!(variantsErr || optionsErr || groupsErr);
+  if (partsFailed) {
+    console.error(
+      "[product editor] parts read failed",
+      variantsErr ?? optionsErr ?? groupsErr,
+    );
+  }
 
   const gallery = Array.isArray(product.gallery)
     ? (product.gallery as string[])
@@ -198,6 +217,13 @@ export default async function EditProductPage({
           <ChevronPrev className="h-4 w-4" />
           {dict.store[mod.itemsKey]}
         </Link>
+        {partsFailed ? (
+          <LoadError
+            title={dict.merchant.products.editLoadFailed}
+            retryLabel={dict.common.reload}
+            className="mt-5"
+          />
+        ) : (
         <div className="mt-5">
           <ProductEditForm
             storeId={storeId}
@@ -210,6 +236,7 @@ export default async function EditProductPage({
             sections={sections}
           />
         </div>
+        )}
       </Container>
     </div>
   );

@@ -27,6 +27,7 @@ import { computeCompleteness } from "@/lib/completeness";
 import { validateStorePublic } from "@/lib/data-quality";
 import { parseHours } from "@/lib/hours";
 import { SITE_URL } from "@/lib/site";
+import { parseAudienceCounts } from "@/lib/audience-counts";
 import { Container } from "@/components/ui/container";
 import { StoreShareCard } from "@/components/store-share-card";
 import { StoreChecklist } from "@/components/store-checklist";
@@ -385,11 +386,22 @@ export default async function StoreOsHomePage({
           .select("id", { count: "exact", head: true })
           .eq("store_id", storeId)
       : Promise.resolve(none),
+    // Followers from store_audience_counts (0334): RLS lets a user read only
+    // their OWN follow row, so counting `follows` here was always 0 or 1.
+    // Falls back to that count if the RPC is missing or gives no answer.
     isOwner
-      ? supabase
-          .from("follows")
-          .select("user_id", { count: "exact", head: true })
-          .eq("store_id", storeId)
+      ? (async () => {
+          const { data } = await supabase.rpc("store_audience_counts", {
+            p_store_id: storeId,
+          });
+          const c = parseAudienceCounts(data);
+          if (c) return { data: null, count: c.followers };
+          const { count } = await supabase
+            .from("follows")
+            .select("user_id", { count: "exact", head: true })
+            .eq("store_id", storeId);
+          return { data: null, count };
+        })()
       : Promise.resolve(none),
     // Cost prices are what the profit report runs on, and across the live
     // platform not one product carries one — so the report computes zero for
@@ -1180,7 +1192,7 @@ export default async function StoreOsHomePage({
                 </span>
               ) : (
                 <Link
-                  href={`/${lang}/store/${storeId}`}
+                  href={s.slug ? `/${lang}/${s.slug}` : `/${lang}/store/${storeId}`}
                   className="flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-surface/80 px-4 py-2 text-sm font-bold backdrop-blur transition-colors hover:border-primary hover:text-primary"
                 >
                   <ExternalLink className="h-4 w-4" />
@@ -1262,7 +1274,7 @@ export default async function StoreOsHomePage({
                   </p>
                 </div>
               ) : (
-                <StoreShareCard code={s.short_code} baseUrl={SITE_URL} dict={dict} />
+                <StoreShareCard code={s.short_code} slug={s.slug} baseUrl={SITE_URL} dict={dict} />
               )}
             </div>
           )}

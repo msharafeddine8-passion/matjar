@@ -134,9 +134,9 @@ export function SuppliersManager({
   }
 
   const fmtDate = (iso: string) =>
-    new Date(`${iso}T00:00:00`).toLocaleDateString(
-      lang === "ar" ? "ar" : "en",
-      { month: "short", day: "numeric" },
+    new Date(`${iso}T00:00:00Z`).toLocaleDateString(
+      lang === "ar" ? "ar-LB-u-nu-latn" : "en-GB",
+      { month: "short", day: "numeric", timeZone: "UTC" },
     );
 
   const txBtn = (kind: "purchase" | "payment", supplierId: string) => (

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { requireModuleAccess } from "@/lib/staff-access";
 import { docUrlFor, resolveDocUrls } from "@/lib/verification-docs";
 import { Container } from "@/components/ui/container";
 import { VerificationsManager, type Verification } from "@/components/verifications-manager";
@@ -37,6 +38,8 @@ export default async function StoreVerificationsPage({
     .eq("id", storeId)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
+  // Staff: the module's own permission (owner-only modules: the owner).
+  await requireModuleAccess(supabase, storeId, "verifications", lang);
 
   const { data: rowsData } = await supabase
     .from("store_verifications")

@@ -22,7 +22,9 @@ function ensureContainer(): HTMLElement {
   return el;
 }
 
-function notify(message: string, type: ToastType) {
+type ToastAction = { href: string; label: string };
+
+function notify(message: string, type: ToastType, action?: ToastAction) {
   if (typeof document === "undefined") return;
   const root = ensureContainer();
   const reduce = window.matchMedia?.(
@@ -41,6 +43,19 @@ function notify(message: string, type: ToastType) {
       : "var(--success-strong, #0b7a35)";
   toast.style.cssText = `pointer-events:auto;max-width:32rem;background:${bg};color:#fff;font-weight:600;font-size:.875rem;line-height:1.4;padding:.75rem 1rem;border-radius:.75rem;box-shadow:0 10px 30px -10px rgba(0,0,0,.4);opacity:0;transform:translateY(${reduce ? "0" : ".5rem"});transition:opacity .2s ease,transform .2s ease`;
   toast.textContent = message;
+  if (action) {
+    // One follow-up link (e.g. a prefilled WhatsApp message). Opens in a new
+    // tab; underlined white on the strong fill, same contrast as the text.
+    const a = document.createElement("a");
+    a.href = action.href;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = action.label;
+    a.style.cssText =
+      "display:inline-block;margin-inline-start:.5rem;color:#fff;text-decoration:underline;font-weight:800";
+    toast.appendChild(document.createTextNode(" "));
+    toast.appendChild(a);
+  }
   root.appendChild(toast);
 
   // Next frame → animate in.
@@ -54,7 +69,7 @@ function notify(message: string, type: ToastType) {
     toast.style.transform = `translateY(${reduce ? "0" : ".5rem"})`;
     setTimeout(() => toast.remove(), 220);
   };
-  setTimeout(remove, type === "error" ? 6000 : 3500);
+  setTimeout(remove, action ? 12000 : type === "error" ? 6000 : 3500);
   toast.addEventListener("click", remove);
 }
 
@@ -66,4 +81,9 @@ export function notifyError(message: string) {
 /** Show a green success toast. */
 export function notifySuccess(message: string) {
   notify(message, "success");
+}
+
+/** A success toast carrying one follow-up link, kept up longer (12s). */
+export function notifyWithLink(message: string, action: ToastAction) {
+  notify(message, "success", action);
 }

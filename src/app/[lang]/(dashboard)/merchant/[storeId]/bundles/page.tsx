@@ -5,7 +5,9 @@ import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
+import { requireModuleAccess } from "@/lib/staff-access";
 import { Container } from "@/components/ui/container";
+import { LoadError } from "@/components/load-error";
 import {
   BundleManager,
   type Component,
@@ -41,10 +43,12 @@ export default async function StoreBundlesPage({
     .eq("id", storeId)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
+  // Staff: the module's own permission (owner-only modules: the owner).
+  await requireModuleAccess(supabase, storeId, "items", lang);
 
   // Every non-bundle product is a candidate component; bundles are the existing
   // is_bundle rows with their items.
-  const { data: prodData } = await supabase
+  const { data: prodData, error: prodErr } = await supabase
     .from("products")
     .select("id, name, name_en, price, image_url, is_bundle")
     .eq("store_id", storeId)
@@ -69,7 +73,7 @@ export default async function StoreBundlesPage({
     }));
 
   const bundleProducts = all.filter((p) => p.is_bundle);
-  const { data: itemsData } = bundleProducts.length
+  const { data: itemsData, error: itemsErr } = bundleProducts.length
     ? await supabase
         .from("bundle_items")
         .select("bundle_id, product_id, quantity, sort_order")
@@ -78,7 +82,9 @@ export default async function StoreBundlesPage({
           bundleProducts.map((b) => b.id),
         )
         .order("sort_order", { ascending: true })
-    : { data: [] };
+    : { data: [], error: null };
+  const loadErr = prodErr ?? itemsErr;
+  if (loadErr) console.error("[bundles] read failed", loadErr);
   const itemsByBundle: Record<
     string,
     { productId: string; quantity: number }[]
@@ -120,15 +126,19 @@ export default async function StoreBundlesPage({
         <p className="mt-1 text-muted-foreground">
           {dict.merchant.bundles.subtitle}
         </p>
-        <div className="mt-8">
-          <BundleManager
-            storeId={storeId}
-            lang={lang}
-            dict={dict}
-            components={components}
-            bundles={bundles}
-          />
-        </div>
+        {loadErr ? (
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-8" />
+        ) : (
+          <div className="mt-8">
+            <BundleManager
+              storeId={storeId}
+              lang={lang}
+              dict={dict}
+              components={components}
+              bundles={bundles}
+            />
+          </div>
+        )}
       </Container>
     </div>
   );

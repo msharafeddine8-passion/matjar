@@ -46,7 +46,9 @@
     "rateLimited": "Too many attempts in a short time. Please wait a moment and try again.",
     "back": "Back",
     "close": "Close",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "loadError": "Couldn't load this information — try refreshing the page",
+    "reload": "Refresh"
   },
   "catalogItem": {
     "edit": "Edit",
@@ -362,11 +364,15 @@
       "recentTitle": "Recent campaigns",
       "recentEmpty": "You haven't sent any campaigns yet.",
       "sentCount": "Sent to {n}",
+      "confirmSend": "This campaign will go to {n} ({audience}) and can't be taken back. Send it?",
+      "confirmSendYes": "Yes, send",
       "errors": {
         "rate_limited": "You already sent a campaign recently — please try again in a few hours.",
         "empty_body": "Write a message before sending.",
         "bad_audience": "Pick a valid audience.",
-        "not_authorized": "You're not allowed to send campaigns for this store."
+        "not_authorized": "You're not allowed to send campaigns for this store.",
+        "plan_required": "Campaigns are part of the Business plan. Upgrade to send.",
+        "bad_url": "The link must be a page on your store (starting with /)."
       }
     },
     "automations": {
@@ -1291,6 +1297,9 @@
     "link": "Certificates & licenses",
     "title": "Certificates & licenses",
     "subtitle": "Upload your licenses and certificates to build customer trust.",
+    "docFailed": "The document didn't save, so the certificate wasn't added. Upload the document again and retry.",
+    "docFailedOrphan": "The certificate was saved without its document. Delete it and add it again with the document.",
+    "confirmDelete": "Delete this certificate? It will disappear from your store page.",
     "add": "Add a certificate or license",
     "kindLabel": "Type",
     "kinds": { "license": "License", "certificate": "Certificate", "accreditation": "Accreditation", "award": "Award" },
@@ -2135,6 +2144,11 @@
       "digitalFile": "File",
       "digitalFileHint": "Kept in private storage — only the customer who paid can reach it. Up to 100 MB.",
       "digitalFileNeeded": "Upload the file before saving.",
+      "partsFailed": "We couldn't save the options, so the product wasn't added. Please try again.",
+      "partsFailedOrphan": "The options didn't save and we couldn't remove the half-made product — delete it from your product list and try again.",
+      "marketCrossPostFailed": "The product is saved, but it wasn't listed on the Sunday Market. You can add it from \"My listings\".",
+      "editLoadFailed": "We couldn't load this product's options, so editing is closed to keep them from being wiped. Refresh the page and try again.",
+      "saveStepFailed": "The save didn't finish — part of it wasn't stored. Check the product and try again.",
       "digitalTooLarge": "That file is too large — 100 MB is the limit.",
       "digitalUploading": "Uploading…",
       "digitalReplace": "Replace file",
@@ -2355,7 +2369,10 @@
       "empty": "No providers yet. Add your first one.",
       "services": "Services they offer",
       "servicesHint": "If none are selected, they can offer all services.",
-      "noServices": "Add services first to link them to a provider."
+      "noServices": "Add services first to link them to a provider.",
+      "edit": "Edit",
+      "confirmDelete": "Remove this person from the team?",
+      "confirmDeleteBookings": "They have {count} upcoming appointments — those will be left without a provider. Remove them anyway?"
     },
     "checkoutFields": {
       "title": "Custom checkout fields",
@@ -2411,6 +2428,10 @@
       "blockReason": "Reason (optional)",
       "blockAdd": "Add",
       "blockAdded": "Day off added ✓",
+      "badRange": "{day}: the start time must be before the end time.",
+      "noDaysWarn": "No day is ticked. That removes every restriction for this person — they'll show as available during all of the store's hours. Continue?",
+      "noDaysConfirm": "Yes, no restrictions",
+      "noDaysKeep": "Let me pick a day",
       "blockRemove": "Remove"
     },
     "checklist": {
@@ -2456,6 +2477,10 @@
       "title": "Coupons",
       "subtitle": "Create discount codes for your store.",
       "oncePerCustomer": "Once per customer",
+      "duplicateCode": "Your store already has a coupon with this code. Pick another one.",
+      "percentTooHigh": "A percentage discount must be between 0 and 100%.",
+      "invalidValue": "That coupon value isn't accepted — check the discount and minimum order.",
+      "confirmDelete": "Delete this coupon? Anyone holding the code won't be able to use it any more.",
       "add": "Add coupon",
       "code": "Code",
       "codePlaceholder": "e.g. SUMMER20",
@@ -3908,7 +3933,8 @@
       "confirm": "Confirm new time",
       "done": "Time changed ✓",
       "slotTaken": "That slot is taken — try another time.",
-      "outsideHours": "That time is outside the provider's hours."
+      "outsideHours": "That time is outside the provider's hours.",
+      "past": "That time has already passed — pick a time ahead."
     },
     "attendance": {
       "action": "Confirm attendance",
@@ -3924,6 +3950,20 @@
       "already": "You're already on the waitlist for this day."
     },
     "noBookings": "You don't have any bookings yet.",
+    "statusControl": {
+      "confirm": "Change this booking to “{status}”?",
+      "confirmYes": "Yes, change it",
+      "classFull": "The class is full that day — there's no seat for this booking.",
+      "conflict": "Another booking already holds this time. Change the time first."
+    },
+    "list": {
+      "upcoming": "Upcoming bookings",
+      "past": "Past",
+      "loadMore": "Show older",
+      "guestChip": "Guest — no account",
+      "guestNotify": "This customer is a guest with no account, so they get no notification. Message them on WhatsApp:",
+      "guestNotifyAction": "Send on WhatsApp"
+    },
     "booking": "Booking",
     "status": {
       "pending": "Pending",
@@ -4425,6 +4465,8 @@
   "share": {
     "title": "Share your store",
     "subtitle": "Print the code or share the link — customers scan and land on your store.",
+    "whatsapp": "Share on WhatsApp",
+    "waText": "Check out my store on Matjar:",
     "copy": "Copy",
     "copied": "Copied ✓",
     "download": "Download QR code",
@@ -5635,7 +5677,9 @@
       "abandoned_cart": "Cart reminder",
       "booking_confirmation": "Confirm booking",
       "booking_reminder": "Day-before reminder",
-      "debt_reminder": "Debt reminder"
+      "debt_reminder": "Debt reminder",
+      "booking_declined": "Tell them it's not confirmed",
+      "booking_rescheduled": "Send the new time"
     },
     "keyHints": {
       "order_confirmation": "Send when you accept an order: items, total, and delivery time when it is known.",
@@ -5644,7 +5688,9 @@
       "abandoned_cart": "For a customer who tapped \"Confirm order\" but no order came through.",
       "booking_confirmation": "Confirms the booking with service, date and time.",
       "booking_reminder": "A reminder of the appointment, best the day before.",
-      "debt_reminder": "The amount on the account with a link to the statement."
+      "debt_reminder": "The amount on the account with a link to the statement.",
+      "booking_declined": "After you reject or cancel: an apology with the booking's details.",
+      "booking_rescheduled": "After you move a booking: the new date and time."
     },
     "sectionTitle": "WhatsApp messages",
     "lastSent": "Last sent: {when}",

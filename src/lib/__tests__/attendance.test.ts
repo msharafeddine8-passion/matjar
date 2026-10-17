@@ -80,8 +80,9 @@ describe("durations", () => {
   });
 
   it("takes its digits from the locale and its letters from the caller", () => {
-    // The Arabic screen asked for "٧ س ٣٠ د"; nothing here spells that out.
-    expect(formatDuration(450, "ar", "س", "د")).toBe("٧ س ٣٠ د");
+    // Merchant screens read Western digits (ar-LB-u-nu-latn); the unit
+    // letters still come from the caller.
+    expect(formatDuration(450, "ar", "س", "د")).toBe("7 س 30 د");
   });
 
   it("never reports negative time", () => {

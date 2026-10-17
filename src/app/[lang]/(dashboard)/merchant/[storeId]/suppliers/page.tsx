@@ -7,6 +7,7 @@ import { isBusiness } from "@/lib/plan";
 import { getStorePlan } from "@/lib/plan-server";
 import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
+import { LoadError } from "@/components/load-error";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import {
   SuppliersManager,
@@ -55,7 +56,10 @@ export default async function StoreSuppliersPage({
   // Staff: the permission the module's own tables check (requireModuleAccess).
   await requireModuleAccess(supabase, storeId, "suppliers", lang);
 
-  const [{ data: suppliersData }, { data: txData }] = await Promise.all([
+  const [
+    { data: suppliersData, error: suppliersErr },
+    { data: txData, error: txErr },
+  ] = await Promise.all([
     supabase
       .from("store_suppliers")
       .select("id, name, phone, notes")
@@ -68,6 +72,9 @@ export default async function StoreSuppliersPage({
       .order("happened_on", { ascending: false })
       .order("created_at", { ascending: false }),
   ]);
+  // A failed read showed "no suppliers, nothing owed" — not the same thing.
+  const loadErr = suppliersErr ?? txErr;
+  if (loadErr) console.error("[suppliers] read failed", loadErr);
 
   return (
     <div className="py-10">
@@ -83,6 +90,9 @@ export default async function StoreSuppliersPage({
           {dict.os.suppliers.title}
         </h1>
 
+        {loadErr ? (
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-6" />
+        ) : (
         <div className="mt-6">
           <SuppliersManager
             storeId={storeId}
@@ -92,6 +102,7 @@ export default async function StoreSuppliersPage({
             transactions={(txData ?? []) as SupplierTx[]}
           />
         </div>
+        )}
       </Container>
     </div>
   );

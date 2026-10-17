@@ -47,6 +47,7 @@ import {
   BookOpen,
   Inbox,
   NotebookPen,
+  UserRound,
 } from "lucide-react";
 import type { CategoryKey } from "./catalog";
 import { categoryModule } from "./modules";
@@ -614,6 +615,17 @@ export function sectorTeamMeta(category: CategoryKey): SectorTeamMeta {
  *  it on was told it had none — the only module whose per-store override was
  *  silently ignored. The category-only form is kept for callers that have no
  *  store in hand (the create form, sector docs). */
+/** The icon for one provider on a team roster or calendar. A stethoscope is
+ *  right for a clinic or a vet and wrong for a barber, a coach or a lawyer —
+ *  every other sector gets a neutral person. Call it inside the client
+ *  component that renders the icon (never pass the icon across the
+ *  server→client boundary). */
+export function providerIcon(category: string | null | undefined): LucideIcon {
+  return category === "healthcare" || category === "petCare"
+    ? Stethoscope
+    : UserRound;
+}
+
 export function sectorHasTeam(
   category: CategoryKey,
   modules?: Set<FeatureModuleKey>,

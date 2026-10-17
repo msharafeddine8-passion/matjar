@@ -7,6 +7,7 @@ import { isBusiness } from "@/lib/plan";
 import { getStorePlan } from "@/lib/plan-server";
 import { ProGate } from "@/components/pro-gate";
 import { Container } from "@/components/ui/container";
+import { LoadError } from "@/components/load-error";
 import { ChevronPrev } from "@/components/ui/directional-icon";
 import {
   InventoryManager,
@@ -61,9 +62,9 @@ export default async function StoreInventoryPage({
   await requireModuleAccess(supabase, storeId, "inventory", lang);
 
   const [
-    { data: productsData },
-    { data: movementsData },
-    { data: supplierData },
+    { data: productsData, error: productsErr },
+    { data: movementsData, error: movementsErr },
+    { data: supplierData, error: supplierErr },
     { count: branchCount },
   ] = await Promise.all([
     supabase
@@ -92,6 +93,10 @@ export default async function StoreInventoryPage({
       .select("id", { count: "exact", head: true })
       .eq("store_id", storeId),
   ]);
+  // A failed read rendered as "no products / no movements" — shown as such a
+  // merchant re-receives stock that is already there.
+  const loadErr = productsErr ?? movementsErr ?? supplierErr;
+  if (loadErr) console.error("[inventory] read failed", loadErr);
 
   return (
     <div className="py-10">
@@ -107,6 +112,10 @@ export default async function StoreInventoryPage({
           {dict.os.inventory.title}
         </h1>
 
+        {loadErr ? (
+          <LoadError title={dict.common.loadError} retryLabel={dict.common.reload} className="mt-6" />
+        ) : (
+        <>
         <div className="mt-6">
           <ReceiveStockForm
             storeId={storeId}
@@ -145,6 +154,8 @@ export default async function StoreInventoryPage({
             branchCount={branchCount ?? 0}
           />
         </div>
+        </>
+        )}
       </Container>
     </div>
   );

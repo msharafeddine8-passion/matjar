@@ -72,7 +72,10 @@ export default async function StoreSettingsPage({
     .order("created_at", { ascending: true });
   const zones = (zoneData ?? []) as ZoneRowM[];
 
-  const [{ data: companies }, { data: couriers }] = await Promise.all([
+  const [
+    { data: companies, error: companiesErr },
+    { data: couriers, error: couriersErr },
+  ] = await Promise.all([
     supabase
       .from("delivery_companies")
       .select("id, name, coverage, pricing_note")
@@ -193,6 +196,7 @@ export default async function StoreSettingsPage({
             dict={dict}
             companies={(companies ?? []) as CourierCompany[]}
             selected={selectedCouriers}
+            loadFailed={!!(companiesErr || couriersErr)}
           />
         </div>
         <div className="mt-6">
