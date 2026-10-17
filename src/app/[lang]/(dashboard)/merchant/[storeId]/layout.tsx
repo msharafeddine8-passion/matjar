@@ -15,6 +15,7 @@ import {
   hasPlan,
   planRank,
   effectivePlan as resolvePlan,
+  type StorePlan,
 } from "@/lib/plan-tiers";
 import { isOpenNow, parseHours } from "@/lib/hours";
 import type { MerchantNavItem } from "@/components/merchant/merchant-bottom-nav";
@@ -85,7 +86,19 @@ export default async function StoreOsLayout({
   // Effective plan mirrors getStorePlan: an active 14-day trial counts as Pro,
   // so the sidebar never shows a lock on a module the page will actually open.
   const trialEnds = s.trial_ends_at ? new Date(s.trial_ends_at) : null;
-  const onTrial = trialEnds != null && trialEnds > new Date();
+  // The tier the store actually pays for, named as the subscription page names
+  // it. The badge used to be `rank >= pro ? "pro" : "free"`, which called a
+  // paying Basic store «مجاني» and a Business store "Pro".
+  const billedTier: StorePlan =
+    s.plan === "basic" || s.plan === "pro" || s.plan === "business"
+      ? s.plan
+      : "free";
+  // A running trial only says "trial" when it is what unlocks Pro. A store that
+  // upgraded to Pro or Business mid-trial is a paying store, and says so.
+  const onTrial =
+    trialEnds != null &&
+    trialEnds > new Date() &&
+    planRank(billedTier) < planRank("pro");
   const trialDaysLeft = onTrial
     ? Math.max(
         1,
@@ -206,6 +219,8 @@ export default async function StoreOsLayout({
     supportLabel: dict.common.supportWhatsapp,
     viewStoreLabel: dict.os.viewPublic,
     proBadge: dict.os.pro.badge,
+    basicBadge: dict.os.pro.basicBadge,
+    businessBadge: dict.os.pro.businessBadge,
     freeBadge: dict.merchant.subscription.free,
     trialBadge: dict.os.pro.trialBadge.replace("{days}", String(trialDaysLeft)),
   };
@@ -352,7 +367,7 @@ export default async function StoreOsLayout({
         storeId={storeId}
         storeName={s.name}
         logoUrl={s.logo_url}
-        plan={planRank(effectivePlan) >= planRank("pro") ? "pro" : "free"}
+        plan={billedTier}
         trialDaysLeft={trialDaysLeft}
         slug={s.slug}
         category={category}
