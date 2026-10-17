@@ -5,8 +5,10 @@ import { getAcademyGuides } from "@/lib/data/academy";
 import { getSectionSupply } from "@/lib/data/section-supply";
 import { getDiscoveryCoverage } from "@/lib/data/discovery";
 import { beirutYmd } from "@/lib/quick-panel";
+import { countLiveFlashSales } from "@/lib/data/offers";
 import {
   ALWAYS_INDEXED_PATHS,
+  FLASH_PATH,
   GATED_SECTION_PATHS,
   categoryIndexable,
   craftTradeIndexable,
@@ -43,9 +45,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [];
   const asDate = (v: unknown) => (v ? new Date(v as string) : undefined);
 
-  const [supply, coverage] = await Promise.all([
+  const [supply, coverage, liveFlash] = await Promise.all([
     safe<Supply>(() => getSectionSupply(), []),
     safe(() => getDiscoveryCoverage(), null),
+    safe(() => countLiveFlashSales(), 0),
   ]);
   // A failed count reads as 0 → section left out. Same quiet direction as the
   // nav gate: a missing sitemap line for an hour costs nothing; submitting an
@@ -66,6 +69,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       continue;
     entries.push(
       ...localizedSitemapEntries(path, { changeFrequency: "daily", priority: 0.6 }),
+    );
+  }
+  // /flash only while a flash sale is running — the page says noindex on the
+  // same count (flash/page.tsx).
+  if (sectionIndexable(liveFlash)) {
+    entries.push(
+      ...localizedSitemapEntries(FLASH_PATH, {
+        changeFrequency: "daily",
+        priority: 0.6,
+      }),
     );
   }
   // Only sectors with at least one live merchant — the category page itself
@@ -93,7 +106,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { data: gigs },
       { data: wholesale },
       { data: sitePages },
-      { data: leaders },
       { data: trades },
       guides,
     ] = await Promise.all([
@@ -116,7 +128,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .eq("status", "active")
         .is("deleted_at", null)
         .limit(ROWS),
-      // jobs/gigs/wholesale/leaders have no updated_at column — id/slug only.
+      // jobs/gigs/wholesale have no updated_at column — id only.
       // The board's own predicate: a deleted posting, or one past its deadline,
       // is a 404-or-closed page a crawler should not be sent to.
       supabase
@@ -137,11 +149,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .select("slug, updated_at")
         .eq("published", true)
         .limit(ROWS),
-      supabase
-        .from("business_leaders")
-        .select("slug")
-        .eq("published", true)
-        .limit(ROWS),
+      // Business-leader profiles (/hub/leaders/<slug>) are deliberately not
+      // read: they are thin templated pages about real people and say
+      // noindex,follow themselves (lib/seo-rules LEADER_PROFILE_ROBOTS). The
+      // /hub/leaders directory is listed with the always-indexed paths.
       // Providers per trade (0237). A trade page with none is noindexed by
       // the crafts pages, so it is not submitted here.
       supabase.rpc("trade_provider_counts"),
@@ -222,14 +233,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const g of guides) {
       entries.push(
         ...localizedSitemapEntries(`/hub/academy/${g.slug}`, {
-          changeFrequency: "monthly",
-          priority: 0.5,
-        }),
-      );
-    }
-    for (const ld of leaders ?? []) {
-      entries.push(
-        ...localizedSitemapEntries(`/hub/leaders/${ld.slug}`, {
           changeFrequency: "monthly",
           priority: 0.5,
         }),

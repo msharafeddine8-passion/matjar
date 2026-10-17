@@ -16,6 +16,7 @@ import {
   type JoinTrade,
 } from "@/components/crafts/craft-join-form";
 import { countActiveProviders } from "@/lib/data/crafts";
+import { localeAlternates } from "@/lib/site";
 
 export async function generateMetadata({
   params,
@@ -25,7 +26,13 @@ export async function generateMetadata({
   const { lang } = await params;
   if (!isLocale(lang)) return {};
   const dict = await getDictionary(lang);
-  return { title: dict.crafts.joinTitle, description: dict.crafts.joinSubtitle };
+  return {
+    title: dict.crafts.joinTitle,
+    description: dict.crafts.joinSubtitle,
+    // In the sitemap (seo-rules ALWAYS_INDEXED_PATHS) — so it states its own
+    // canonical and the ar/en pair like every other listed page.
+    alternates: localeAlternates(lang, "/crafts/join"),
+  };
 }
 
 // ────────────────────────────────────────────────────────────────────────────

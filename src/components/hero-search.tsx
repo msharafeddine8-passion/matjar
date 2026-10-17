@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, Search } from "lucide-react";
 import type { Locale } from "@/i18n/config";
@@ -10,11 +10,13 @@ import { regions } from "@/lib/catalog";
 export function HeroSearch({
   lang,
   dict,
-  popular,
+  browse,
 }: {
   lang: Locale;
   dict: Pick<Dictionary, "hero">;
-  popular: string[];
+  /** The browse chips under the field (server-rendered, see hero.tsx). An
+   *  element, not data: which sectors have supply is a server read. */
+  browse?: ReactNode;
 }) {
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -76,18 +78,7 @@ export function HeroSearch({
         </button>
       </form>
 
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm">
-        <span className="text-muted-foreground">{dict.hero.popular}:</span>
-        {popular.map((p) => (
-          <button
-            key={p}
-            onClick={() => go(p)}
-            className="rounded-full border border-border bg-surface px-3.5 py-1.5 font-medium shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:text-primary hover:shadow-sm"
-          >
-            {p}
-          </button>
-        ))}
-      </div>
+      {browse}
     </div>
   );
 }

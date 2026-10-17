@@ -672,7 +672,7 @@
     },
     "team": {
       "doctors": "Doctors",
-      "stylists": "Stylists",
+      "stylists": "Team",
       "trainers": "Trainers",
       "teachers": "Teachers",
       "vets": "Vets",
@@ -1218,7 +1218,7 @@
     "searchPlaceholder": "Search for a store, product, restaurant, or service…",
     "locationAll": "All Lebanon",
     "searchButton": "Search",
-    "popular": "Trending",
+    "popular": "Browse",
     "ctaPrimary": "Start shopping"
   },
   "worlds": {
@@ -1498,8 +1498,6 @@
     "alsoIn": "Also in this category",
     "storesCount": "stores",
     "offersBadge": "Offers",
-    "sectionsLabel": "sections",
-    "teamLabel": "practitioners",
     "nouns": {
       "products": "products",
       "services": "services",
@@ -1571,6 +1569,10 @@
     "from": "From",
     "noProducts": "No products listed yet.",
     "productsForSale": "Products for sale",
+    "emptyOfferings": {
+      "title": "This business is still adding what it offers",
+      "body": "Nothing is listed here yet. Message them, or follow to hear as soon as something goes up."
+    },
     "comingSoonNote": "This section is browse & contact only for now — direct booking and purchase are coming soon. To ask or book, contact the store.",
     "contactCta": "Ask on WhatsApp",
     "inquiryGreeting": "Hi, I'd like to ask about",
@@ -1658,7 +1660,12 @@
     "couponCode": "Discount code",
     "editOrder": "Edit",
     "haveCoupon": "Have a coupon?",
-    "itemsInCart": "{n} items in the cart",
+    "itemsInCart": {
+      "one": "1 item in the cart",
+      "two": "2 items in the cart",
+      "few": "{n} items in the cart",
+      "many": "{n} items in the cart"
+    },
     "couponApply": "Apply",
     "subtotal": "Subtotal",
     "discount": "Discount",
@@ -3766,7 +3773,7 @@
     "noPhone": "No phone",
     "newBadge": "New",
     "newBookingsCount": "You have {count} new booking(s) awaiting your reply.",
-    "payOnArrival": "Pay on arrival — cash at the clinic/store.",
+    "payOnArrival": "Pay on arrival — in cash.",
     "couponLabel": "Discount code",
     "couponPlaceholder": "Enter code",
     "couponApply": "Apply",
@@ -3977,6 +3984,7 @@
     "selectType": "Select type",
     "salary": "Salary (optional)",
     "salaryPlaceholder": "e.g. $500-700 or based on experience",
+    "salaryValue": "Salary: {v}",
     "description": "Job details",
     "descriptionPlaceholder": "Responsibilities, requirements, experience…",
     "applyEmail": "Email to receive applications (optional)",
@@ -4482,7 +4490,7 @@
       "images": "Inappropriate images",
       "fraud": "Fraud"
     },
-    "pendingNote": "Your listing is under review and will appear once approved.",
+    "pendingNote": "Your listing is live on the Sunday Market.",
     "soldBadge": "Sold",
     "expiredBadge": "Expired",
     "soldNote": "This listing is sold and no longer available.",
@@ -4521,7 +4529,7 @@
     },
     "statusLabels": {
       "draft": "Draft",
-      "pending": "Under review",
+      "pending": "Not live yet",
       "active": "Active",
       "sold": "Sold",
       "rejected": "Rejected",
@@ -4531,7 +4539,7 @@
       "all": "All",
       "active": "Active",
       "sold": "Sold",
-      "pending": "Under review",
+      "pending": "Not live yet",
       "expired": "Expired",
       "rejected": "Rejected",
       "draft": "Drafts"
@@ -4910,8 +4918,8 @@
     "joinHonestBody": "This section is new and there aren't many requests yet. Whoever signs up now is the first in their trade and their area, and builds a rating before it gets crowded.",
     "joinStepsTitle": "What it takes",
     "joinStep1": "Two minutes: your name, your trade, your areas.",
-    "joinStep2": "We review the profile before it goes live.",
-    "joinStep3": "We tell you the moment it's live, and requests start arriving.",
+    "joinStep2": "Your profile goes live as soon as you register.",
+    "joinStep3": "Customers find you in search, and requests start arriving.",
     "joinSignInCta": "Sign in and continue",
     "joinSignInNote": "You'll need a Matjar account — a minute, by phone or email.",
     "joinCustomerTitle": "Here as a customer?",
@@ -4954,7 +4962,7 @@
     "priceQuote": "Quote after visit",
     "sortCompleted": "Most jobs done",
     "joinTitle": "List your trade on Matjar",
-    "joinSubtitle": "No storefront needed. Fill this in, we review it, and it goes live.",
+    "joinSubtitle": "No storefront needed. Fill this in and your profile goes live right away.",
     "joinKind": "On your own, or a company?",
     "kindIndividual": "On my own",
     "joinName": "Your name",
@@ -4976,12 +4984,12 @@
     "joinNeedTrade": "Pick at least one trade.",
     "joinNeedArea": "Pick at least one area.",
     "joinAlready": "This account already has a provider profile.",
-    "joinReviewNote": "Every profile is reviewed before it goes live. We will tell you as soon as it is up.",
+    "joinReviewNote": "Your profile goes live the moment you register — no waiting.",
     "joinSubmit": "List my trade",
     "meLive": "Your profile is live",
     "meLiveBody": "Customers can find you and send requests.",
-    "mePending": "Your profile is under review",
-    "mePendingBody": "It does not appear in search yet. We will tell you the moment it is live.",
+    "mePending": "Your profile isn't live yet",
+    "mePendingBody": "It does not appear in search yet. If it stays like this, message us on WhatsApp.",
     "meViewPublic": "See your profile the way customers do",
     "meCompleted": "Jobs done",
     "meRating": "Rating",
@@ -5211,6 +5219,22 @@
         "few": "{n} reviews",
         "many": "{n} reviews",
         "other": "{n} reviews"
+      },
+      "team": {
+        "zero": "{n} team members",
+        "one": "1 team member",
+        "two": "{n} team members",
+        "few": "{n} team members",
+        "many": "{n} team members",
+        "other": "{n} team members"
+      },
+      "sections": {
+        "zero": "{n} sections",
+        "one": "1 section",
+        "two": "{n} sections",
+        "few": "{n} sections",
+        "many": "{n} sections",
+        "other": "{n} sections"
       }
     },
     "delivery": "Delivery",

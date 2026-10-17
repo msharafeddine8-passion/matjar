@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   ALWAYS_INDEXED_PATHS,
+  FLASH_PATH,
   GATED_SECTION_PATHS,
+  LEADER_PROFILE_ROBOTS,
   NOINDEX_FOLLOW,
   PRIVATE_PATH_PREFIXES,
   buildStoreMetadata,
@@ -18,7 +20,7 @@ import {
   sectionRobots,
   storeCanonicalPath,
 } from "@/lib/seo-rules";
-import { localeAlternates } from "@/lib/site";
+import { DEFAULT_OG_IMAGE, localeAlternates } from "@/lib/site";
 import { storeJsonLd, productJsonLd, offeringJsonLd } from "@/lib/jsonld";
 
 const BASE = "https://matjarlb.com";
@@ -125,6 +127,43 @@ describe("store canonical — one address per store, nothing moves", () => {
     expect(m).toEqual({ robots: NOINDEX_FOLLOW });
   });
 
+  it("trims the name so the title template does not double the space", () => {
+    const m = buildStoreMetadata({
+      lang: "ar",
+      id: "u",
+      store: { name: " Let's   meat  ", isReal: true },
+    });
+    expect(m.title).toBe("Let's meat");
+    expect((m.openGraph as { title?: string }).title).toBe("Let's meat");
+  });
+
+  it("always ships a share image: the platform card without a picture", () => {
+    const m = buildStoreMetadata({
+      lang: "ar",
+      id: "u",
+      store: { name: "S", isReal: true },
+    });
+    const og = (m.openGraph as { images?: { url: string }[] }).images;
+    expect(og?.[0]?.url).toBe(DEFAULT_OG_IMAGE.url);
+    expect((m.twitter as { images?: string[] }).images).toEqual([
+      DEFAULT_OG_IMAGE.url,
+    ]);
+  });
+
+  it("serves a store's own cover through the Supabase resizer", () => {
+    const cover =
+      "https://x.supabase.co/storage/v1/object/public/stores/a/cover.jpg";
+    const m = buildStoreMetadata({
+      lang: "en",
+      id: "u",
+      store: { name: "S", coverUrl: cover, isReal: true },
+    });
+    const og = (m.openGraph as { images?: { url: string }[] }).images;
+    expect(og?.[0]?.url).toBe(
+      "https://x.supabase.co/storage/v1/render/image/public/stores/a/cover.jpg?width=1200&height=630&resize=contain&quality=75",
+    );
+  });
+
   it("descriptions are capped for the snippet", () => {
     const m = buildStoreMetadata({
       lang: "ar",
@@ -176,6 +215,23 @@ describe("sitemap.ts follows the rules", () => {
     expect(src).toContain("categoryIndexable(");
     expect(src).toContain("craftTradeIndexable(");
     expect(src).toContain("storeCanonicalPath(");
+  });
+
+  it("lists /flash only on a live flash-sale count, never unconditionally", () => {
+    expect(ALWAYS_INDEXED_PATHS as readonly string[]).not.toContain(FLASH_PATH);
+    expect(src).toContain("countLiveFlashSales()");
+    expect(src).toContain("sectionIndexable(liveFlash)");
+  });
+
+  it("does not submit business-leader profiles (thin pages about real people)", () => {
+    expect(src).not.toContain("/hub/leaders/${");
+    expect(src).not.toContain('.from("business_leaders")');
+    expect(LEADER_PROFILE_ROBOTS).toEqual(NOINDEX_FOLLOW);
+    const page = readFileSync(
+      join(process.cwd(), "src/app/[lang]/(site)/hub/leaders/[slug]/page.tsx"),
+      "utf8",
+    );
+    expect(page).toContain("robots: LEADER_PROFILE_ROBOTS");
   });
 
   it("every table read is bounded", () => {

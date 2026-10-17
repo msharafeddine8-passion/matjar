@@ -208,8 +208,14 @@ export default async function JobsPage({
                         {rn}
                       </span>
                     )}
+                    {/* Labelled: salary_note is free text, and a bare «400»
+                        in a facts row said nothing about what it was. */}
                     {j.salary_note && (
-                      <bdi className="font-semibold text-primary">{j.salary_note}</bdi>
+                      <span>
+                        {t.salaryValue.split("{v}")[0]}
+                        <bdi className="font-semibold text-primary">{j.salary_note}</bdi>
+                        {t.salaryValue.split("{v}")[1]}
+                      </span>
                     )}
                     <span>{pm.jobsPosted.replace("{date}", formatDay(j.created_at, lang))}</span>
                     {j.apply_deadline && (

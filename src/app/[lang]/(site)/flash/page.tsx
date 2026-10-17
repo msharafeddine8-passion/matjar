@@ -6,6 +6,8 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { getUsdLbpRate } from "@/lib/data/settings";
 import { localeAlternates } from "@/lib/site";
+import { sectionRobots } from "@/lib/seo-rules";
+import { countLiveFlashSales } from "@/lib/data/offers";
 import { toCategoryKey } from "@/lib/catalog";
 import type { OfferingKind } from "@/lib/offering";
 import { Container } from "@/components/ui/container";
@@ -19,11 +21,17 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await params;
   if (!isLocale(lang)) return {};
-  const dict = await getDictionary(lang);
+  const [dict, live] = await Promise.all([
+    getDictionary(lang),
+    countLiveFlashSales().catch(() => 0),
+  ]);
   return {
     title: dict.flash.title,
     description: dict.flash.subtitle,
     alternates: localeAlternates(lang, "/flash"),
+    // No running flash sale → «ما في عروض فلاش هلق», a thin page for a
+    // crawler. The sitemap leaves it out on the same count (lib/seo-rules).
+    robots: sectionRobots(live),
   };
 }
 

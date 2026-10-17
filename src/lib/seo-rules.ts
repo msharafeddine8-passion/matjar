@@ -12,7 +12,7 @@
 
 import type { Metadata, MetadataRoute } from "next";
 import { hasEnough } from "@/lib/rail";
-import { SITE_URL, localeAlternates } from "@/lib/site";
+import { SITE_URL, displayTitle, localeAlternates, shareImages } from "@/lib/site";
 import type { GatedSection } from "@/lib/data/section-supply";
 
 export const SEO_LOCALES = ["ar", "en"] as const;
@@ -42,7 +42,9 @@ export const ALWAYS_INDEXED_PATHS = [
   "/explore",
   "/categories",
   "/offers",
-  "/flash",
+  // `/flash` is NOT here: with no running flash sale it is a page that says
+  // «ما في عروض فلاش هلق». The sitemap adds it on the live count instead
+  // (FLASH_PATH below), and the page says noindex on the same count.
   "/clearance",
   "/best-sellers",
   "/map",
@@ -72,6 +74,16 @@ export function sectionIndexable(count: number): boolean {
 export function sectionRobots(count: number) {
   return sectionIndexable(count) ? undefined : NOINDEX_FOLLOW;
 }
+
+/** The flash-sale page: listed and indexable only while a flash sale is
+ *  actually running (same one-row bar as a gated section). */
+export const FLASH_PATH = "/flash";
+
+/** A business-leader profile (/hub/leaders/<slug>) is a templated page about
+ *  a real person built from a handful of fields — thin by construction. It
+ *  stays reachable and its links are followed, but it is neither indexed nor
+ *  submitted in the sitemap. */
+export const LEADER_PROFILE_ROBOTS = NOINDEX_FOLLOW;
 
 /** A sector page (/category/[slug]) with no merchant is a thin page. */
 export function categoryIndexable(storeCount: number): boolean {
@@ -130,29 +142,34 @@ export function buildStoreMetadata(opts: {
 }): Metadata {
   const { lang, id, store } = opts;
   if (!store) return { robots: NOINDEX_FOLLOW };
+  // Trimmed: a stored trailing space rendered "Name  · متجر" in the tab.
+  const name = displayTitle(store.name);
   const description = (
     store.description?.trim() ||
     (lang === "ar"
-      ? `${store.name} على متجر — اطلب أو تواصل مباشرةً.`
-      : `${store.name} on Matjar — order or contact directly.`)
+      ? `${name} على متجر — اطلب أو تواصل مباشرةً.`
+      : `${name} on Matjar — order or contact directly.`)
   ).slice(0, 160);
-  const image = store.coverUrl || store.logoUrl || undefined;
+  // Cover or logo through the Supabase resizer; the platform card when the
+  // store has neither (this object replaces the layout's openGraph whole).
+  const images = shareImages(store.coverUrl || store.logoUrl || null, name);
   const path = storeCanonicalPath(id, store.isReal ? store.slug : null);
   return {
-    title: store.name,
+    title: name,
     description,
     alternates: localeAlternates(lang, path),
     openGraph: {
       type: "website",
-      title: store.name,
+      title: name,
       description,
       url: `/${lang}${path}`,
-      images: image ? [{ url: image, alt: store.name }] : undefined,
+      images: images.openGraph,
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
-      title: store.name,
+      card: "summary_large_image",
+      title: name,
       description,
+      images: images.twitter,
     },
     ...(store.isReal ? {} : { robots: NOINDEX_FOLLOW }),
   };

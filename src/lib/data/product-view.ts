@@ -18,6 +18,10 @@ export type ProductView = {
   id: string;
   storeId: string;
   storeName: string;
+  /** The store-local section (products.section_id) — the closest thing to a
+   *  product category there is; drives the "similar" rail. Optional so an
+   *  entry cached before the field existed still type-checks as absent. */
+  sectionId?: string | null;
   acceptsDelivery: boolean;
   acceptsPickup: boolean;
   /** How long before an appointment the customer may still cancel/reschedule.
@@ -58,7 +62,7 @@ async function fetchProductView(
   const { data } = await supabase
     .from("products")
     .select(
-      "id, store_id, name, name_en, brand, description, description_en, price, discount_price, flash_price, flash_start, flash_end, image_url, gallery, stock, attributes, is_bundle, item_kind, duration_minutes, stores(name, accepts_delivery, accepts_pickup, booking_cancel_hours, business_types(slug))",
+      "id, store_id, section_id, name, name_en, brand, description, description_en, price, discount_price, flash_price, flash_start, flash_end, image_url, gallery, stock, attributes, is_bundle, item_kind, duration_minutes, stores(name, accepts_delivery, accepts_pickup, booking_cancel_hours, business_types(slug))",
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -131,6 +135,7 @@ async function fetchProductView(
     id: data.id as string,
     storeId: data.store_id as string,
     storeName: store?.name ?? "",
+    sectionId: (data.section_id as string | null) ?? null,
     acceptsDelivery: store?.accepts_delivery ?? true,
     acceptsPickup: store?.accepts_pickup ?? true,
     bookingCancelHours:

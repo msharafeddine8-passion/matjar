@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
-import { localeAlternates, SITE_URL } from "@/lib/site";
+import { localeAlternates, shareImages, SITE_URL } from "@/lib/site";
 import { siteJsonLd, jsonLdScript } from "@/lib/jsonld";
 import { Hero } from "@/components/hero";
 import { WorldsShowcase } from "@/components/worlds-showcase";
@@ -38,6 +38,7 @@ export async function generateMetadata({
     lang === "ar"
       ? "اكتشف المتاجر والمطاعم والعيادات والخدمات في منطقتك، اطلب أو احجز أو تواصل مباشرةً عبر واتساب."
       : "Discover shops, restaurants, clinics and services near you in Lebanon — order, book or message them directly on WhatsApp.";
+  const images = shareImages();
   return {
     title: { absolute: title },
     description,
@@ -49,8 +50,16 @@ export async function generateMetadata({
       description,
       locale: lang === "ar" ? "ar_LB" : "en_US",
       alternateLocale: lang === "ar" ? ["en_US"] : ["ar_LB"],
+      // This object replaces the layout's whole openGraph (Next merges
+      // metadata shallowly), so the share card has to be restated here.
+      images: images.openGraph,
     },
-    twitter: { card: "summary_large_image", title, description },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: images.twitter,
+    },
   };
 }
 

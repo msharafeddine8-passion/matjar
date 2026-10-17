@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { Tag, ImageIcon } from "lucide-react";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
-import { localeAlternates } from "@/lib/site";
+import { localeAlternates, shareImages } from "@/lib/site";
 import { getOffers } from "@/lib/data/offers";
 import { getUsdLbpRate } from "@/lib/data/settings";
 import { formatLbp } from "@/lib/currency";
@@ -26,7 +26,12 @@ export async function generateMetadata({
   return {
     title: dict.offers.title,
     description: dict.offers.subtitle,
-    openGraph: { title: dict.offers.title, description: dict.offers.subtitle },
+    // Replaces the layout's openGraph whole, so the card is restated.
+    openGraph: {
+      title: dict.offers.title,
+      description: dict.offers.subtitle,
+      images: shareImages().openGraph,
+    },
     alternates: localeAlternates(lang, "/offers"),
   };
 }

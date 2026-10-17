@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { categoryKeys, categoryStyles, type CategoryKey } from "@/lib/catalog";
-import { localeAlternates } from "@/lib/site";
+import { localeAlternates, shareImages } from "@/lib/site";
 import { discoveryParams, siblingSectors } from "@/lib/discovery";
 import { getDiscoveryCoverage } from "@/lib/data/discovery";
 import { categoryIcons } from "@/components/category-icon";
@@ -29,7 +29,12 @@ export async function generateMetadata({
   if (!isLocale(lang) || !isCategoryKey(slug)) return {};
   const dict = await getDictionary(lang);
   const cat = dict.catalog[slug];
-  const title = `${cat.name} — ${dict.common.brand}`;
+  // The layout template appends the brand to <title>; appending it here too
+  // rendered "Health & clinics — Matjar · متجر". The share card has no
+  // template, so it keeps the brand in its own title.
+  const title = cat.name;
+  const shareTitle = `${cat.name} — ${dict.common.brand}`;
+  const images = shareImages();
   const query = resolveQuery(await searchParams, slug);
   const coverage = await getDiscoveryCoverage();
   const count = coverage.bySector[slug] ?? 0;
@@ -44,8 +49,17 @@ export async function generateMetadata({
     title,
     description: cat.desc,
     alternates: { ...alternates, canonical: `${alternates.canonical}${suffix}` },
-    openGraph: { title, description: cat.desc },
-    twitter: { card: "summary", title, description: cat.desc },
+    openGraph: {
+      title: shareTitle,
+      description: cat.desc,
+      images: images.openGraph,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: shareTitle,
+      description: cat.desc,
+      images: images.twitter,
+    },
     // A category with no merchant yet is a real page for a visitor who followed
     // a link, and a thin, empty one for a crawler. Same for a free-text search.
     robots: count === 0 || query.q ? { index: false, follow: true } : undefined,

@@ -114,33 +114,13 @@ function positiveOrNull(n: number | null | undefined): number | null {
 }
 
 /**
- * Arabic counted nouns, which "{n} خدمة" gets wrong for most numbers.
- *
- * "3 خدمة" is not a typo a reader forgives — Arabic inflects the noun by the
- * count: one is مفرد, two is مثنى (خدمتين, no numeral at all), three to ten take
- * the plural (3 خدمات), and eleven upwards go back to the singular (11 خدمة).
- * The platform's one freelancer has exactly 3 services and there is exactly 1
- * of him, so the two numbers actually on screen today are precisely the two the
- * naive template renders wrong.
- *
- * The buckets follow CLDR's Arabic rules, minus `zero` — every counter here is
- * rendered only when it has something to count, so a zero form would be a
- * string that can never appear.
+ * Arabic counted nouns ("3 خدمة" → "3 خدمات"). The platform's one freelancer
+ * has exactly 3 services and there is exactly 1 of him, so the two numbers on
+ * screen were precisely the two the naive template rendered wrong. The helper
+ * now lives in lib/plural.ts (pure, so client components can use it too) and
+ * is re-exported here for the existing callers.
  */
-export type CountForms = { one: string; two: string; few: string; many: string };
-
-export function countLabel(forms: CountForms, n: number): string {
-  const mod100 = Math.abs(n) % 100;
-  const form =
-    n === 1
-      ? forms.one
-      : n === 2
-        ? forms.two
-        : mod100 >= 3 && mod100 <= 10
-          ? forms.few
-          : forms.many;
-  return form.replace("{n}", String(n));
-}
+export { countLabel, type CountForms } from "@/lib/plural";
 
 /** Region key → the catalogue's label. One list, two languages. */
 export function regionLabel(key: string | null, lang: Locale): string | null {

@@ -92,7 +92,10 @@ const BLOCKS: Record<LabelDomain, (d: Dictionary) => Record<string, string>> = {
   leadKind: (d) => d.os.leads.kinds,
   storeStatus: (d) => d.admin.storesAdmin.statusLabels,
   platformRole: (d) => d.admin.usersAdmin.roles,
-  marketListing: (d) => d.admin.market.statusLabels,
+  // The SELLER's words (market.statusLabels, the same block «إعلاناتي» uses),
+  // not the moderation queue's: listings go live without review, so the
+  // customer-facing label for `pending` no longer says «قيد المراجعة».
+  marketListing: (d) => d.market.statusLabels,
   campaignAudience: (d) => d.os.campaigns.audiences,
   automationTrigger: (d) => d.os.automations.triggers,
   crmCustomer: (d) => d.os.crm.status,
@@ -256,7 +259,7 @@ const TONES: Partial<Record<LabelDomain, Record<string, StatusTone>>> = {
   },
   // listings.status — 0036 + 0039, read from the SELLER's side (the only
   // customer who sees their own listing's status). Draft and expired are the
-  // seller's move; pending waits on moderation.
+  // seller's move; pending is a listing that is not live yet.
   marketListing: {
     draft: "primary",
     pending: "warning",

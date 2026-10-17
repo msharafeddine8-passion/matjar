@@ -15,6 +15,7 @@ import { ArrowPrev } from "@/components/ui/directional-icon";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { localeAlternates } from "@/lib/site";
+import { LEADER_PROFILE_ROBOTS } from "@/lib/seo-rules";
 import { createClient } from "@/lib/supabase/server";
 import { Container } from "@/components/ui/container";
 import { InitialsAvatar } from "@/components/hub/initials-avatar";
@@ -56,6 +57,9 @@ export async function generateMetadata({
     title,
     description,
     alternates: localeAlternates(lang, `/hub/leaders/${slug}`),
+    // A templated page about a real person: reachable, links followed, not
+    // indexed — and not in the sitemap (lib/seo-rules).
+    robots: LEADER_PROFILE_ROBOTS,
   };
 }
 

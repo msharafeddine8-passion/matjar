@@ -4,7 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { notFound } from "next/navigation";
 import "../globals.css";
 import { isLocale, locales, localeDirection } from "@/i18n/config";
-import { SITE_URL } from "@/lib/site";
+import { DEFAULT_OG_IMAGE, SITE_URL } from "@/lib/site";
 import { NativeBridge } from "@/components/native-bridge";
 import {
   APP_MODE_BOOT_SCRIPT,
@@ -33,12 +33,15 @@ const alexandria = Alexandria({
 const SITE_DESCRIPTION =
   "منصّة التجارة المحلية في لبنان — كل متجر، منتج، وخدمة بمكان واحد. Local commerce platform for Lebanon.";
 
-export const metadata: Metadata = {
+// The brand suffix follows the page's language: one shared "%s · متجر" made
+// every English tab read "Pricing & plans · متجر".
+const TITLE_TEMPLATE: Record<string, string> = {
+  ar: "%s · متجر",
+  en: "%s · Matjar",
+};
+
+const BASE_METADATA: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: {
-    default: "متجر | Matjar",
-    template: "%s · متجر",
-  },
   description: SITE_DESCRIPTION,
   applicationName: "متجر · Matjar",
   openGraph: {
@@ -46,13 +49,13 @@ export const metadata: Metadata = {
     siteName: "متجر · Matjar",
     title: "متجر | Matjar",
     description: SITE_DESCRIPTION,
-    images: [{ url: "/opengraph-image.png", width: 1200, height: 630 }],
+    images: [DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     title: "متجر | Matjar",
     description: SITE_DESCRIPTION,
-    images: ["/opengraph-image.png"],
+    images: [DEFAULT_OG_IMAGE.url],
   },
   manifest: "/manifest.webmanifest",
   // iOS reads none of the manifest for an installed home-screen app — it wants
@@ -77,6 +80,21 @@ export const metadata: Metadata = {
     google: "fRJTZiuJNv-lbiuGfanG8FAZFTV85klXdnQLiw1bXmM",
   },
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  return {
+    ...BASE_METADATA,
+    title: {
+      default: "متجر | Matjar",
+      template: TITLE_TEMPLATE[lang] ?? TITLE_TEMPLATE.ar,
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: [

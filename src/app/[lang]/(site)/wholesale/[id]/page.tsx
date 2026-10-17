@@ -7,7 +7,7 @@ import { ChevronPrev } from "@/components/ui/directional-icon";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
-import { localeAlternates } from "@/lib/site";
+import { displayTitle, localeAlternates, shareImages } from "@/lib/site";
 import { regions } from "@/lib/catalog";
 import type { WholesaleProduct, PriceTier } from "@/lib/wholesale";
 import { Container } from "@/components/ui/container";
@@ -37,11 +37,19 @@ export async function generateMetadata({
     .maybeSingle();
   if (!data) return {};
   const w = data as { title: string; description: string; image_url: string | null };
+  const title = displayTitle(w.title);
+  const description = w.description.slice(0, 160);
   return {
-    title: w.title,
-    description: w.description.slice(0, 160),
+    title,
+    description,
     alternates: localeAlternates(lang, `/wholesale/${id}`),
-    openGraph: { images: w.image_url ? [w.image_url] : undefined },
+    // Replaces the layout's openGraph whole, so title, description and a card
+    // (the platform's when the product has no picture) are restated.
+    openGraph: {
+      title,
+      description,
+      images: shareImages(w.image_url, title).openGraph,
+    },
   };
 }
 

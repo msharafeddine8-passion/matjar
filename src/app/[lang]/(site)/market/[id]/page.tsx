@@ -13,7 +13,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 import { regions as catalogRegions } from "@/lib/catalog";
-import { SITE_URL, localeAlternates } from "@/lib/site";
+import { SITE_URL, displayTitle, localeAlternates, shareImages } from "@/lib/site";
 import { NOINDEX_FOLLOW, listingRobots } from "@/lib/seo-rules";
 import { jsonLdScript, listingJsonLd } from "@/lib/jsonld";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -50,20 +50,25 @@ export async function generateMetadata({
   const description = listing.description
     ? listing.description.slice(0, 160)
     : undefined;
+  // Trimmed: a stored trailing space rendered as a double space before the
+  // template's suffix.
+  const title = displayTitle(listing.title);
+  const images = shareImages(listing.image, title);
   return {
-    title: listing.title,
+    title,
     description,
     alternates: localeAlternates(lang, `/market/${id}`),
     openGraph: {
       type: "website",
-      title: listing.title,
+      title,
       description,
-      images: listing.image ? [{ url: listing.image, alt: listing.title }] : undefined,
+      images: images.openGraph,
     },
     twitter: {
-      card: listing.image ? "summary_large_image" : "summary",
-      title: listing.title,
+      card: "summary_large_image",
+      title,
       description,
+      images: images.twitter,
     },
     // Sold / expired stay reachable (old links keep working) but leave the
     // index; only a live listing is worth ranking (lib/seo-rules).

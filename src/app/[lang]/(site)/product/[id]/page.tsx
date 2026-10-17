@@ -17,7 +17,7 @@ import {
 import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
-import { localeAlternates, SITE_URL } from "@/lib/site";
+import { displayTitle, localeAlternates, shareImages, SITE_URL } from "@/lib/site";
 import { offeringJsonLd, jsonLdScript } from "@/lib/jsonld";
 import {
   getPublicProductView,
@@ -99,7 +99,9 @@ export async function generateMetadata({
   if (!isLocale(lang)) return {};
   const product = await loadProduct(id);
   if (!product) return { title: "Matjar" };
-  const name = localized(product.name, product.nameEn, lang);
+  // Trimmed: a stored trailing space rendered as a double space before the
+  // template's " · متجر".
+  const name = displayTitle(localized(product.name, product.nameEn, lang));
   const localizedDesc = localized(
     product.description ?? "",
     product.descriptionEn,
@@ -110,7 +112,9 @@ export async function generateMetadata({
     (lang === "ar"
       ? `${name} من ${product.storeName} على متجر.`
       : `${name} from ${product.storeName} on Matjar.`);
-  const image = product.images[0];
+  // The product photo through the Supabase resizer (a share preview should
+  // not fetch the multi-hundred-KB original), or the platform card.
+  const images = shareImages(product.images[0], name);
   return {
     title: name,
     description,
@@ -120,12 +124,13 @@ export async function generateMetadata({
     openGraph: {
       title: name,
       description,
-      images: image ? [image] : undefined,
+      images: images.openGraph,
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title: name,
       description,
+      images: images.twitter,
     },
   };
 }
@@ -214,6 +219,19 @@ export default async function ProductPage({
         dict.booking.fromPrice,
       )
     : null;
+  // The LBP line converts ONE price. Beside «$5 · $10 · $15» it printed the
+  // first option's conversion as if it were the whole line's, so a service
+  // with several distinct prices shows no LBP figure at all; one price (or
+  // options that all cost the same) still gets its conversion.
+  const distinctOptionPrices = serviceOptions.length
+    ? [...new Set(serviceOptions.map((v) => v.price ?? basePrice))]
+    : null;
+  const lbpPrice =
+    distinctOptionPrices == null
+      ? basePrice
+      : distinctOptionPrices.length === 1
+        ? distinctOptionPrices[0]
+        : null;
   const compareAt = compareAtPrice(product);
   const flashEnd = flashEndsAt(product);
   // A service the merchant never priced says so; nothing on this page prints a
@@ -232,7 +250,7 @@ export default async function ProductPage({
   // recommends services and a shop page recommends goods. Sections the variant
   // does not render are not fetched at all.
   const [
-    moreFromStore,
+    moreFromStoreAll,
     similar,
     boughtTogether,
     productReviews,
@@ -244,13 +262,16 @@ export default async function ProductPage({
       ? getMoreFromStore(product.storeId, product.id, 6, offering.relatedKind)
       : Promise.resolve([] as RelatedProduct[]),
     shows("related")
-      ? getSimilarProducts(
-          product.category,
-          product.storeId,
-          product.id,
-          6,
-          offering.relatedKind,
-        )
+      ? getSimilarProducts({
+          productId: product.id,
+          storeId: product.storeId,
+          sectionId: product.sectionId ?? null,
+          name: product.name,
+          nameEn: product.nameEn,
+          category: product.category,
+          limit: 6,
+          kind: offering.relatedKind,
+        })
       : Promise.resolve([] as RelatedProduct[]),
     shows("boughtTogether")
       ? getBoughtTogether(product.id)
@@ -265,6 +286,10 @@ export default async function ProductPage({
       : Promise.resolve([] as ServiceProvider[]),
   ]);
   const soldCount = (soldRes.data as number | null) ?? 0;
+  // "Similar" now starts with this store's own closest items, so the
+  // "more from this store" rail drops those rather than show them twice.
+  const similarIds = new Set(similar.map((p) => p.id));
+  const moreFromStore = moreFromStoreAll.filter((p) => !similarIds.has(p.id));
 
   let isStoreOwner = false;
   if (user) {
@@ -361,9 +386,9 @@ export default async function ProductPage({
           )}
           {flashEnd != null && <FlashCountdown endsAt={flashEnd} dict={dict} />}
         </div>
-        {lbpRate > 0 && (
+        {lbpRate > 0 && lbpPrice != null && (
           <p dir="ltr" className="mt-1 text-sm tabular-nums text-muted-foreground">
-            {formatLbp(basePrice, lbpRate, l)}
+            {formatLbp(lbpPrice, lbpRate, l)}
           </p>
         )}
         {attrText && (
@@ -442,9 +467,9 @@ export default async function ProductPage({
     </div>
   ) : null;
 
-  // Who provides it: the roster the merchant entered, filtered by the
-  // service_providers mapping (no mapping = anyone on the team, the same rule
-  // the booking engine applies). No team, no section.
+  // Who provides it: only the team members the merchant explicitly linked to
+  // this service (service_providers). No link, no section — the whole roster
+  // under a lab test read as if every doctor performed it (getServiceProviders).
   nodes.provider =
     providers.length > 0 ? (
       <div className="mt-5 rounded-2xl border border-border bg-surface p-4">
