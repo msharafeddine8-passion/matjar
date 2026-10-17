@@ -18,6 +18,18 @@ export function SwRegister() {
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
       return;
     }
+    // Dev chunks keep the same URL across edits, and the worker serves
+    // /_next/static cache-first — so in `next dev` it pins yesterday's code
+    // and edits silently never arrive. Production chunk URLs are content-
+    // hashed, which is what makes cache-first safe there. In dev, retire any
+    // worker a previous session installed instead of registering one.
+    if (process.env.NODE_ENV === "development") {
+      void navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => regs.forEach((r) => void r.unregister()))
+        .catch(() => {});
+      return;
+    }
     const register = () => {
       // SW_URL carries the build id. Registering it when the id has changed is
       // what replaces the previous worker (and, through it, retires the previous

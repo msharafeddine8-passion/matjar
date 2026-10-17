@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -116,6 +116,19 @@ export function BookingPanel({
   const [error, setError] = useState<string | null>(null);
   const [bookedWaUrl, setBookedWaUrl] = useState<string | null>(null);
   const [booked, setBooked] = useState(false);
+  // The booking form, so tapping a service card can bring it into view.
+  const formRef = useRef<HTMLDivElement>(null);
+  // Bumped by a service-card tap; the jump runs once that render commits.
+  // (requestAnimationFrame never fires in a background or non-compositing
+  // WebView, so the scroll is not tied to a frame.)
+  const [jumpToForm, setJumpToForm] = useState(0);
+  useEffect(() => {
+    if (!jumpToForm) return;
+    const el = formRef.current;
+    if (!el) return;
+    el.scrollIntoView({ behavior: "auto", block: "start" });
+    el.focus({ preventScroll: true });
+  }, [jumpToForm]);
   // 0328: a guest has no "my bookings" page; the success card says who calls.
   const [bookedAsGuest, setBookedAsGuest] = useState(false);
   // Conflict awareness: taken time strings for the picked date (legacy path).
@@ -346,6 +359,18 @@ export function BookingPanel({
     const i = steps.indexOf(s);
     if (i >= 0) setStepIdx(i);
   };
+
+  // A service card is the obvious thing to tap; it used to do nothing, and the
+  // store's «احجز موعدًا» button lands on these cards. Tapping one picks the
+  // service, moves the phone flow past the service step (unless an option must
+  // still be chosen there), and brings the form into view — instantly, since a
+  // smooth scroll never moves in a non-compositing WebView.
+  function pickService(id: string) {
+    void onServiceChange(id);
+    const opts = services.find((x) => x.id === id)?.options ?? [];
+    setStepIdx(opts.length > 1 ? 0 : 1);
+    setJumpToForm((n) => n + 1);
+  }
 
   const dateFmt = new Intl.DateTimeFormat(lang, {
     weekday: "short",
@@ -732,9 +757,14 @@ export function BookingPanel({
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {list.map((s) => (
-          <div
+          <button
+            type="button"
             key={s.id}
-            className="flex items-center gap-4 rounded-2xl border border-border bg-surface p-4"
+            onClick={() => pickService(s.id)}
+            aria-pressed={serviceId === s.id}
+            className={`flex w-full items-center gap-4 rounded-2xl border bg-surface p-4 text-start transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+              serviceId === s.id ? "border-primary ring-1 ring-primary" : "border-border"
+            }`}
           >
             {s.imageUrl ? (
               <Image src={s.imageUrl} alt={localized(s.name, s.nameEn, lang)} width={64} height={64} className="h-16 w-16 shrink-0 rounded-xl object-cover" sizes="64px" />
@@ -743,18 +773,18 @@ export function BookingPanel({
                 <Icon className="h-7 w-7 text-foreground/20" />
               </span>
             )}
-            <div className="min-w-0 flex-1">
-              <h3 className="truncate font-bold">{localized(s.name, s.nameEn, lang)}</h3>
+            <span className="block min-w-0 flex-1">
+              <span className="block truncate font-bold">{localized(s.name, s.nameEn, lang)}</span>
               {serviceFacts(s) && (
-                <p className="truncate text-xs text-muted-foreground">
+                <span className="block truncate text-xs text-muted-foreground">
                   {serviceFacts(s)}
-                </p>
+                </span>
               )}
-              <p className="mt-0.5 text-sm font-bold tabular-nums">
+              <span className="mt-0.5 block text-sm font-bold tabular-nums">
                 {servicePriceLine(s.price, s.options, formatUsd, dict.booking.fromPrice)}
-              </p>
-            </div>
-          </div>
+              </span>
+            </span>
+          </button>
         ))}
       </div>
     );
@@ -854,7 +884,11 @@ export function BookingPanel({
         renderServices(services)
       )}
 
-      <div className="mt-8">
+      <div
+        ref={formRef}
+        tabIndex={-1}
+        className="mt-8 scroll-mt-[calc(var(--m-header-h)+var(--m-sectiontabs-h)+env(safe-area-inset-top)+0.75rem)] outline-none lg:scroll-mt-24"
+      >
         <h3 className="mb-3 flex items-center gap-2 text-lg font-bold">
           <CalendarCheck className="h-5 w-5 text-primary" />
           {dict.booking.title}
