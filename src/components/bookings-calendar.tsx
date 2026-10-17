@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   Clock,
-  Stethoscope,
 } from "lucide-react";
 import { ChevronNext, ChevronPrev } from "@/components/ui/directional-icon";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { providerIcon } from "@/lib/sectors";
 
 export type CalendarBooking = {
   id: string;
@@ -28,6 +28,7 @@ const TONE: Record<string, string> = {
   completed: "border-border bg-surface-muted text-muted-foreground",
   cancelled: "border-danger/30 bg-danger-soft text-danger",
   rejected: "border-danger/30 bg-danger-soft text-danger",
+  no_show: "border-danger/30 bg-danger-soft text-danger",
 };
 const FALLBACK_TONE = "border-border bg-surface-muted text-muted-foreground";
 
@@ -46,12 +47,16 @@ export function BookingsCalendar({
   lang,
   dict,
   bookings,
+  category,
 }: {
   lang: string;
   dict: Dictionary;
   bookings: CalendarBooking[];
+  /** Store sector key — picks the provider icon (stethoscope only for clinics/vets). */
+  category?: string;
 }) {
   const t = dict.booking;
+  const ProviderIcon = providerIcon(category);
   const statusLabels = t.status as Record<string, string>;
   const [today, setToday] = useState<Date | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -65,15 +70,15 @@ export function BookingsCalendar({
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const fmtWeekday = useMemo(
-    () => new Intl.DateTimeFormat(lang, { weekday: "short" }),
+    () => new Intl.DateTimeFormat(lang === "ar" ? "ar-LB-u-nu-latn" : lang, { weekday: "short" }),
     [lang],
   );
   const fmtDay = useMemo(
-    () => new Intl.DateTimeFormat(lang, { day: "numeric" }),
+    () => new Intl.DateTimeFormat(lang === "ar" ? "ar-LB-u-nu-latn" : lang, { day: "numeric" }),
     [lang],
   );
   const fmtRange = useMemo(
-    () => new Intl.DateTimeFormat(lang, { day: "numeric", month: "short" }),
+    () => new Intl.DateTimeFormat(lang === "ar" ? "ar-LB-u-nu-latn" : lang, { day: "numeric", month: "short" }),
     [lang],
   );
 
@@ -214,7 +219,7 @@ export function BookingsCalendar({
                           )}
                           {b.doctor && (
                             <div className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold">
-                              <Stethoscope className="h-3 w-3 shrink-0" />
+                              <ProviderIcon className="h-3 w-3 shrink-0" aria-hidden />
                               <span className="truncate">{b.doctor}</span>
                             </div>
                           )}

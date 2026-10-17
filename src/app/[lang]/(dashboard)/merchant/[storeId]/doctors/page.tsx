@@ -88,6 +88,10 @@ export default async function StoreDoctorsPage({
     .from("products")
     .select("id, name, name_en")
     .eq("store_id", storeId)
+    // Only live, bookable services: a deleted product or a physical item
+    // offered as "a service this provider delivers" was a dead toggle.
+    .is("deleted_at", null)
+    .eq("item_kind", "service")
     .order("sort_order", { ascending: true });
   const services = ((servicesData ?? []) as {
     id: string;
@@ -148,6 +152,7 @@ export default async function StoreDoctorsPage({
             services={services}
             assignments={assignments}
             lang={lang}
+            category={category}
           />
           <ProviderHours
             storeId={storeId}

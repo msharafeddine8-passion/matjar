@@ -4,8 +4,10 @@ import { notifyError } from "@/lib/notify";
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, X, Stethoscope, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { beirutYmd } from "@/lib/quick-panel";
+import { providerIcon } from "@/lib/sectors";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import type { Locale } from "@/i18n/config";
 import { ImageUpload } from "@/components/image-upload";
@@ -138,6 +140,7 @@ export function DoctorManager({
   services,
   assignments,
   lang,
+  category,
 }: {
   storeId: string;
   dict: Dictionary;
@@ -145,10 +148,13 @@ export function DoctorManager({
   services: ProviderService[];
   assignments: Record<string, string[]>;
   lang: Locale;
+  /** The store's sector key — picks a sector-appropriate provider icon. */
+  category?: string;
 }) {
   const router = useRouter();
   const confirm = useConfirm();
   const t = dict.merchant.doctors;
+  const ProviderIcon = providerIcon(category);
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
   const [draft, setDraft] = useState<Draft>(empty);
   const [busy, setBusy] = useState(false);
@@ -198,7 +204,21 @@ export function DoctorManager({
   }
 
   async function remove(id: string) {
-    if (!(await confirm({ message: dict.merchant.products.confirmDelete, confirmLabel: dict.common.confirm, cancelLabel: dict.common.cancel, danger: true }))) return;
+    // bookings.doctor_id is ON DELETE SET NULL: removing a provider silently
+    // orphans their upcoming appointments. Count them and say so first.
+    const { count } = await createClient()
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("store_id", storeId)
+      .eq("doctor_id", id)
+      .in("status", ["pending", "accepted", "scheduled"])
+      .gte("requested_date", beirutYmd(new Date()));
+    const upcoming = count ?? 0;
+    const message =
+      upcoming > 0
+        ? t.confirmDeleteBookings.replace("{count}", String(upcoming))
+        : t.confirmDelete;
+    if (!(await confirm({ message, confirmLabel: dict.common.confirm, cancelLabel: dict.common.cancel, danger: true }))) return;
     setBusy(true);
     const { error } = await createClient()
       .from("doctors")
@@ -305,7 +325,7 @@ export function DoctorManager({
                   />
                 ) : (
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-muted text-muted-foreground">
-                    <Stethoscope className="h-5 w-5" />
+                    <ProviderIcon className="h-5 w-5" aria-hidden />
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
@@ -315,17 +335,21 @@ export function DoctorManager({
                   )}
                 </div>
                 <button
+                  type="button"
                   onClick={() => startEdit(d)}
+                  aria-label={`${t.edit} — ${d.name}`}
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-border transition-colors hover:bg-surface-muted"
                 >
-                  <Pencil className="h-4 w-4" />
+                  <Pencil className="h-4 w-4" aria-hidden />
                 </button>
                 <button
+                  type="button"
                   disabled={busy}
                   onClick={() => remove(d.id)}
+                  aria-label={`${t.delete} — ${d.name}`}
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-danger transition-colors hover:bg-danger-soft disabled:opacity-60"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden />
                 </button>
               </div>
               <ProviderServices

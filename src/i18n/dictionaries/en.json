@@ -1278,6 +1278,9 @@
     "link": "Certificates & licenses",
     "title": "Certificates & licenses",
     "subtitle": "Upload your licenses and certificates to build customer trust.",
+    "docFailed": "The document didn't save, so the certificate wasn't added. Upload the document again and retry.",
+    "docFailedOrphan": "The certificate was saved without its document. Delete it and add it again with the document.",
+    "confirmDelete": "Delete this certificate? It will disappear from your store page.",
     "add": "Add a certificate or license",
     "kindLabel": "Type",
     "kinds": { "license": "License", "certificate": "Certificate", "accreditation": "Accreditation", "award": "Award" },
@@ -2344,7 +2347,10 @@
       "empty": "No providers yet. Add your first one.",
       "services": "Services they offer",
       "servicesHint": "If none are selected, they can offer all services.",
-      "noServices": "Add services first to link them to a provider."
+      "noServices": "Add services first to link them to a provider.",
+      "edit": "Edit",
+      "confirmDelete": "Remove this person from the team?",
+      "confirmDeleteBookings": "They have {count} upcoming appointments — those will be left without a provider. Remove them anyway?"
     },
     "checkoutFields": {
       "title": "Custom checkout fields",
