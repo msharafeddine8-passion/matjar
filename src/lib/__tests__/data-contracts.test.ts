@@ -25,8 +25,10 @@ const DATA_DIR = join(process.cwd(), "src/lib/data");
 
 const dataFiles = readdirSync(DATA_DIR).filter((f) => f.endsWith(".ts"));
 
+// LF-normalised, like the sitemap test: a Windows checkout (core.autocrlf)
+// has CRLF on disk, and some assertions below are written against "\n".
 function read(file: string): string {
-  return readFileSync(join(DATA_DIR, file), "utf8");
+  return readFileSync(join(DATA_DIR, file), "utf8").replace(/\r\n/g, "\n");
 }
 
 const sources = new Map(dataFiles.map((f) => [f, read(f)] as const));
