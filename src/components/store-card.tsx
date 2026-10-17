@@ -419,8 +419,11 @@ export function StoreCard({
             <>
               {" · "}
               {variant === "clinic" ? (
-                <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-                  <MapPin aria-hidden className="h-3.5 w-3.5 shrink-0 text-primary" />
+                // Inline, not inline-flex: a long clinic address then flows on
+                // from the «·» instead of jumping whole to the next line and
+                // leaving the separator dangling at the end of the first.
+                <span className="font-semibold text-foreground">
+                  <MapPin aria-hidden className="me-1 inline h-3.5 w-3.5 align-[-2px] text-primary" />
                   <bdi>{where}</bdi>
                 </span>
               ) : (
