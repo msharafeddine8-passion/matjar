@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -188,6 +188,22 @@ export function StoreProducts({
   }, [cart, cartKey]);
 
   const [checkingOut, setCheckingOut] = useState(false);
+  // The checkout form renders inline, under the whole product list. On a phone
+  // the customer taps «أكّد الطلب» on the sticky bar while scrolled near the top,
+  // so the form used to open ~1,600px below the screen and the tap looked dead
+  // (measured on /ar/albarake at 375×812, 2026-10-17). Bring it into view, and
+  // move focus there so a screen reader announces it too.
+  const checkoutRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!checkingOut) return;
+    const el = checkoutRef.current;
+    if (!el) return;
+    // An instant jump, not "smooth": a smooth scroll is an animation, and an
+    // animation that does not get frames (a backgrounded WebView, a throttled
+    // tab) never moves — which would put us back to the dead-looking tap.
+    el.scrollIntoView({ behavior: "auto", block: "start" });
+    el.focus({ preventScroll: true });
+  }, [checkingOut]);
   const [cartOpen, setCartOpen] = useState(false);
   // The chosen delivery window. Kept HERE rather than inside the picker
   // because the picker lives in the checkout panel and unmounts whenever the
@@ -564,8 +580,10 @@ export function StoreProducts({
                 answers they already gave, and losing them on "edit order" is
                 losing a discount they had earned. */}
             <div
+              ref={checkoutRef}
+              tabIndex={-1}
               hidden={!checkingOut}
-              className="mt-6 rounded-2xl border border-border bg-surface p-5 shadow-sm"
+              className="mt-6 scroll-mt-[calc(var(--m-header-h)+var(--m-sectiontabs-h)+env(safe-area-inset-top))] rounded-2xl border border-border bg-surface p-5 shadow-sm outline-none lg:scroll-mt-20"
             >
               {/* Derived from stores.hours, so the only times offered are times
                   this shop is actually open — the picker on the product page is
