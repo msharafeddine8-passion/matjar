@@ -1,18 +1,22 @@
 "use client";
-import { notifyError } from "@/lib/notify";
+import { notifyError, notifySuccess } from "@/lib/notify";
 
 import { useState } from "react";
 import type { JSX } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ExternalLink, ImageIcon, Plus, Trash2, X } from "lucide-react";
+import { ExternalLink, ImageIcon, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { ImageUpload } from "@/components/image-upload";
 import { Input, Textarea } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
-import { useConfirm } from "@/components/ui/confirm-dialog";
+import {
+  CatalogRowActions,
+  updateCatalogRow,
+  useCatalogRowOps,
+} from "@/components/catalog-row-actions";
 
 export type PortfolioItem = {
   id: string;
@@ -49,32 +53,64 @@ export function PortfolioManager(props: {
 }): JSX.Element {
   const { storeId, lang, dict, items } = props;
   const router = useRouter();
-  const confirm = useConfirm();
   const t = dict.portfolio;
+  const c = dict.catalogItem;
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<Draft>(empty);
   const [busy, setBusy] = useState(false);
+  // The row being edited; null = the form adds a new item.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // store_portfolio has no `active` flag and nothing references it, so its
+  // rows get edit + delete only (no hide button, the plain delete warning).
+  const ops = useCatalogRowOps("store_portfolio", dict);
 
   function startNew() {
     setDraft({ ...empty });
+    setEditingId(null);
     setAdding(true);
+  }
+  function startEdit(item: PortfolioItem) {
+    setDraft({
+      title: item.title,
+      title_en: item.title_en ?? "",
+      description: item.description ?? "",
+      image_url: item.image_url,
+      link: item.link ?? "",
+    });
+    setEditingId(item.id);
+    setAdding(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function cancel() {
     setAdding(false);
+    setEditingId(null);
     setDraft(empty);
   }
 
   async function save() {
     setBusy(true);
-    const supabase = createClient();
-    const { error } = await supabase.from("store_portfolio").insert({
-      store_id: storeId,
+    const values = {
       title: draft.title.trim(),
       title_en: draft.title_en.trim() || null,
       description: draft.description.trim() || null,
       image_url: draft.image_url,
       link: draft.link.trim() || null,
-    });
+    };
+    if (editingId) {
+      const ok = await updateCatalogRow("store_portfolio", editingId, values);
+      setBusy(false);
+      if (!ok) {
+        notifyError(dict.common.actionFailed);
+        return;
+      }
+      notifySuccess(c.saved);
+      cancel();
+      router.refresh();
+      return;
+    }
+    const { error } = await createClient()
+      .from("store_portfolio")
+      .insert({ store_id: storeId, ...values });
     setBusy(false);
     if (error) {
       notifyError(dict.auth.errorGeneric);
@@ -84,23 +120,13 @@ export function PortfolioManager(props: {
     router.refresh();
   }
 
-  async function remove(id: string) {
-    if (!(await confirm({ message: dict.merchant.products.confirmDelete, confirmLabel: dict.common.confirm, cancelLabel: dict.common.cancel, danger: true }))) return;
-    setBusy(true);
-    const { error } = await createClient()
-      .from("store_portfolio")
-      .delete()
-      .eq("id", id);
-    setBusy(false);
-    if (error) {
-      notifyError(dict.auth.errorGeneric);
-      return;
-    }
-    router.refresh();
-  }
+  const editingName = items.find((item) => item.id === editingId)?.title;
 
   const form = (
     <div className="space-y-3 rounded-2xl border border-primary/30 bg-surface p-5">
+      {editingName && (
+        <h3 className="font-bold">{c.editTitle.replace("{name}", editingName)}</h3>
+      )}
       <div>
         <label className={labelClass} htmlFor="portfolio-title">{t.name}</label>
         <Input
@@ -145,14 +171,14 @@ export function PortfolioManager(props: {
       </div>
       <div className="flex gap-2">
         <Button disabled={!draft.title.trim()} loading={busy} onClick={save}>
-          {t.save}
+          {editingId ? c.saveChanges : t.save}
         </Button>
         <Button
           variant="secondary"
           onClick={cancel}
           leftIcon={<X className="h-4 w-4" />}
         >
-          {dict.merchant.doctors.cancel}
+          {editingId ? c.cancelEdit : dict.merchant.doctors.cancel}
         </Button>
       </div>
     </div>
@@ -186,7 +212,9 @@ export function PortfolioManager(props: {
           return (
             <div
               key={item.id}
-              className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3"
+              className={`flex items-center gap-3 rounded-2xl border bg-surface p-3 ${
+                editingId === item.id ? "border-primary" : "border-border"
+              }`}
             >
               {item.image_url ? (
                 <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-surface-muted">
@@ -222,14 +250,13 @@ export function PortfolioManager(props: {
                   </a>
                 )}
               </div>
-              <button
-                disabled={busy}
-                onClick={() => remove(item.id)}
-                aria-label={t.delete}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-danger transition-colors hover:bg-danger-soft disabled:opacity-60"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <CatalogRowActions
+                dict={dict}
+                deleteLabel={t.delete}
+                busy={busy || ops.busyId === item.id}
+                onEdit={() => startEdit(item)}
+                onDelete={() => ops.remove(item.id, false)}
+              />
             </div>
           );
         })}

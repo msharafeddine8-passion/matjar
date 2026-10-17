@@ -43,7 +43,7 @@ export default async function StoreUnitsPage({
   const { data } = await supabase
     .from("accommodation_units")
     .select(
-      "id, name, unit_type, max_guests, bedrooms, bathrooms, base_nightly_price, weekend_price, min_nights, cleaning_fee, security_deposit",
+      "id, name, unit_type, max_guests, bedrooms, bathrooms, base_nightly_price, weekend_price, min_nights, cleaning_fee, security_deposit, active",
     )
     .eq("store_id", storeId)
     .order("sort_order", { ascending: true })

@@ -40,7 +40,7 @@ export default async function StoreClassesPage({
   const { data: rowsData } = await supabase
     .from("store_classes")
     .select(
-      "id, name, name_en, description, day_of_week, start_time, capacity, price",
+      "id, name, name_en, description, day_of_week, start_time, capacity, price, active",
     )
     .eq("store_id", storeId)
     .order("day_of_week", { ascending: true })

@@ -42,7 +42,7 @@ export default async function StoreMembershipsPage({
 
   const { data: rowsData } = await supabase
     .from("store_membership_plans")
-    .select("id, name, name_en, price, period, description")
+    .select("id, name, name_en, price, period, description, active")
     .eq("store_id", storeId)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });

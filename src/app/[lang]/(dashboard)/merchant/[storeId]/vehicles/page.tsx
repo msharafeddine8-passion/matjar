@@ -49,7 +49,7 @@ export default async function StoreVehiclesPage({
   const { data } = await supabase
     .from("rental_vehicles")
     .select(
-      "id, name, vehicle_type, transmission, fuel, seats, model_year, base_daily_price, weekend_price, min_days, delivery_fee, deposit_amount, min_driver_age, daily_km_limit, extra_km_price, insurance_included, insurance_note, pickup_location",
+      "id, name, vehicle_type, transmission, fuel, seats, model_year, base_daily_price, weekend_price, min_days, delivery_fee, deposit_amount, min_driver_age, daily_km_limit, extra_km_price, insurance_included, insurance_note, pickup_location, active",
     )
     .eq("store_id", storeId)
     .order("sort_order", { ascending: true })

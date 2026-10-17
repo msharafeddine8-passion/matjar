@@ -1,15 +1,20 @@
 "use client";
-import { notifyError } from "@/lib/notify";
+import { notifyError, notifySuccess } from "@/lib/notify";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, X, GraduationCap } from "lucide-react";
+import { Plus, X, GraduationCap } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { Input, Textarea } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
-import { useConfirm } from "@/components/ui/confirm-dialog";
+import { Badge } from "@/components/ui/badge";
+import {
+  CatalogRowActions,
+  updateCatalogRow,
+  useCatalogRowOps,
+} from "@/components/catalog-row-actions";
 
 export type CourseRow = {
   id: string;
@@ -20,6 +25,7 @@ export type CourseRow = {
   duration: string | null;
   schedule: string | null;
   level: string | null;
+  active: boolean;
 };
 
 type Draft = {
@@ -56,26 +62,43 @@ export function CoursesManager({
   courses: CourseRow[];
 }) {
   const router = useRouter();
-  const confirm = useConfirm();
   const t = dict.courses;
+  const c = dict.catalogItem;
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<Draft>(empty);
   const [busy, setBusy] = useState(false);
+  // The row being edited; null = the form adds a new course.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const ops = useCatalogRowOps("store_courses", dict);
 
   function startNew() {
     setDraft({ ...empty });
+    setEditingId(null);
     setAdding(true);
+  }
+  function startEdit(row: CourseRow) {
+    setDraft({
+      name: row.name,
+      name_en: row.name_en ?? "",
+      description: row.description ?? "",
+      price: row.price == null ? "" : String(row.price),
+      duration: row.duration ?? "",
+      schedule: row.schedule ?? "",
+      level: row.level ?? "",
+    });
+    setEditingId(row.id);
+    setAdding(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function cancel() {
     setAdding(false);
+    setEditingId(null);
     setDraft(empty);
   }
 
   async function save() {
     setBusy(true);
-    const supabase = createClient();
-    const { error } = await supabase.from("store_courses").insert({
-      store_id: storeId,
+    const values = {
       name: draft.name.trim(),
       name_en: draft.name_en.trim() || null,
       description: draft.description.trim() || null,
@@ -83,7 +106,22 @@ export function CoursesManager({
       duration: draft.duration.trim() || null,
       schedule: draft.schedule.trim() || null,
       level: draft.level.trim() || null,
-    });
+    };
+    if (editingId) {
+      const ok = await updateCatalogRow("store_courses", editingId, values);
+      setBusy(false);
+      if (!ok) {
+        notifyError(dict.common.actionFailed);
+        return;
+      }
+      notifySuccess(c.saved);
+      cancel();
+      router.refresh();
+      return;
+    }
+    const { error } = await createClient()
+      .from("store_courses")
+      .insert({ store_id: storeId, ...values });
     setBusy(false);
     if (error) {
       notifyError(dict.auth.errorGeneric);
@@ -93,23 +131,13 @@ export function CoursesManager({
     router.refresh();
   }
 
-  async function remove(id: string) {
-    if (!(await confirm({ message: dict.merchant.products.confirmDelete, confirmLabel: dict.common.confirm, cancelLabel: dict.common.cancel, danger: true }))) return;
-    setBusy(true);
-    const { error } = await createClient()
-      .from("store_courses")
-      .delete()
-      .eq("id", id);
-    setBusy(false);
-    if (error) {
-      notifyError(dict.auth.errorGeneric);
-      return;
-    }
-    router.refresh();
-  }
+  const editingName = courses.find((row) => row.id === editingId)?.name;
 
   const form = (
     <div className="space-y-3 rounded-2xl border border-primary/30 bg-surface p-5">
+      {editingName && (
+        <h3 className="font-bold">{c.editTitle.replace("{name}", editingName)}</h3>
+      )}
       <div>
         <label className={labelClass} htmlFor="course-name">{t.name}</label>
         <Input
@@ -180,14 +208,14 @@ export function CoursesManager({
       </div>
       <div className="flex gap-2">
         <Button disabled={!draft.name.trim()} loading={busy} onClick={save}>
-          {t.save}
+          {editingId ? c.saveChanges : t.save}
         </Button>
         <Button
           variant="secondary"
           onClick={cancel}
           leftIcon={<X className="h-4 w-4" />}
         >
-          {dict.merchant.doctors.cancel}
+          {editingId ? c.cancelEdit : dict.merchant.doctors.cancel}
         </Button>
       </div>
     </div>
@@ -215,24 +243,33 @@ export function CoursesManager({
             {t.empty}
           </div>
         )}
-        {courses.map((c) => {
-          const primary = lang === "en" ? c.name_en || c.name : c.name;
+        {courses.map((row) => {
+          const primary = lang === "en" ? row.name_en || row.name : row.name;
           const meta = [
-            c.duration,
-            c.schedule,
-            c.level,
-            c.price != null ? String(c.price) : null,
+            row.duration,
+            row.schedule,
+            row.level,
+            row.price != null ? String(row.price) : null,
           ].filter((part) => part && part.trim() !== "");
           return (
             <div
-              key={c.id}
-              className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3"
+              key={row.id}
+              className={`flex items-center gap-3 rounded-2xl border bg-surface p-3 ${
+                editingId === row.id ? "border-primary" : "border-border"
+              }`}
             >
               <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-muted-foreground">
                 <GraduationCap className="h-6 w-6" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-bold">{primary}</p>
+                <p className="flex items-center gap-2">
+                  <span className="truncate font-bold">{primary}</span>
+                  {!row.active && (
+                    <Badge variant="neutral" size="sm">
+                      {c.hiddenBadge}
+                    </Badge>
+                  )}
+                </p>
                 {meta.length > 0 && (
                   <div className="mt-1 flex flex-wrap items-center gap-x-1 text-sm text-muted-foreground">
                     {meta.map((part, i) => (
@@ -243,20 +280,21 @@ export function CoursesManager({
                     ))}
                   </div>
                 )}
-                {c.description && (
+                {row.description && (
                   <p className="mt-1 truncate text-sm text-muted-foreground">
-                    {c.description}
+                    {row.description}
                   </p>
                 )}
               </div>
-              <button
-                disabled={busy}
-                onClick={() => remove(c.id)}
-                aria-label={t.delete}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-danger transition-colors hover:bg-danger-soft disabled:opacity-60"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <CatalogRowActions
+                dict={dict}
+                deleteLabel={t.delete}
+                busy={busy || ops.busyId === row.id}
+                active={row.active}
+                onEdit={() => startEdit(row)}
+                onToggleActive={() => ops.setActive(row.id, !row.active)}
+                onDelete={() => ops.remove(row.id, true)}
+              />
             </div>
           );
         })}
