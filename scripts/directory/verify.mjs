@@ -13,7 +13,8 @@ const rows = JSON.parse(readFileSync(input, "utf8")).filter((r) => r.website);
 const out = existsSync(output) ? JSON.parse(readFileSync(output, "utf8")) : {};
 const UA = "Mozilla/5.0 (compatible; MatjarDirectory/1.0; +https://matjarlb.com)";
 // Parked and for-sale pages answer 200 and look alive.
-const PARKED = /(domain (is )?for sale|buy this domain|parked free|sedoparking|hugedomains|godaddy\.com\/forsale|this domain may be for sale|account suspended|site not found)/i;
+// Hacked sites serving gambling spam answer 200 too; never link a visitor to one.
+const PARKED = /(domain (is )?for sale|buy this domain|parked free|sedoparking|hugedomains|godaddy\.com\/forsale|this domain may be for sale|account suspended|site not found|togel|slot gacor|situs slot|judi online|agen slot|bandar (bola|togel)|casino online)/i;
 
 const SOCIAL_SKIP = /\/(sharer|share|plugins|dialog|tr\?|intent|login|policies|help|privacy|about|explore|p\/|reel\/|stories\/)/i;
 function socialFrom(html, host) {
@@ -71,12 +72,19 @@ let done = 0;
 const queue = rows.filter((r) => !out[r.source_key]);
 async function worker() {
   for (let r; (r = queue.shift()); ) {
-    try { out[r.source_key] = await visit(r); }
-    catch (err) { out[r.source_key] = { alive: false, status: err.name }; }
-    if (++done % 50 === 0) { writeFileSync(output, JSON.stringify(out)); console.log(done); }
+    // A stalled body read can leave nothing keeping Node alive, and it would exit
+    // mid-run without a word: a hard deadline per site, on a real timer.
+    let timer;
+    const deadline = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error("deadline")), 25000); });
+    try { out[r.source_key] = await Promise.race([visit(r), deadline]); }
+    catch (err) { out[r.source_key] = { alive: false, status: err.name === "Error" ? err.message : err.name }; }
+    finally { clearTimeout(timer); }
+    if (++done % 25 === 0) { writeFileSync(output, JSON.stringify(out)); console.log(done); }
   }
 }
+const keepAlive = setInterval(() => {}, 1000);
 await Promise.all(Array.from({ length: 10 }, worker));
+clearInterval(keepAlive);
 writeFileSync(output, JSON.stringify(out));
 const v = Object.values(out);
 console.log({ visited: v.length, alive: v.filter((x) => x.alive).length, instagram: v.filter((x) => x.instagram).length,

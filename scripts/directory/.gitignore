@@ -4,3 +4,5 @@ data/batches/
 data/existing.json
 data/presence.json
 data/verify*.json
+data/final*.json
+data/logos.map.json
