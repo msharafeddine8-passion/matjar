@@ -79,7 +79,7 @@ export async function ImportPage({
   if (!storeRow) redirect(`/${lang}/merchant`);
   const store = storeRow as {
     name: string;
-    owner_id: string;
+    owner_id: string | null;
     plan: string | null;
     trial_ends_at: string | null;
   };

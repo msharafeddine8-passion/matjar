@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ShieldCheck, Wallet, BadgeCheck, MessageCircle, AlertCircle, Lock, Ban, Headphones, Check, RotateCcw, Landmark, FileCheck2, UserCheck, Crown } from "lucide-react";
+import { Globe, ShieldCheck, Wallet, BadgeCheck, MessageCircle, AlertCircle, Lock, Ban, Headphones, Check, RotateCcw, Landmark, FileCheck2, UserCheck, Crown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
@@ -135,8 +135,25 @@ export default async function TrustPage({
           </div>
         </section>
 
-        {/* Returns */}
+        {/* Directory listings gathered from public sources (0338) */}
         <section className="mt-14 rounded-3xl border border-border bg-surface p-7 shadow-sm sm:p-9">
+          <h2 className="flex items-center gap-2 text-xl font-extrabold"><Globe className="h-5 w-5 text-primary" /> {t.directoryTitle}</h2>
+          <p className="mt-3 max-w-2xl leading-8 text-muted-foreground">{t.directoryBody}</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t.directoryOsm}
+            <a
+              href="https://www.openstreetmap.org/copyright"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-primary"
+            >
+              <bdi dir="ltr">{t.directoryOsmCredit}</bdi>
+            </a>
+          </p>
+        </section>
+
+        {/* Returns */}
+        <section className="mt-6 rounded-3xl border border-border bg-surface p-7 shadow-sm sm:p-9">
           <h2 className="flex items-center gap-2 text-xl font-extrabold"><RotateCcw className="h-5 w-5 text-primary" /> {t.returnsTitle}</h2>
           <p className="mt-3 max-w-2xl leading-8 text-muted-foreground">{t.returnsBody}</p>
         </section>

@@ -41,7 +41,7 @@ export default async function ThreadPage({
 
   const store = conv.stores as unknown as {
     name: string;
-    owner_id: string;
+    owner_id: string | null;
   } | null;
   // Resolve the counterparty via a SECURITY DEFINER, participant-gated RPC.
   // Reading profiles directly does NOT work here: profiles_select RLS is

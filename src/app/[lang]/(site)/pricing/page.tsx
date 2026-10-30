@@ -76,9 +76,13 @@ export default async function PricingPage({
   // An answer that quotes the promo prices only makes sense while the promo is
   // running (it points at "the countdown above"), so it is dropped after PROMO_END.
   const copyVars = planCopyVars(now);
-  const faq = t.faq
-    .filter((f) => promoActive || !/\{(basic|pro|business)Annual\}/.test(f.a))
-    .map((f) => ({ q: fillPlanCopy(f.q, copyVars), a: fillPlanCopy(f.a, copyVars) }));
+  const faq = [
+    ...t.faq
+      .filter((f) => promoActive || !/\{(basic|pro|business)Annual\}/.test(f.a))
+      .map((f) => ({ q: fillPlanCopy(f.q, copyVars), a: fillPlanCopy(f.a, copyVars) })),
+    // A business owner who found their shop listed will look for the answer here.
+    { q: t.faqDirectoryQ, a: t.faqDirectoryA },
+  ];
 
   // Every cell is computed, never typed in. Ticks come from the plan floor the
   // merchant screens actually enforce (feature-availability.ts checks each floor
