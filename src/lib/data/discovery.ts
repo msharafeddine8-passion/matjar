@@ -4,8 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public-client";
 import {
   categoryGroup,
+  categoryKeys,
   groupCategories,
+  regions,
   toCategoryKey,
+  type CategoryKey,
   type RegionKey,
   type Store,
 } from "@/lib/catalog";
@@ -13,6 +16,7 @@ import { isOpenNow, parseHours } from "@/lib/hours";
 import type { StorePlan } from "@/lib/plan-tiers";
 import { FETCH_BOUNDS, warnIfTruncated } from "./bounds";
 import { followedAmong } from "./stores";
+import { getShowcaseStoreIds } from "./store-listing";
 import { sanitizeDisplayName, validateStorePublic } from "@/lib/data-quality";
 import {
   DISCOVERY_PAGE_SIZE,
@@ -53,10 +57,11 @@ export type DiscoveryResult = {
 // only (lib/data-quality.ts); the card renders none of them. The fulfilment
 // and insurance columns feed the sector-aware facts line (lib/card-facts.ts).
 const STORE_SELECT =
-  "id, name, description, area, region, phone, whatsapp, service_area, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, created_at, accepts_delivery, accepts_pickup, min_order, prep_time, insurance, business_types!inner(slug)";
+  "id, owner_id, name, description, area, region, phone, whatsapp, service_area, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, created_at, accepts_delivery, accepts_pickup, min_order, prep_time, insurance, business_types!inner(slug)";
 
 type StoreRow = {
   id: string;
+  owner_id: string | null;
   name: string;
   description: string | null;
   area: string | null;
@@ -104,7 +109,10 @@ function isListable(row: StoreRow): boolean {
         logo_url: row.logo_url,
         cover_url: row.cover_url,
       },
-      { sector: toCategoryKey(row.business_types?.slug) },
+      {
+        sector: toCategoryKey(row.business_types?.slug),
+        directory: row.owner_id == null,
+      },
     ).level !== "blocked"
   );
 }
@@ -120,6 +128,8 @@ function rowToStore(
     hoursKnown: hours != null,
     rowFacts: storeRowCardSource(row),
     id: row.id,
+    unclaimed: row.owner_id == null,
+    showcase: row.owner_id == null,
     name: { ar: name, en: name },
     area: { ar: row.area ?? "", en: row.area ?? "" },
     region: (row.region as RegionKey) ?? undefined,
@@ -363,11 +373,83 @@ export async function cardRollups(
 // Coverage
 // ---------------------------------------------------------------------------
 
-// Bounded so discovery never issues an unbounded query. Matjar has thirteen
-// active stores; this is the ceiling at which the post-filter-then-slice
-// approach below stops being exact and the remaining predicates (open now) have
-// to move into SQL.
-const DISCOVERY_FETCH_LIMIT = 200;
+// Bounded so discovery never issues an unbounded query. This window holds OWNED
+// stores only: it is the ceiling at which the post-filter-then-slice approach
+// below stops being exact and the remaining predicates (open now) have to move
+// into SQL. Unclaimed directory rows (0338) never enter it — there are thousands
+// of them, so they are counted and paged by the database instead.
+const DISCOVERY_FETCH_LIMIT = FETCH_BOUNDS.ownedDiscoveryStores;
+
+type UnclaimedCensus = {
+  total: number;
+  bySector: Partial<Record<CategoryKey, number>>;
+  byRegion: Partial<Record<RegionKey, number>>;
+  withSpecialties: number;
+};
+
+/**
+ * Unclaimed rows, counted rather than fetched: one HEAD request per sector and
+ * per region, so the facets stay exact at any size and no row travels. Only the
+ * first request runs while there are none.
+ *
+ * Its own cache and its own tag on purpose. Every merchant write busts "stores",
+ * and recounting the directory for a price change would be two dozen queries for
+ * a number that only moves when an import runs or a store is claimed. An hour is
+ * how late a freshly imported batch can appear in the counts.
+ */
+const fetchUnclaimedCensus = unstable_cache(
+  async (): Promise<UnclaimedCensus | null> => {
+    const supabase = createPublicClient();
+    const { count: total } = await supabase
+      .from("stores")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .is("owner_id", null);
+    if (!total) return null;
+    const [sectors, places, specialties] = await Promise.all([
+      Promise.all(
+        categoryKeys.map(async (key) => {
+          const { count } = await supabase
+            .from("stores")
+            .select("id, business_types!inner(slug)", { count: "exact", head: true })
+            .eq("status", "active")
+            .is("deleted_at", null)
+            .is("owner_id", null)
+            .eq("business_types.slug", key);
+          return [key, count ?? 0] as const;
+        }),
+      ),
+      Promise.all(
+        regions.map(async (r) => {
+          const { count } = await supabase
+            .from("stores")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "active")
+            .is("deleted_at", null)
+            .is("owner_id", null)
+            .eq("region", r.key);
+          return [r.key, count ?? 0] as const;
+        }),
+      ),
+      supabase
+        .from("stores")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active")
+        .is("deleted_at", null)
+        .is("owner_id", null)
+        .not("specialties", "is", null),
+    ]);
+    return {
+      total,
+      bySector: Object.fromEntries(sectors.filter(([, n]) => n > 0)),
+      byRegion: Object.fromEntries(places.filter(([, n]) => n > 0)),
+      withSpecialties: specialties.count ?? 0,
+    };
+  },
+  ["discovery-unclaimed-census-v1"],
+  { revalidate: 3600, tags: ["stores-directory"] },
+);
 
 /**
  * What the marketplace actually holds, counted rather than assumed.
@@ -387,7 +469,9 @@ export const getDiscoveryCoverage = unstable_cache(
       )
       .eq("status", "active")
       .is("deleted_at", null)
+      .not("owner_id", "is", null)
       .limit(DISCOVERY_FETCH_LIMIT);
+    warnIfTruncated(data, DISCOVERY_FETCH_LIMIT, "discovery coverage (owned stores)");
 
     const rows = (data ?? []) as unknown as {
       id: string;
@@ -402,12 +486,14 @@ export const getDiscoveryCoverage = unstable_cache(
       accepts_pickup: boolean | null;
       business_types: { slug: string } | null;
     }[];
-    if (!rows.length) return EMPTY_COVERAGE;
-
-    const [facts, providers] = await Promise.all([
+    const [facts, providers, census, showcaseIds] = await Promise.all([
       fetchCatalogFacts(),
       fetchProviderCounts(),
+      fetchUnclaimedCensus(),
+      getShowcaseStoreIds(),
     ]);
+    if (!rows.length && !census) return EMPTY_COVERAGE;
+    const showcase = new Set(showcaseIds);
 
     const c: DiscoveryCoverage = {
       ...EMPTY_COVERAGE,
@@ -455,8 +541,9 @@ export const getDiscoveryCoverage = unstable_cache(
         ["registered", r.commercial_reg_verified === true],
         ["withCatalog", (f?.catalogCount ?? 0) > 0],
         ["withOffers", f?.hasOffers === true],
-        ["withDelivery", r.accepts_delivery === true],
-        ["withPickup", r.accepts_pickup === true],
+        // A showcase store keeps the column but takes no delivery order.
+        ["withDelivery", r.accepts_delivery === true && !showcase.has(r.id)],
+        ["withPickup", r.accepts_pickup === true && !showcase.has(r.id)],
         ["withPricedServices", f?.serviceMinPrice != null],
       ];
       for (const [k, on] of flags) {
@@ -465,10 +552,29 @@ export const getDiscoveryCoverage = unstable_cache(
         if (k !== "total") c[k] += 1;
       }
     }
+
+    // Directory rows join the facets and the totals — a sector with five
+    // hundred listed pharmacies is not an empty sector — and nothing else: none
+    // of them has a catalogue, a rating or a delivery term to be counted for.
+    if (census) {
+      c.total += census.total;
+      c.unclaimed = census.total;
+      c.withSpecialties += census.withSpecialties;
+      for (const [key, n] of Object.entries(census.bySector) as [CategoryKey, number][]) {
+        c.bySector[key] = (c.bySector[key] ?? 0) + n;
+        const group = categoryGroup[key];
+        if (group) c.byGroup[group] = (c.byGroup[group] ?? 0) + n;
+        const sc = (by[key] ??= { ...EMPTY_SECTOR_COUNTS });
+        sc.total += n;
+      }
+      for (const [key, n] of Object.entries(census.byRegion) as [RegionKey, number][]) {
+        c.byRegion[key] = (c.byRegion[key] ?? 0) + n;
+      }
+    }
     return c;
   },
-  // v2: the shape gained delivery / pickup / priced counts and bySectorCounts.
-  ["discovery-coverage-v2"],
+  // v3: owned rows only in the window, unclaimed from the census.
+  ["discovery-coverage-v3"],
   // 5 min, not 60 s: every merchant write busts the "stores" tag
   // (cache-actions.ts), so this only bounds staleness from other paths. At 60 s
   // these rollups were a quarter of all SSR requests (~6,100/day).
@@ -495,6 +601,12 @@ export function escapeForOr(term: string): string {
  * read against the current minute, so it is applied after the fetch, and the
  * page count is computed from the filtered array rather than from a SQL count
  * that would disagree with it.
+ *
+ * Owned stores always come first, on every sort. Unclaimed directory rows (0338)
+ * follow, in the same pagination, read one screen at a time with their count
+ * from the database: `total` stays exact and nothing is loaded that is not drawn.
+ * A filter only an owned store can satisfy (reviews, catalogue, delivery, open
+ * now) simply leaves them out, because no directory row has any of those.
  */
 export async function getDiscoveryResults(
   q: DiscoveryQuery,
@@ -502,18 +614,34 @@ export async function getDiscoveryResults(
   const supabase = await createClient();
   const facts = await fetchCatalogFacts();
 
-  let query = supabase
-    .from("stores")
-    .select(STORE_SELECT)
-    .eq("status", "active")
-    .is("deleted_at", null);
+  const term = escapeForOr(q.q);
+  // The constraints an owned store and a directory row answer alike. Applied to
+  // three queries below, so it is one function rather than three copies that can
+  // disagree about what the count is counting.
+  const scoped = <Q,>(query: Q): Q => {
+    let out = query as unknown as Scopable;
+    if (q.sector) {
+      out = out.eq("business_types.slug", q.sector);
+    } else if (q.group) {
+      out = out.in("business_types.slug", groupCategories(q.group));
+    }
+    if (q.region) out = out.eq("region", q.region);
+    if (term) {
+      out = out.or(
+        `name.ilike.%${term}%,description.ilike.%${term}%,area.ilike.%${term}%`,
+      );
+    }
+    return out as unknown as Q;
+  };
 
-  if (q.sector) {
-    query = query.eq("business_types.slug", q.sector);
-  } else if (q.group) {
-    query = query.in("business_types.slug", groupCategories(q.group));
-  }
-  if (q.region) query = query.eq("region", q.region);
+  let query = scoped(
+    supabase
+      .from("stores")
+      .select(STORE_SELECT)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .not("owner_id", "is", null),
+  );
   if (q.rated) query = query.gt("rating_count", 0);
   // The two fulfilment switches are plain columns: the store row IS the answer.
   if (q.delivers) query = query.eq("accepts_delivery", true);
@@ -538,13 +666,6 @@ export async function getDiscoveryResults(
     query = query.in("id", ids);
   }
 
-  const term = escapeForOr(q.q);
-  if (term) {
-    query = query.or(
-      `name.ilike.%${term}%,description.ilike.%${term}%,area.ilike.%${term}%`,
-    );
-  }
-
   if (q.sort === "topRated") {
     query = query
       .order("rating_avg", { ascending: false })
@@ -553,10 +674,22 @@ export async function getDiscoveryResults(
     query = query.order("created_at", { ascending: false });
   }
 
-  const { data } = await query.limit(DISCOVERY_FETCH_LIMIT);
+  const [{ data }, showcaseIds] = await Promise.all([
+    query.limit(DISCOVERY_FETCH_LIMIT),
+    getShowcaseStoreIds(),
+  ]);
+  warnIfTruncated(data, DISCOVERY_FETCH_LIMIT, "discovery results (owned stores)");
+  const showcase = new Set(showcaseIds);
   let list = ((data ?? []) as unknown as StoreRow[])
     .filter(isListable)
-    .map(rowToStore);
+    .map((row) => {
+      const s = rowToStore(row);
+      return showcase.has(s.id) ? { ...s, showcase: true } : s;
+    });
+
+  // The columns stay on after a merchant switches to display-only; the promise
+  // does not. Same reason the coverage counts leave these stores out.
+  if (q.delivers || q.pickup) list = list.filter((s) => !s.showcase);
 
   // "Open now" is a claim about the clock, so it needs published hours: a
   // store with none is not listed here (its card shows no badge either).
@@ -568,13 +701,56 @@ export async function getDiscoveryResults(
     list.sort((a, b) => Number(b.featured ?? false) - Number(a.featured ?? false));
   }
 
-  const total = list.length;
+  // Every one of these needs something no directory row has.
+  const directoryEligible = !(
+    q.rated ||
+    q.delivers ||
+    q.pickup ||
+    q.openNow ||
+    q.hasCatalog ||
+    q.hasOffers ||
+    q.hasPricedServices
+  );
+  let unclaimedTotal = 0;
+  if (directoryEligible) {
+    const { count } = await scoped(
+      supabase
+        .from("stores")
+        .select("id, business_types!inner(slug)", { count: "exact", head: true })
+        .eq("status", "active")
+        .is("deleted_at", null)
+        .is("owner_id", null),
+    );
+    unclaimedTotal = count ?? 0;
+  }
+
+  const total = list.length + unclaimedTotal;
   const pageCount = Math.max(1, Math.ceil(total / DISCOVERY_PAGE_SIZE));
   const page = Math.min(Math.max(1, q.page), pageCount);
-  const slice = list.slice(
-    (page - 1) * DISCOVERY_PAGE_SIZE,
-    page * DISCOVERY_PAGE_SIZE,
-  );
+  const start = (page - 1) * DISCOVERY_PAGE_SIZE;
+  const slice = list.slice(start, page * DISCOVERY_PAGE_SIZE);
+
+  // What the owned stores leave of this screen, from the directory. Reachable
+  // rows first: `phone` sorts them ahead of the ones with no number, and `id`
+  // makes the order total, which is what makes `.range()` paging safe.
+  const room = DISCOVERY_PAGE_SIZE - slice.length;
+  if (directoryEligible && unclaimedTotal > 0 && room > 0) {
+    const from = Math.max(0, start - list.length);
+    const { data: rows } = await scoped(
+      supabase
+        .from("stores")
+        .select(STORE_SELECT)
+        .eq("status", "active")
+        .is("deleted_at", null)
+        .is("owner_id", null)
+        .order("phone", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true })
+        .range(from, from + room - 1),
+    );
+    slice.push(
+      ...((rows ?? []) as unknown as StoreRow[]).filter(isListable).map(rowToStore),
+    );
+  }
 
   // Row facts (the stores columns) + the batched rollups, for this page only.
   const rollups = await cardRollups(slice.map((s) => s.id));
@@ -590,6 +766,13 @@ export async function getDiscoveryResults(
 
   return { stores: withFacts, total, page, pageCount };
 }
+
+/** The part of a query builder the shared discovery constraints touch. */
+type Scopable = {
+  eq(column: string, value: string): Scopable;
+  in(column: string, values: readonly string[]): Scopable;
+  or(filters: string): Scopable;
+};
 
 function empty(page: number): DiscoveryResult {
   return { stores: [], total: 0, page: Math.max(1, page), pageCount: 1 };

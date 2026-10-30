@@ -23,6 +23,7 @@ export default async function AdminSubscriptionsPage({
     .select("id, name, plan")
     .eq("status", "active")
     .is("deleted_at", null)
+    .not("owner_id", "is", null) // a directory row has nobody to subscribe
     .order("created_at", { ascending: false });
   const stores = (storesData ?? []) as {
     id: string;

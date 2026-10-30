@@ -512,6 +512,7 @@ export async function getMerchantStalls(
         )
         .eq("status", "active")
         .is("deleted_at", null)
+        .not("owner_id", "is", null) // a directory row has no merchant to stall
         .order("created_at", { ascending: true })
         .order("id", { ascending: true })
         // supabase-js types every embed as an array; PostgREST returns a plain

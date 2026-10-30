@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createPublicClient } from "@/lib/supabase/public-client";
 import { FETCH_BOUNDS, warnIfTruncated } from "./bounds";
+import { readStoreListing } from "./store-listing";
 import { regions } from "@/lib/catalog";
 import type { Locale } from "@/i18n/config";
 import type {
@@ -58,12 +59,21 @@ async function fetchStoreCheckout(
   const { data } = await supabase
     .from("stores")
     .select(
-      "name, whatsapp, accepts_delivery, accepts_pickup, min_order, prep_time, payment_note, loyalty_redemption_enabled, loyalty_points_per_unit",
+      "name, owner_id, whatsapp, accepts_delivery, accepts_pickup, min_order, prep_time, payment_note, loyalty_redemption_enabled, loyalty_points_per_unit",
     )
     .eq("id", storeId)
     .is("deleted_at", null)
     .maybeSingle();
   if (!data) return null;
+  // No checkout on a display-only store (0338): every order surface already
+  // treats a null context as "nobody may order from here", and the order RPCs
+  // would refuse with store_showcase_only anyway.
+  const { showcase } = await readStoreListing(
+    supabase,
+    storeId,
+    (data.owner_id as string | null) ?? null,
+  );
+  if (showcase) return null;
 
   const [{ data: zoneRows }, { data: cfields }, { data: locs }, giftRes] =
     await Promise.all([
