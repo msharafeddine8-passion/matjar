@@ -284,6 +284,11 @@ export type StoreQualityOptions = {
   /** The store's resolved feature modules, when the caller has them. Without
    *  them the sector defaults decide. */
   modules?: Set<FeatureModuleKey>;
+  /** An unclaimed directory row (0338). It states only what a public source
+   *  states, is labelled unconfirmed, and its page offers a way for the owner to
+   *  step in — so a missing phone number is a gap, not a reason to hide it. The
+   *  name rules still block. */
+  directory?: boolean;
 };
 
 /** Sectors whose primary public entity lives outside `products` — the same
@@ -338,7 +343,12 @@ export function validateStorePublic(
     }
   }
 
-  issues.push(...contactIssues([input.phone, input.whatsapp]));
+  const contact = contactIssues([input.phone, input.whatsapp]);
+  issues.push(
+    ...(opts.directory
+      ? contact.map((i) => ({ ...i, severity: "flag" as const }))
+      : contact),
+  );
   issues.push(...descriptionIssues(input.description));
 
   // The card draws a monogram when both are absent, so this is a gap the

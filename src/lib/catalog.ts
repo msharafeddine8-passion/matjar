@@ -202,6 +202,10 @@ export type Store = {
   registered?: boolean;
   featured?: boolean;
   favorited?: boolean;
+  /** No owner yet (0338): a directory listing, labelled unconfirmed. */
+  unclaimed?: boolean;
+  /** Display only (0338): no orders or bookings through Matjar. */
+  showcase?: boolean;
   logoUrl?: string | null;
   coverUrl?: string | null;
   /** Vertical focal point of the banner, 0-100 (see stores.cover_position). */

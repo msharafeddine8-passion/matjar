@@ -5,6 +5,7 @@ import {
   STORE_ALL_COLUMNS,
   STORE_ANON_COLUMNS,
   STORE_AUTHENTICATED_COLUMNS,
+  STORE_COLUMNS_ADDED_0338,
   STORE_PRIVATE_COLUMNS,
   VERIFICATION_ANON_COLUMNS,
   VERIFICATION_AUTHENTICATED_COLUMNS,
@@ -346,14 +347,14 @@ describe("every stores read in src/ names only granted columns", () => {
     expect(allUses.filter((u) => u.column === "*")).toEqual([]);
   });
 
-  it("public code names only STORE_ANON_COLUMNS", () => {
-    const anon = new Set<string>(STORE_ANON_COLUMNS);
+  it("public code names only STORE_ANON_COLUMNS (+ the 0338 additions)", () => {
+    const anon = new Set<string>([...STORE_ANON_COLUMNS, ...STORE_COLUMNS_ADDED_0338]);
     const bad = allUses.filter((u) => !isDashboard(u.file) && !anon.has(u.column));
     expect(bad, JSON.stringify(bad, null, 1)).toEqual([]);
   });
 
   it("no code names a private column directly (they come from store_private_fields)", () => {
-    const auth = new Set<string>(STORE_AUTHENTICATED_COLUMNS);
+    const auth = new Set<string>([...STORE_AUTHENTICATED_COLUMNS, ...STORE_COLUMNS_ADDED_0338]);
     const bad = allUses.filter((u) => !auth.has(u.column));
     expect(bad, JSON.stringify(bad, null, 1)).toEqual([]);
   });
@@ -376,5 +377,19 @@ describe("every stores read in src/ names only granted columns", () => {
     const cols = columnsOfSelect(text ?? "");
     expect(cols.length).toBeGreaterThan(3);
     expect(cols.filter((c) => !anon.has(c))).toEqual([]);
+  });
+});
+
+describe("0338 columns are read only through the fail-soft helper", () => {
+  it("no other file selects them, so a missing grant cannot blank a page", () => {
+    // 42501 fails a whole select. store-listing.ts asks for these columns on
+    // their own and treats a refusal as "not known yet"; a read that names one
+    // next to columns a page depends on would turn the same refusal into an
+    // empty storefront.
+    const added = new Set<string>(STORE_COLUMNS_ADDED_0338);
+    const owners = new Set(
+      allUses.filter((u) => added.has(u.column)).map((u) => u.file),
+    );
+    expect([...owners].sort()).toEqual(["src/lib/data/store-listing.ts"]);
   });
 });

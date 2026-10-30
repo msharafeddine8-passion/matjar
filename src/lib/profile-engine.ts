@@ -89,7 +89,8 @@ export type ProfileFacts = {
     | "showTickets"
     | "allowResourceBooking"
     | "directoryOnly"
-  >;
+  > &
+    Partial<Pick<StoreExperience, "showcase" | "unclaimed">>;
   hasAnnouncement: boolean;
   /** Active catalogue rows by kind. */
   goods: number;
@@ -243,6 +244,7 @@ function presence(
     // over an empty page (9 of 21 live stores at the time).
     delivery:
       f.isReal &&
+      !x.showcase &&
       f.enabledModules.has("orders") &&
       f.goods > 0 &&
       (d.acceptsDelivery ||
@@ -262,7 +264,8 @@ function presence(
     resources: f.resources > 0 && x.allowResourceBooking,
     memberships: f.membershipPlans > 0,
     classes: f.classes > 0 && x.allowResourceBooking,
-    reservations: f.isReal && f.enabledModules.has("reservations"),
+    reservations:
+      f.isReal && !x.showcase && f.enabledModules.has("reservations"),
     courses: f.courses > 0,
     portfolio: f.portfolio > 0,
     // An empty catalogue is omitted, not drawn as a dashed «no products» box.
@@ -281,13 +284,17 @@ function presence(
         (!summary && (h.pricedServices > 0 || h.timedServices > 0))),
     doctors: f.doctors > 0,
     verifications:
-      f.isReal && f.enabledModules.has("verifications") && f.verifications > 0,
-    loyalty: f.isReal && f.loyaltyRegistered,
+      f.isReal &&
+      !x.unclaimed &&
+      f.enabledModules.has("verifications") &&
+      f.verifications > 0,
+    loyalty: f.isReal && !x.showcase && f.loyaltyRegistered,
     // «لسا ما في تقييمات» is a placeholder to a visitor who cannot write one
     // anyway (reviews need a completed order). It shows when there is
     // something to read, or when THIS viewer can add the first one.
     reviews:
       f.isReal &&
+      !x.unclaimed &&
       f.enabledModules.has("reviews") &&
       (f.reviews.listed > 0 || f.reviews.viewerCanReview),
   };

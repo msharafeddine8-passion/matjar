@@ -86,6 +86,22 @@ export const STORE_PRIVATE_COLUMNS = [
   "status_changed_by", "address",
 ] as const satisfies readonly StoreColumn[];
 
+/**
+ * Columns added by 0338 that the site reads, signed in or not. They are NOT in
+ * the 0314 lists above (those mirror that migration's grant statements), and
+ * 0338 itself granted nothing: they need
+ *   grant select (listing_mode, info_status, data_source, source_url, claimed_at)
+ *     on public.stores to anon, authenticated;
+ * Until that runs every read of them is refused with 42501. For that reason
+ * they are never selected together with anything else — see
+ * src/lib/data/store-listing.ts, whose reads fail soft instead of blanking a
+ * storefront. source_key stays internal: the importer's idempotency key has no
+ * reader on the site.
+ */
+export const STORE_COLUMNS_ADDED_0338 = [
+  "listing_mode", "info_status", "data_source", "source_url", "claimed_at",
+] as const;
+
 const PRIVATE = new Set<string>(STORE_PRIVATE_COLUMNS);
 
 /** What any signed-in account may read: everything except the private set.

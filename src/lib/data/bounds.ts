@@ -67,6 +67,14 @@ export const FETCH_BOUNDS = {
    *  the one place in the app that could not be told it was seeing part of the
    *  list. */
   adminStores: 5000,
+  /** Owned stores in one discovery read. Directory (unowned) rows are NOT here:
+   *  they are counted by the database and paged a screen at a time, because
+   *  thousands of them must never be loaded to answer one request. */
+  ownedDiscoveryStores: 900,
+  /** Owned stores that chose display-only (0338), for the cards. */
+  ownedShowcaseStores: 2000,
+  /** Open and recent claim requests on the admin queue. */
+  adminClaimRequests: 300,
   /** Profiles resolved for the admin roster — each store's owner plus the admin
    *  who last moved its status, so two per store at worst. */
   adminStorePeople: 10000,
