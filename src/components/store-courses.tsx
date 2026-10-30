@@ -1,4 +1,5 @@
-import { BookOpen } from "lucide-react";
+import { BookOpen, MessageCircle } from "lucide-react";
+import { waLink } from "@/lib/phone";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { JoinAction } from "@/components/join-action";
@@ -21,11 +22,15 @@ export function StoreCourses({
   dict,
   lang,
   whatsapp,
+  contactOnly = false,
 }: {
   courses: CourseRow[];
   dict: Dictionary;
   lang: Locale;
   whatsapp: string | null;
+  /** Display only (0338): the database refuses a join, so the button asks on
+   *  WhatsApp instead, and is absent without a number. */
+  contactOnly?: boolean;
 }) {
   if (!courses.length) return null;
   const t = dict.courses;
@@ -55,6 +60,19 @@ export function StoreCourses({
               {c.description && (
                 <p className="mt-2 flex-1 text-sm text-muted-foreground">{c.description}</p>
               )}
+              {contactOnly ? (
+                whatsapp && (
+                  <a
+                    href={waLink(whatsapp, `${t.enrollMsg} ${name}`) ?? "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
+                  >
+                    <MessageCircle aria-hidden className="h-4 w-4" />
+                    {dict.store.whatsapp}
+                  </a>
+                )
+              ) : (
               <JoinAction
                 kind="course"
                 targetId={c.id}
@@ -67,6 +85,7 @@ export function StoreCourses({
                   errorGeneric: dict.common.actionFailed,
                 }}
               />
+              )}
             </div>
           );
         })}

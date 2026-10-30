@@ -39,6 +39,7 @@ export function StoreHeader({
   headerCount,
   ordersFulfilled,
   isFollowing,
+  unclaimed = false,
 }: {
   store: StoreView;
   id: string;
@@ -51,20 +52,23 @@ export function StoreHeader({
   headerCount: number;
   ordersFulfilled: number;
   isFollowing: boolean;
+  /** 0338: no owner yet. No plan, no trust badge, no message button (nobody
+   *  would read it), and the outside links live in the facts card below. */
+  unclaimed?: boolean;
 }) {
   const cat = dict.catalog[store.category];
   // Instagram / Facebook / website — built from the merchant's own fields, so a
   // shop that filled in none of them gets no row at all rather than an empty
   // one. Listed once here because the phone and the desktop each render it in
   // the place that suits them.
-  const elsewhere = [
+  const elsewhere = (unclaimed ? [] : [
     store.instagram && {
       href: store.instagram,
       label: dict.merchant.instagram,
     },
     store.facebook && { href: store.facebook, label: dict.merchant.facebook },
     store.website && { href: store.website, label: dict.merchant.website },
-  ].filter(Boolean) as { href: string; label: string }[];
+  ]).filter(Boolean) as { href: string; label: string }[];
   // Trust and paid status resolved apart (lib/trust.ts). `hasVerified` is the
   // page's `verifications.some(v => v.status === "verified")`; the header only
   // has the boolean, so it is passed as such.
@@ -103,10 +107,15 @@ export function StoreHeader({
                   hours. It said open at 3am, next to the real hours badge a few
                   lines below saying closed. One of them had to go, and it was
                   never going to be the one that reads the clock. */}
-              {paid.showsProMarker && (
+              {!unclaimed && paid.showsProMarker && (
                 <PaidPlanBadge dict={dict} lang={lang} />
               )}
-              <TrustBadges signals={trust} dict={dict} lang={lang} />
+              {!unclaimed && <TrustBadges signals={trust} dict={dict} lang={lang} />}
+              {unclaimed && (
+                <span className="inline-flex items-center rounded-full border border-border bg-surface-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                  {dict.trust.unconfirmedBadge}
+                </span>
+              )}
             </div>
             <p className="mt-1 text-sm font-medium text-muted-foreground">{cat.name}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
@@ -125,7 +134,7 @@ export function StoreHeader({
                   {countLabel(dict.store.ordersFulfilled, ordersFulfilled)}
                 </span>
               )}
-              {store.prepTime && store.acceptsDelivery && (
+              {!unclaimed && store.listingMode !== "showcase" && store.prepTime && store.acceptsDelivery && (
                 <span className="flex items-center gap-1 rounded-full bg-surface-muted px-2.5 py-1 text-muted-foreground">
                   <Clock className="h-4 w-4" />
                   {dict.store.deliveryIn.replace("{t}", store.prepTime)}
@@ -206,7 +215,7 @@ export function StoreHeader({
                 : `${SITE_URL}/${lang}/store/${id}`
             }
           />
-          {store.isReal && (
+          {store.isReal && !unclaimed && (
             <MessageStoreButton compact storeId={id} lang={lang} dict={dictSlice(dict, ["messages"])} />
           )}
           {store.phone && (

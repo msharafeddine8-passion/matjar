@@ -27,6 +27,7 @@ import {
   type CardStore,
   type SectorCardFact,
   type SectorCardSource,
+  withoutTransactionFacts,
 } from "@/lib/card-facts";
 import { formatUsd } from "@/lib/currency";
 import { categoryIcons } from "@/components/category-icon";
@@ -107,10 +108,16 @@ export function StoreCard({
   // buyer of the sector reads and in what order, and the data decides whether
   // each one has anything to say. The store-derived fields go LAST so the open
   // claim is always governed by `hoursKnown`, whatever a caller passed.
-  const source: SectorCardSource = {
+  const rawSource: SectorCardSource = {
     ...(facts ?? store.facts ?? {}),
     ...storeCardSource(store, lang),
   };
+  // Display-only stores (0338): no delivery or pickup chips, no terms of a
+  // transaction that cannot happen. Unclaimed: no rating either.
+  const source =
+    store.showcase || store.unclaimed
+      ? withoutTransactionFacts(rawSource, store.unclaimed === true)
+      : rawSource;
   const all = resolveSectorCard(store.category, source);
   const open = all.find((f) => f.key === "open");
   const rating = all.find((f) => f.key === "rating");
@@ -406,6 +413,11 @@ export function StoreCard({
           </h3>
           {paid.showsProMarker && <PaidPlanBadge dict={dict} lang={lang} />}
           <TrustBadges signals={trust} dict={dict} lang={lang} />
+          {store.unclaimed && (
+            <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-border bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+              {dict.trust.unconfirmedBadge}
+            </span>
+          )}
         </div>
         {/* The sector, then the place, always joined by «·». A clinic is
             chosen by where it is, so its place keeps the pin and the stronger
