@@ -57,7 +57,7 @@ export default async function StoreSubscriptionPage({
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
   // Billing is owner-only (matches the registry's ownerOnly flag).
-  if ((store as unknown as { owner_id: string }).owner_id !== user.id)
+  if ((store as unknown as { owner_id: string | null }).owner_id !== user.id)
     redirect(`/${lang}/merchant/${storeId}`);
   // Read the RAW plan here (not the trial-collapsed effective plan): a store on
   // an active free trial is still on the free plan for billing, so we keep the

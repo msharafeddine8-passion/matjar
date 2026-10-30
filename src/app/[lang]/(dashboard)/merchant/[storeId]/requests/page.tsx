@@ -47,7 +47,7 @@ export default async function StoreRequestsPage({
 
   // Staff need the bookings permission to manage service requests.
   const isOwner =
-    (store as unknown as { owner_id: string }).owner_id === user.id;
+    (store as unknown as { owner_id: string | null }).owner_id === user.id;
   if (!isOwner) {
     const { data: staffRow } = await supabase
       .from("store_staff")

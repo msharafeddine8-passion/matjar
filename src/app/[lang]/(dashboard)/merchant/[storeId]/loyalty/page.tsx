@@ -55,7 +55,7 @@ export default async function LoyaltyPage({
     .eq("id", storeId)
     .maybeSingle();
   if (!storeRow) redirect(`/${lang}/merchant`);
-  const store = storeRow as { name: string; owner_id: string; plan: string | null; trial_ends_at: string | null };
+  const store = storeRow as { name: string; owner_id: string | null; plan: string | null; trial_ends_at: string | null };
   const isOwner = store.owner_id === user.id;
 
   if (!isOwner) {

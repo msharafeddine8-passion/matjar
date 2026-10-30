@@ -44,7 +44,7 @@ export default async function StoreModulesPage({
   if (!store) redirect(`/${lang}/merchant`);
   const s = store as unknown as {
     name: string;
-    owner_id: string;
+    owner_id: string | null;
     plan: StorePlan | null;
     trial_ends_at: string | null;
     business_types: { slug: string } | null;

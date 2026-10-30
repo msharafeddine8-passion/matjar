@@ -1,3 +1,5 @@
+import { ListingModeToggle } from "@/components/listing-mode-toggle";
+import { readStoreListing } from "@/lib/data/store-listing";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
@@ -59,6 +61,7 @@ export default async function StoreSettingsPage({
   // so and leaves the legal columns out of its update — saving blanks over a
   // tax number because it failed to LOAD would be the worst way to fail.
   const legal = (await fetchStorePrivateFields(supabase, [storeId])).get(storeId);
+  const listing = await readStoreListing(supabase, storeId, user.id);
   const isHealthcare =
     (store as unknown as { business_types: { slug: string } | null })
       .business_types?.slug === "healthcare";
@@ -159,6 +162,13 @@ export default async function StoreSettingsPage({
         <p className="mt-2 text-muted-foreground">
           {dict.merchant.settings.subtitle}
         </p>
+        <div className="mt-6">
+          <ListingModeToggle
+            storeId={storeId}
+            initial={listing.listingMode}
+            dict={dictSlice(dict, ["showcase", "auth"])}
+          />
+        </div>
         <div className="mt-6">
           <StoreSettingsForm
             storeId={storeId}

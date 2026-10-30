@@ -81,7 +81,7 @@ async function context(storeId: string): Promise<Ctx | Refusal> {
   const s = storeRow as {
     name: string;
     slug: string | null;
-    owner_id: string;
+    owner_id: string | null;
     plan: string | null;
     trial_ends_at: string | null;
   };

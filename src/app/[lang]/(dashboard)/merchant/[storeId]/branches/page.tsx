@@ -38,7 +38,7 @@ export default async function StoreBranchesPage({
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
   // Branches are an owner-only setting (matches the registry ownerOnly flag).
-  if ((store as unknown as { owner_id: string }).owner_id !== user.id)
+  if ((store as unknown as { owner_id: string | null }).owner_id !== user.id)
     redirect(`/${lang}/merchant/${storeId}`);
   // Multiple branches is a Business-plan feature.
   if (!isBusiness(await getStorePlan(storeId))) {

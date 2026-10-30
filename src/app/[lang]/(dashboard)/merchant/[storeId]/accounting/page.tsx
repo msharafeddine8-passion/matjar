@@ -57,7 +57,7 @@ export default async function AccountingPage({
   // Staff: the permission the module's own tables check (requireModuleAccess).
   await requireModuleAccess(supabase, storeId, "accounting", lang);
   const isOwner =
-    (store as unknown as { owner_id: string }).owner_id === user.id;
+    (store as unknown as { owner_id: string | null }).owner_id === user.id;
 
   const [
     { data: acctData, error: acctErr },

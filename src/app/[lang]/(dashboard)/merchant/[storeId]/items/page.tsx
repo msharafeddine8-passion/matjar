@@ -80,7 +80,7 @@ export default async function StoreItemsPage({
 
   // Staff need the products permission to manage the catalog.
   const isOwner =
-    (store as unknown as { owner_id: string }).owner_id === user.id;
+    (store as unknown as { owner_id: string | null }).owner_id === user.id;
   if (!isOwner) {
     const { data: staffRow } = await supabase
       .from("store_staff")

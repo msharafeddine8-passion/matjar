@@ -65,12 +65,14 @@ export function StoreForm({
   regions,
 }: {
   lang: Locale;
-  dict: Pick<Dictionary, "groups" | "merchant" | "store">;
+  dict: Pick<Dictionary, "groups" | "merchant" | "store" | "showcase">;
   businessTypes: BizOption[];
   regions: Option[];
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  // 0338. Full is the default; display-only is one honest question away.
+  const [showcase, setShowcase] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [waWarn, setWaWarn] = useState(false);
   // Vanity handle, auto-suggested from the name until the merchant edits it.
@@ -140,6 +142,7 @@ export function StoreForm({
       .from("stores")
       .insert({
         owner_id: user.id,
+        listing_mode: showcase ? "showcase" : "full",
         name,
         slug: slug.trim().toLowerCase() || null,
         business_type_id: typeId,
@@ -422,6 +425,41 @@ export function StoreForm({
           className={field}
         />
       </div>
+
+      <fieldset>
+        <legend className="mb-2 text-sm font-semibold">{dict.showcase.formTitle}</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {(
+            [
+              [false, dict.showcase.formFull, dict.showcase.formFullHint],
+              [true, dict.showcase.formShowcase, dict.showcase.formShowcaseHint],
+            ] as const
+          ).map(([value, label, hint]) => (
+            <label
+              key={label}
+              className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3.5 transition-colors ${
+                showcase === value
+                  ? "border-primary bg-primary-soft/50"
+                  : "border-border hover:border-primary/40"
+              }`}
+            >
+              <input
+                type="radio"
+                name="listing_mode"
+                checked={showcase === value}
+                onChange={() => setShowcase(value)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-bold">{label}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+                  {hint}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       {error && <p className="text-sm font-medium text-danger">{error}</p>}
 
