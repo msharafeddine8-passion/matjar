@@ -776,7 +776,7 @@ export default async function ProductPage({
     <ProductReviews
       data={productReviews}
       productId={product.id}
-      canWrite={!!user}
+      canWrite={!!user && !storeContact?.unclaimed}
       lang={l}
       dict={dict}
       copy={{
@@ -791,7 +791,7 @@ export default async function ProductPage({
     <ProductQA
       productId={product.id}
       questions={questions}
-      canAsk={!!user}
+      canAsk={!!user && !storeContact?.unclaimed}
       canAnswer={isStoreOwner}
       dict={dictSlice(dict, ["common", "productQa"])}
       askPlaceholder={copy.qaPlaceholder}

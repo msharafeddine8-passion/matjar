@@ -17,7 +17,10 @@ function externalHref(raw: string | null | undefined): string | null {
 
 /** The address bar's version of a link: no scheme, no www, no trailing slash. */
 function shortHost(href: string): string {
-  return href.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
+  return href
+    .replace(/^https?:\/\/(www\.)?/i, "")
+    .replace(/[?#].*$/, "")
+    .replace(/\/$/, "");
 }
 
 /**

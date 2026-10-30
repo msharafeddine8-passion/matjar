@@ -1196,8 +1196,8 @@ export default async function StorePage({
             __html: jsonLdScript(
               storeJsonLd({
                 name: store.name,
-                description: store.description,
-                image: store.logoUrl ?? store.coverUrl,
+                description: unclaimed ? null : store.description,
+                image: unclaimed ? null : (store.logoUrl ?? store.coverUrl),
                 url: `${SITE_URL}/${lang}${storeCanonicalPath(id, store.slug)}`,
                 sector: store.category,
                 telephone: store.whatsapp ?? store.phone,

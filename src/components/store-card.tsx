@@ -491,7 +491,9 @@ export function StoreCard({
               )})
             </span>
           </div>
-        ) : (
+        ) : store.unclaimed ? null : (
+          // An unclaimed row is not «new», it is unknown: the badge beside its
+          // name already says so, and the import date says nothing about it.
           <span className="mt-3 inline-flex items-center rounded-full bg-tint-7-soft px-2 py-0.5 text-xs font-bold text-tint-7">
             {dict.featured.newStore}
           </span>

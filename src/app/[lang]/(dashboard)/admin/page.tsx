@@ -106,7 +106,8 @@ export default async function AdminOverviewPage({
     supabase
       .from("stores")
       .select("id", { count: "exact", head: true })
-      .is("deleted_at", null),
+      .is("deleted_at", null)
+      .not("owner_id", "is", null),
     supabase.from("profiles").select("id", { count: "exact", head: true }),
     supabase.from("orders").select("id", { count: "exact", head: true }),
   ]);
