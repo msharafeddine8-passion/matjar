@@ -63,6 +63,17 @@ export async function revalidateStores() {
   bustTag("stores");
 }
 
+/** A directory row changed hands or came down (0338): the listings, that store,
+ *  and the unclaimed counts, whose cache the "stores" tag deliberately leaves
+ *  alone. Admin-only: the claims queue is its one caller. */
+export async function revalidateDirectory(storeId: string) {
+  const c = await caller();
+  if (!c || !(await adminCan(c.supabase, "stores"))) return;
+  bustTag("stores");
+  bustTag("stores-directory");
+  if (UUID_RE.test(storeId)) bustTag(`store:${storeId}`);
+}
+
 /** Bust the cached USD→LBP rate (admin changed it). Admin-only: the only
  *  caller is the admin settings screen. */
 export async function revalidateRate() {

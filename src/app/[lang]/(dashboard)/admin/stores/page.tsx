@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/data-quality";
 import { AdminStoresClient, type AdminStore } from "@/components/admin-stores-client";
 import { dictSlice } from "@/lib/dict-slice";
+import { AdminUnclaimedStores } from "@/components/admin-unclaimed-stores";
 
 // commercial_reg_no, status_reason and status_changed_by are not on this row:
 // 0314 revokes them from every client role, and they arrive through
@@ -25,7 +27,7 @@ import { dictSlice } from "@/lib/dict-slice";
 type StoreRow = {
   id: string;
   name: string;
-  owner_id: string;
+  owner_id: string | null;
   region: string | null;
   area: string | null;
   service_area: string | null;
@@ -45,15 +47,74 @@ type StoreRow = {
 
 export default async function AdminStoresPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<{ owner?: string; uq?: string; page?: string }>;
 }) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
   await requireAdminSection("stores", lang);
   const dict = await getDictionary(lang);
+  const sp = await searchParams;
 
   const supabase = await createClient();
+
+  // Two rosters, because they are two different jobs at two different sizes. The
+  // owned list below loads whole and filters in the browser: it decides who is
+  // live, and it is small. The directory runs to thousands, is reviewed by
+  // searching, and is read a page at a time on the server.
+  const [{ count: ownedCount }, { count: unclaimedCount }] = await Promise.all([
+    supabase
+      .from("stores")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .not("owner_id", "is", null),
+    supabase
+      .from("stores")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .is("owner_id", null),
+  ]);
+  const showUnclaimed = sp.owner === "unclaimed";
+  const t = dict.admin.storesAdmin;
+  const ownerTabs = (
+    <div className="mb-4 flex flex-wrap gap-2">
+      {(
+        [
+          ["owned", t.ownedTab, ownedCount, !showUnclaimed, `/${lang}/admin/stores`],
+          ["unclaimed", t.unclaimedTab, unclaimedCount, showUnclaimed, `/${lang}/admin/stores?owner=unclaimed`],
+        ] as const
+      ).map(([key, label, n, active, href]) => (
+        <Link
+          key={key}
+          href={href}
+          className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors ${
+            active
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-surface hover:border-primary/40"
+          }`}
+        >
+          {label}
+          <span className="tabular-nums opacity-80">{n ?? 0}</span>
+        </Link>
+      ))}
+    </div>
+  );
+
+  if (showUnclaimed) {
+    return (
+      <AdminUnclaimedStores
+        lang={lang}
+        dict={dict}
+        supabase={supabase}
+        query={(sp.uq ?? "").trim().slice(0, 100)}
+        page={Math.max(1, Number(sp.page) || 1)}
+        tabs={ownerTabs}
+      />
+    );
+  }
+
   // ISS-013. This select used to carry no `.limit()` and no `.range()`, which
   // reads as "all of them" and is not: PostgREST answers an unbounded select
   // with `db-max-rows` rows and calls it a success. At 1001 stores this page
@@ -76,6 +137,7 @@ export default async function AdminStoresPage({
           "id, name, owner_id, region, area, service_area, phone, whatsapp, description, logo_url, cover_url, status, plan, is_verified, featured_until, commercial_reg_verified, status_changed_at, business_types(slug, name_ar, name_en)",
         )
         .is("deleted_at", null)
+        .not("owner_id", "is", null)
         .order("created_at", { ascending: false })
         .order("id", { ascending: true })
         .range(from, to) as unknown as PromiseLike<{ data: StoreRow[] | null }>,
@@ -110,7 +172,7 @@ export default async function AdminStoresPage({
   // than "suspended", and a second query for a handful of ids is waste.
   const peopleIds = [
     ...new Set([
-      ...rows.map((r) => r.owner_id),
+      ...rows.map((r) => r.owner_id).filter((id): id is string => !!id),
       ...rows
         .map((r) => priv(r.id).status_changed_by)
         .filter((id): id is string => !!id),
@@ -187,9 +249,16 @@ export default async function AdminStoresPage({
         ? r.business_types.name_ar
         : r.business_types.name_en
       : null,
-    ownerName: ownerMap.get(r.owner_id) ?? null,
+    ownerName: r.owner_id ? (ownerMap.get(r.owner_id) ?? null) : null,
     };
   });
 
-  return <AdminStoresClient lang={lang} dict={dictSlice(dict, ["admin", "auth", "common", "dataQuality"])} stores={stores} />;
+  return (
+    <AdminStoresClient
+      lang={lang}
+      dict={dictSlice(dict, ["admin", "auth", "common", "dataQuality"])}
+      stores={stores}
+      headerSlot={ownerTabs}
+    />
+  );
 }
