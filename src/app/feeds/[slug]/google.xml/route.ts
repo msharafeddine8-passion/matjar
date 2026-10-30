@@ -1,3 +1,4 @@
+import { readStoreListing } from "@/lib/data/store-listing";
 import { createPublicClient } from "@/lib/supabase/public-client";
 import { FETCH_BOUNDS, fetchAllPages } from "@/lib/data/bounds";
 import { SITE_URL } from "@/lib/site";
@@ -45,7 +46,7 @@ const PRODUCT_COLUMNS =
 // is exactly what happens here — and the answer is the right one: no
 // `google_feed_enabled` column means no store has turned the feed on, so 404.
 const STORE_COLUMNS =
-  "id, name, slug, status, deleted_at, plan, trial_ends_at, return_policy, shipping_policy, google_feed_enabled, business_types(slug)";
+  "id, owner_id, name, slug, status, deleted_at, plan, trial_ends_at, return_policy, shipping_policy, google_feed_enabled, business_types(slug)";
 
 function notFound(): Response {
   return new Response("Not found", {
@@ -95,6 +96,13 @@ export async function GET(
   // both policies still written. Anything else is a plain 404 — the feed does
   // not advertise that it exists.
   if (!feedServes(store)) return notFound();
+  // A display-only store (0338) has no checkout for a shopping ad to land on.
+  const { showcase } = await readStoreListing(
+    supabase,
+    store.id,
+    (s.owner_id as string | null) ?? null,
+  );
+  if (showcase) return notFound();
 
   const rows = await fetchAllPages<FeedProductRow>(
     (from, to) =>

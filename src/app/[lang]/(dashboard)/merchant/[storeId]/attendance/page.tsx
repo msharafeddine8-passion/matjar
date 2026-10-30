@@ -47,7 +47,7 @@ export default async function StoreAttendancePage({
     .eq("id", storeId)
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
-  if ((store as unknown as { owner_id: string }).owner_id !== user.id) {
+  if ((store as unknown as { owner_id: string | null }).owner_id !== user.id) {
     redirect(`/${lang}/merchant/${storeId}`);
   }
 

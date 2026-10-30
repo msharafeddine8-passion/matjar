@@ -1,3 +1,4 @@
+import { readStoreListing } from "@/lib/data/store-listing";
 import { requestNow } from "@/lib/now";
 import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
@@ -77,7 +78,7 @@ export default async function StoreOsLayout({
     id: string;
     name: string;
     slug: string | null;
-    owner_id: string;
+    owner_id: string | null;
     plan: string | null;
     trial_ends_at: string | null;
     logo_url: string | null;
@@ -123,7 +124,12 @@ export default async function StoreOsLayout({
     perms = (staffRow?.permissions as Record<string, boolean> | null) ?? {};
   }
   // One rule for the menu, the page guards and the database (staffMayOpen).
-  const canSee = (key: OsModuleKey) => isOwner || staffMayOpen(key, perms);
+  // A display-only store (0338) has no orders or bookings to manage, and POS and
+  // the kitchen both write orders the database would refuse.
+  const { showcase } = await readStoreListing(supabase, storeId, s.owner_id);
+  const canSee = (key: OsModuleKey) =>
+    !(showcase && (key === "orders" || key === "bookings" || key === "pos" || key === "kitchen")) &&
+    (isOwner || staffMayOpen(key, perms));
 
   // Same label mapping as the OS home — every string is an existing dict key.
   const moduleLabel: Record<OsModuleKey, string> = {

@@ -1,8 +1,12 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
 import { robotsDisallowList } from "@/lib/seo-rules";
+import { directorySitemapIds } from "@/lib/data/directory-sitemap";
 
-export default function robots(): MetadataRoute.Robots {
+export const revalidate = 3600;
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const directoryFiles = await directorySitemapIds();
   return {
     rules: [
       // Resource-hungry SEO/AI crawlers hammer the dynamic pages and burn
@@ -34,6 +38,9 @@ export default function robots(): MetadataRoute.Robots {
         disallow: robotsDisallowList(),
       },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: [
+      `${SITE_URL}/sitemap.xml`,
+      ...directoryFiles.map((id) => `${SITE_URL}/directory/sitemap/${id}.xml`),
+    ],
   };
 }

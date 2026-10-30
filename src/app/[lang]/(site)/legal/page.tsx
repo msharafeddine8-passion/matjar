@@ -90,6 +90,14 @@ const AR = {
     "و — بس إذا الكيان مسجّل بالـTVA — المتغيّر {vat}. إذا ما في، خلّيه فاضي وما رح يظهر شي.",
   blocks: [
     {
+      title: "محلات ما سجّلها أصحابها",
+      items: [
+        "حتى يلاقي الناس المحلات اللي حواليهم، في صفحات جمعنا معلوماتها من مصادر عامة، منها OpenStreetMap (© OpenStreetMap contributors). كل صفحة منها مكتوب عليها «غير مؤكّد» وممكن ما تكون دقيقة.",
+        "هالصفحات ما بتقبل طلبات ولا حجوزات ولا تقييمات، وما في شي بينبعت لصاحب المحل من خلالها.",
+        "صاحب المحل بيقدر يطالب بصفحته أو يصحّحها أو يطلب نشيلها بأي وقت، مجاناً، من الصفحة نفسها أو عالواتساب. منتأكّد من هويّته قبل ما نسلّم أو نشيل الصفحة.",
+      ],
+    },
+    {
       title: "الطلبات: مين البائع، ومين بيقبض",
       items: [
         "لمّا تطلب من متجر على المنصّة، البيع بيصير بينك وبين هيداك المتجر مباشرة. متجر بتوفّر الصفحة والأدوات؛ البضاعة والتسليم والاسترجاع مسؤوليّة المتجر.",
@@ -164,6 +172,14 @@ const EN = {
   missingVatNote:
     "And — only if the entity is VAT-registered — {vat}. Leave it unset if there is none and nothing is shown.",
   blocks: [
+    {
+      title: "Businesses that did not sign up themselves",
+      items: [
+        "So people can find the businesses around them, some pages hold information gathered from public sources, including OpenStreetMap (© OpenStreetMap contributors). Each such page is marked “Unconfirmed” and may not be accurate.",
+        "These pages take no orders, bookings or reviews, and nothing is sent to the business through them.",
+        "The owner can claim their page, correct it or ask us to remove it at any time, free of charge, from the page itself or on WhatsApp. We confirm who they are before handing over or removing a page.",
+      ],
+    },
     {
       title: "Orders: who sells, and who takes the money",
       items: [

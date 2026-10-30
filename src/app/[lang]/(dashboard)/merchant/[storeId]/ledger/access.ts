@@ -44,7 +44,7 @@ export async function requireLedgerAccess(
     .maybeSingle();
   if (!store) redirect(`/${lang}/merchant`);
 
-  const s = store as { name: string; owner_id: string };
+  const s = store as { name: string; owner_id: string | null };
   const isOwner = s.owner_id === user.id;
   if (!isOwner) {
     const { data: staffRow } = await supabase

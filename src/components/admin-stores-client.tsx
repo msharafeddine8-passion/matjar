@@ -82,10 +82,13 @@ export function AdminStoresClient({
   lang,
   dict,
   stores,
+  headerSlot,
 }: {
   lang: Locale;
   dict: Pick<Dictionary, "admin" | "auth" | "common" | "dataQuality">;
   stores: AdminStore[];
+  /** The owned / unclaimed switch, rendered by the page. */
+  headerSlot?: React.ReactNode;
 }) {
   const router = useRouter();
   const t = dict.admin.storesAdmin;
@@ -244,6 +247,7 @@ export function AdminStoresClient({
     <div className="py-10">
       <Container>
         <PageHeader icon={StoreIcon} title={t.title} subtitle={t.subtitle} />
+        {headerSlot}
 
         <div className="relative sm:max-w-md">
           <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

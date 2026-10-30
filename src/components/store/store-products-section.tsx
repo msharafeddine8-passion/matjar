@@ -41,6 +41,7 @@ export function StoreProductsSection({
   canOrderProducts,
   initialServiceId = null,
   directoryOnly = false,
+  showcase = false,
   doctors,
   providerServices,
   currentUser,
@@ -61,6 +62,8 @@ export function StoreProductsSection({
   canOrderProducts: boolean;
   initialServiceId?: string | null;
   directoryOnly?: boolean;
+  /** Display only (0338): the listed price is the price, not a «from». */
+  showcase?: boolean;
   doctors: DoctorView[];
   providerServices: Record<string, string[]>;
   currentUser: { id: string; name: string; phone?: string } | null;
@@ -114,7 +117,8 @@ export function StoreProductsSection({
   // directory-only mode, so the note below cannot render where nothing is
   // pending. The label per item is the same string /pricing and the module
   // manager print for it; the status word is the registry's one word.
-  const pending = directoryOnly ? sectorPendingCapabilities(store.category) : [];
+  const pending =
+    directoryOnly && !showcase ? sectorPendingCapabilities(store.category) : [];
   const pendingNote =
     pending.length > 0
       ? dict.features.pendingNote
@@ -293,10 +297,21 @@ export function StoreProductsSection({
                               {attr}
                             </p>
                           )}
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {dict.store.from}{" "}
-                            <Money value={p.price} className="font-bold text-foreground" />
-                          </p>
+                          {showcase ? (
+                            (p.discountPrice ?? p.price) > 0 && (
+                              <p className="mt-2 text-sm">
+                                <Money
+                                  value={p.discountPrice ?? p.price}
+                                  className="font-bold text-foreground"
+                                />
+                              </p>
+                            )
+                          ) : (
+                            <p className="mt-2 text-sm text-muted-foreground">
+                              {dict.store.from}{" "}
+                              <Money value={p.price} className="font-bold text-foreground" />
+                            </p>
+                          )}
                         </div>
                       </Link>
                     );

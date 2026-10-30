@@ -22,13 +22,17 @@ export function StoreEmptyOfferings({
   lang,
   dict,
   isFollowing,
+  unclaimed = false,
 }: {
   storeId: string;
   lang: Locale;
   dict: Dictionary;
   isFollowing: boolean;
+  /** 0338: nobody is adding anything, so «still adding» would be false and the
+   *  message button would reach no one. The way forward is the claim card. */
+  unclaimed?: boolean;
 }) {
-  const t = dict.store.emptyOfferings;
+  const t = unclaimed ? dict.directory.empty : dict.store.emptyOfferings;
   return (
     <section
       aria-labelledby="store-empty-offerings"
@@ -43,6 +47,14 @@ export function StoreEmptyOfferings({
       <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
         {t.body}
       </p>
+      {unclaimed ? (
+        <a
+          href="#claim"
+          className="mt-4 inline-flex min-h-11 items-center text-sm font-bold text-primary underline-offset-2 hover:underline"
+        >
+          {dict.directory.claim.title}
+        </a>
+      ) : (
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
         <FollowButton
           storeId={storeId}
@@ -52,6 +64,7 @@ export function StoreEmptyOfferings({
         />
         <MessageStoreButton storeId={storeId} lang={lang} dict={dictSlice(dict, ["messages"])} />
       </div>
+      )}
     </section>
   );
 }

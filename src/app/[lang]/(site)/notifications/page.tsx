@@ -14,6 +14,8 @@ type Notif = {
   type: string;
   data: {
     store_id?: string;
+    /** store_claim (0338): claim | correct | remove. */
+    kind?: string;
     store_name?: string;
     product_id?: string;
     product_name?: string;
@@ -57,6 +59,7 @@ type Notif = {
 // Tagged in the list so an admin who is also shopping can tell them apart.
 const ADMIN_SCOPE_TYPES = new Set([
   "store_new",
+  "store_claim",
   "pro_request",
   "leader_submission",
 ]);
@@ -172,6 +175,19 @@ export default async function NotificationsPage({
       const why = n.data?.reason?.trim();
       return why ? `${named} — ${why}` : named;
     }
+    if (t === "store_claim") {
+      const kinds = dict.notifications.storeClaimKinds;
+      const kind =
+        n.data?.kind === "claim" || n.data?.kind === "correct" || n.data?.kind === "remove"
+          ? kinds[n.data.kind as keyof typeof kinds]
+          : kinds.correct;
+      const line = dict.notifications.storeClaim
+        .replace("{kind}", kind)
+        .replace("{store}", n.data?.store_name ?? "");
+      return n.data?.name ? `${line} · ${n.data.name}` : line;
+    }
+    if (t === "store_claim_approved")
+      return dict.notifications.storeClaimApproved.replace("{store}", n.data?.store_name ?? "");
     if (t === "booking_placed") return dict.notifications.bookingPlaced;
     if (t === "booking_rescheduled")
       return `${dict.notifications.bookingRescheduled}${
@@ -311,9 +327,12 @@ export default async function NotificationsPage({
     // wrong for two of the three: it does not exist while a store is suspended.
     (n.type === "store_approved" ||
       n.type === "store_rejected" ||
-      n.type === "store_suspended") &&
+      n.type === "store_suspended" ||
+      n.type === "store_claim_approved") &&
     n.data?.store_id
       ? `/${lang}/merchant/${n.data.store_id}`
+      : n.type === "store_claim"
+      ? `/${lang}/admin/claims`
       : n.type === "admin_broadcast"
       ? n.data?.url?.trim() || `/${lang}`
       : n.type === "store_campaign"

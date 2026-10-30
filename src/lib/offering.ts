@@ -354,6 +354,9 @@ export function resolveOffering(args: {
   /** See `offeringCta` — the store's resolved modules when the caller has
    *  them, the sector's default bundle otherwise. */
   enabledModules?: ReadonlySet<FeatureModuleKey>;
+  /** The store is display-only (0338): whatever this row is, the action is
+   *  contact and no surface may assemble a basket or a booking. */
+  showcase?: boolean;
 }): OfferingExperience {
   const variant = offeringVariant(args);
   const { sections: chosen, omit = [] } = COMPOSITION[variant];
@@ -366,9 +369,11 @@ export function resolveOffering(args: {
     const listed = new Set(chosen);
     sections = [...chosen, ...base.filter((k) => !listed.has(k))];
   }
-  const cta = offeringCta(args);
+  const cta = args.showcase ? "contactStore" : offeringCta(args);
   const transacts =
-    variant !== "appointmentService" && !isDirectoryOnlySector(args.category);
+    !args.showcase &&
+    variant !== "appointmentService" &&
+    !isDirectoryOnlySector(args.category);
   return {
     variant,
     cta,
@@ -378,6 +383,8 @@ export function resolveOffering(args: {
     relatedKind: RELATED_KIND[variant],
     transacts,
     ...FACTS[variant],
+    // A stock badge is a statement about a basket a showcase does not have.
+    ...(args.showcase ? { showsStock: false } : {}),
     showsQuantity: transacts,
     addableToCart: transacts && isCartCta(cta),
   };

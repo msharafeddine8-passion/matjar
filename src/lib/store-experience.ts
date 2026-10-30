@@ -119,6 +119,14 @@ export type StoreExperience = {
   allowResourceBooking: boolean;
   /** Directory-only: show a contact CTA instead of a transaction. */
   directoryOnly: boolean;
+  /** Display only (0338, stores.listing_mode = 'showcase'): prices show, the
+   *  action is contact. Nothing on the page may take an order or a booking —
+   *  the database refuses them with `store_showcase_only` anyway. */
+  showcase: boolean;
+  /** No owner yet (0338, stores.owner_id IS NULL): a directory listing nobody
+   *  is reading. Forms that write to the store (lead, request, review, message)
+   *  have nowhere to go — the database refuses them with `store_unclaimed`. */
+  unclaimed: boolean;
 };
 
 /** Whether a sector is held in directory-only mode (engine not ready). */
@@ -145,11 +153,51 @@ export function isOrderSurface(category: CategoryKey): boolean {
   );
 }
 
+/** How a store chose to appear (stores.listing_mode). "full" is the default. */
+export type ListingMode = "full" | "showcase";
+
+/** A store-level choice that outranks the sector: whatever the sector could do,
+ *  a showcase store displays and is contacted. An unowned store is always a
+ *  showcase — 0338's `stores_unowned_is_showcase` constraint says the same.
+ *  The merchant's enquiry forms survive only while somebody owns the store. */
+function showcaseExperience(
+  category: CategoryKey,
+  enabledModules: ReadonlySet<FeatureModuleKey>,
+  unclaimed: boolean,
+): StoreExperience {
+  const isLead = LEAD_SECTORS.has(category);
+  const directoryOnly = DIRECTORY_ONLY_SECTORS.has(category);
+  return {
+    status: directoryOnly ? "directory_only" : "active",
+    itemSurface: "catalog",
+    showBooking: false,
+    canOrderProducts: false,
+    showServiceRequest:
+      !unclaimed && enabledModules.has("requests") && !isLead,
+    showLeadForm: !unclaimed && isLead,
+    showStay: false,
+    showRental: false,
+    showTickets: false,
+    allowResourceBooking: false,
+    directoryOnly,
+    showcase: true,
+    unclaimed,
+  };
+}
+
 export function resolveStoreExperience(args: {
   category: CategoryKey;
   enabledModules: ReadonlySet<FeatureModuleKey>;
+  /** Defaults to "full". */
+  listingMode?: ListingMode;
+  /** stores.owner_id IS NULL. Implies a showcase, whatever listingMode says. */
+  unclaimed?: boolean;
 }): StoreExperience {
   const { category, enabledModules } = args;
+  const unclaimed = args.unclaimed === true;
+  if (unclaimed || args.listingMode === "showcase") {
+    return showcaseExperience(category, enabledModules, unclaimed);
+  }
   const kind = categoryModule[category]?.kind ?? "commerce";
   const hasAppointments = enabledModules.has("appointments");
   const hasRequests = enabledModules.has("requests");
@@ -167,6 +215,8 @@ export function resolveStoreExperience(args: {
       showTickets: false,
       allowResourceBooking: false, // uses the stay engine, not hourly slots
       directoryOnly: false,
+      showcase: false,
+      unclaimed: false,
     };
   }
 
@@ -192,6 +242,8 @@ export function resolveStoreExperience(args: {
       // Rentals run on the day-range engine (0298), never on hourly slots.
       allowResourceBooking: false,
       directoryOnly: false,
+      showcase: false,
+      unclaimed: false,
     };
   }
 
@@ -208,6 +260,8 @@ export function resolveStoreExperience(args: {
       canOrderProducts: true,
       allowResourceBooking: false, // ticketing, not hourly slots
       directoryOnly: false,
+      showcase: false,
+      unclaimed: false,
     };
   }
 
@@ -228,6 +282,8 @@ export function resolveStoreExperience(args: {
       showTickets: false,
       allowResourceBooking: false,
       directoryOnly: true,
+      showcase: false,
+      unclaimed: false,
     };
   }
 
@@ -251,5 +307,7 @@ export function resolveStoreExperience(args: {
     showTickets: false,
     allowResourceBooking: true,
     directoryOnly: false,
+    showcase: false,
+    unclaimed: false,
   };
 }

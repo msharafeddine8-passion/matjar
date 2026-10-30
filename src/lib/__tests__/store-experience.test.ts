@@ -190,3 +190,76 @@ describe("resolveStoreExperience", () => {
     expect(x.showBooking).toBe(false);
   });
 });
+
+describe("showcase and unclaimed stores (0338)", () => {
+  const every: CategoryKey[] = [
+    "retail", "food", "pharmacy", "farm", "healthcare", "beauty", "petCare",
+    "professional", "services", "contractors", "fitness", "sportsCourts",
+    "education", "events", "hospitality", "realEstate", "automotive",
+  ];
+  const modules = (c: CategoryKey) =>
+    new Set<FeatureModuleKey>(sectorDefaultModules(c));
+
+  it("a showcase store has no transaction surface in any sector", () => {
+    for (const category of every) {
+      const x = resolveStoreExperience({
+        category,
+        enabledModules: modules(category),
+        listingMode: "showcase",
+      });
+      expect(x.showcase).toBe(true);
+      expect(x.itemSurface).toBe("catalog");
+      expect(x.showBooking).toBe(false);
+      expect(x.canOrderProducts).toBe(false);
+      expect(x.showStay).toBe(false);
+      expect(x.showRental).toBe(false);
+      expect(x.showTickets).toBe(false);
+      expect(x.allowResourceBooking).toBe(false);
+    }
+  });
+
+  it("an owned showcase keeps its enquiry channel, and only one of the two", () => {
+    const realEstate = resolveStoreExperience({
+      category: "realEstate",
+      enabledModules: modules("realEstate"),
+      listingMode: "showcase",
+    });
+    expect(realEstate.showLeadForm).toBe(true);
+    expect(realEstate.showServiceRequest).toBe(false);
+    const trade = resolveStoreExperience({
+      category: "contractors",
+      enabledModules: new Set<FeatureModuleKey>(["requests"]),
+      listingMode: "showcase",
+    });
+    expect(trade.showServiceRequest).toBe(true);
+    expect(trade.showLeadForm).toBe(false);
+  });
+
+  it("unclaimed implies showcase and drops every form that writes to the store", () => {
+    for (const category of every) {
+      const x = resolveStoreExperience({
+        category,
+        enabledModules: modules(category),
+        unclaimed: true,
+        listingMode: "full", // the row can only say showcase; the flag still wins
+      });
+      expect(x.unclaimed).toBe(true);
+      expect(x.showcase).toBe(true);
+      expect(x.itemSurface).toBe("catalog");
+      expect(x.showServiceRequest).toBe(false);
+      expect(x.showLeadForm).toBe(false);
+    }
+  });
+
+  it("the default is unchanged: omitted and 'full' resolve the same", () => {
+    for (const category of every) {
+      const enabledModules = modules(category);
+      const base = resolveStoreExperience({ category, enabledModules });
+      expect(base.showcase).toBe(false);
+      expect(base.unclaimed).toBe(false);
+      expect(
+        resolveStoreExperience({ category, enabledModules, listingMode: "full" }),
+      ).toEqual(base);
+    }
+  });
+});

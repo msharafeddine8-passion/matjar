@@ -97,6 +97,11 @@ import {
   TimeslotBooking,
 } from "@/components/store/lazy-engines";
 import { dictSlice, subDict } from "@/lib/dict-slice";
+import { StoreDirectoryNotice } from "@/components/store/store-directory-notice";
+import { StoreDirectoryFacts } from "@/components/store/store-directory-facts";
+import { StoreClaimCard } from "@/components/store/store-claim-card";
+import { StoreContactActions } from "@/components/store/store-contact-actions";
+import { supportWaLink } from "@/lib/support";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -201,6 +206,12 @@ export default async function StorePage({
     data: { user },
   } = await supabase.auth.getUser();
   const realStore = store.isReal && UUID_RE.test(id);
+  // An unclaimed directory row (0338) has no reviews, documents, roster, zones,
+  // branches or fulfilment to ask about, and there are thousands of them for a
+  // crawler to walk. `ownedStore` is what skips those reads, not only their
+  // sections: each one below would be a query that can only come back empty.
+  const unclaimed = store.unclaimed === true;
+  const ownedStore = realStore && !unclaimed;
 
   // Wave 1 — the independent public reads for a real store run in parallel
   // (reviews, verification badges, enabled modules) instead of a waterfall.
@@ -210,7 +221,7 @@ export default async function StorePage({
   const catalogueIds = store.products
     .map((p) => p.id)
     .filter((x): x is string => !!x);
-  const [reviews, verifications, modRowsData, itemReviewRows] = realStore
+  const [reviews, verifications, modRowsData, itemReviewRows] = ownedStore
     ? await Promise.all([
         supabase
           .from("reviews")
@@ -281,6 +292,9 @@ export default async function StorePage({
   const modOverrides: Record<string, boolean> = {};
   for (const r of modRowsData) modOverrides[r.module_key] = r.enabled;
   const enabledModules = resolveStoreModules(store.category, modOverrides);
+  // A directory row's pin is a large part of what is known about it, in every
+  // sector — including those whose default bundle has no location module.
+  if (unclaimed) enabledModules.add("location");
 
   // Single source of truth for which transaction surface this storefront shows,
   // derived from the enabled modules + sector operational status (never from a
@@ -290,6 +304,8 @@ export default async function StorePage({
   const experience = resolveStoreExperience({
     category: store.category,
     enabledModules,
+    listingMode: store.listingMode,
+    unclaimed,
   });
 
   // Wave 2 — module-gated public sections. Independent of each other, so run in
@@ -304,7 +320,7 @@ export default async function StorePage({
     rentalVehicles,
   ] = await Promise.all([
       // Bookable resources (courts/rooms/rental items) for time-slot sectors.
-      realStore && enabledModules.has("timeslot")
+      ownedStore && enabledModules.has("timeslot")
         ? supabase
             .from("store_resources")
             .select("id, name, name_en, price, open_hour, close_hour")
@@ -314,7 +330,7 @@ export default async function StorePage({
             .then((r) => (r.data ?? []) as Resource[])
         : Promise.resolve([] as Resource[]),
       // Membership / subscription plans for gym/club/school sectors.
-      realStore && enabledModules.has("memberships")
+      ownedStore && enabledModules.has("memberships")
         ? supabase
             .from("store_membership_plans")
             .select("id, name, name_en, price, period, description")
@@ -324,7 +340,7 @@ export default async function StorePage({
             .then((r) => (r.data ?? []) as MembershipPlan[])
         : Promise.resolve([] as MembershipPlan[]),
       // Weekly group classes (gym sessions, group courses) for capacity booking.
-      realStore && enabledModules.has("classes")
+      ownedStore && enabledModules.has("classes")
         ? supabase
             .from("store_classes")
             .select("id, name, name_en, description, day_of_week, start_time, capacity, price")
@@ -335,7 +351,7 @@ export default async function StorePage({
             .then((r) => (r.data ?? []) as ClassRow[])
         : Promise.resolve([] as ClassRow[]),
       // Portfolio gallery (services & contractors).
-      realStore && enabledModules.has("portfolio")
+      ownedStore && enabledModules.has("portfolio")
         ? supabase
             .from("store_portfolio")
             .select("id, title, title_en, description, image_url, link")
@@ -345,7 +361,7 @@ export default async function StorePage({
             .then((r) => (r.data ?? []) as PortfolioItem[])
         : Promise.resolve([] as PortfolioItem[]),
       // Courses catalogue (education).
-      realStore && enabledModules.has("courses")
+      ownedStore && enabledModules.has("courses")
         ? supabase
             .from("store_courses")
             .select("id, name, name_en, description, price, duration, schedule, level")
@@ -391,11 +407,7 @@ export default async function StorePage({
   const servicesByDoctor: Record<string, string[]> = {};
   // Resolved modules, not sector defaults: a store that switched `team` off has
   // no roster to fetch, and one that switched it on does.
-  if (
-    store.isReal &&
-    UUID_RE.test(id) &&
-    sectorHasTeam(store.category, enabledModules)
-  ) {
+  if (ownedStore && sectorHasTeam(store.category, enabledModules)) {
     const { data } = await supabase
       .from("doctors")
       .select("id, name, specialty, photo_url, bio")
@@ -434,7 +446,7 @@ export default async function StorePage({
           .then((r) => !!r.data)
       : Promise.resolve(false),
     getUsdLbpRate(),
-    realStore
+    ownedStore
       ? supabase
           .rpc("store_fulfilled_count", { p_store_id: id })
           .then((r) => (r.data as number | null) ?? 0)
@@ -443,7 +455,7 @@ export default async function StorePage({
     // own. Since 0320 nobody signed in can read or filter on
     // reviews.customer_id, so it comes from my_store_review (0319), which only
     // ever answers about auth.uid(). A signed-out visitor asks nothing.
-    user && realStore
+    user && ownedStore
       ? supabase
           .rpc("my_store_review", { p_store_id: id })
           .then((r) => {
@@ -455,7 +467,7 @@ export default async function StorePage({
     // reviews insert policy runs (completed order or booking, 0143), asked
     // about themselves only. Decides whether an empty reviews section is an
     // action for them or a placeholder to skip. Signed out: never asked.
-    user && realStore
+    user && ownedStore
       ? supabase
           .rpc("has_store_purchase", { p_uid: user.id, p_store: id })
           .then((r) => r.data === true)
@@ -502,15 +514,12 @@ export default async function StorePage({
   // the one function the product page also calls, so the two order surfaces
   // cannot be handed different checkouts (MJ-024). `zones` is lifted out
   // because the fulfilment panel above the catalogue states them too.
-  const checkoutCtx =
-    store.isReal && UUID_RE.test(id)
-      ? await getStoreCheckoutContext(id)
-      : null;
+  const checkoutCtx = ownedStore ? await getStoreCheckoutContext(id) : null;
   const zones = checkoutCtx?.zones ?? [];
 
   // Delivery options this store offers via partner couriers.
   let couriers: CourierOption[] = [];
-  if (store.isReal && UUID_RE.test(id)) {
+  if (ownedStore) {
     const { data: courierRows } = await supabase
       .from("store_couriers")
       .select("price, delivery_companies(name)")
@@ -536,7 +545,7 @@ export default async function StorePage({
     is_primary: boolean;
   };
   let branches: BranchView[] = [];
-  if (store.isReal && UUID_RE.test(id)) {
+  if (ownedStore) {
     const { data: locs } = await supabase
       .from("store_locations")
       .select("id, name, address, area, phone, lat, lng, is_primary")
@@ -650,7 +659,13 @@ export default async function StorePage({
   const viewerCanReview = !!user && (!!myReview || hasCompletedPurchase);
   const LoyaltySlot = PROFILE_MODULE_SLOTS.loyalty;
   // Only a number that survives waNumber() — see the sticky CTA below.
-  const contactWa = waNumber(store.whatsapp ?? store.phone ?? null);
+  // A directory row's `phone` is whatever a public source printed, often a
+  // landline: only a number it actually calls WhatsApp is offered as WhatsApp.
+  const contactWa = waNumber(
+    unclaimed ? (store.whatsapp ?? null) : (store.whatsapp ?? store.phone ?? null),
+  );
+  // A display-only store's last resort is the telephone (sticky bar, below).
+  const contactTel = experience.showcase ? (store.phone ?? null) : null;
   const visitMinutes = (s: (typeof services)[number]): number | null => {
     if (s.durationMinutes != null && s.durationMinutes > 0) return s.durationMinutes;
     const n = Number(s.attributes?.duration ?? NaN);
@@ -697,7 +712,7 @@ export default async function StorePage({
       verifications: verifications.length,
       reviews: { listed: profileReviews.length, viewerCanReview },
       loyaltyRegistered: !!LoyaltySlot,
-      hasContactNumber: !!contactWa,
+      hasContactNumber: !!contactWa || !!contactTel,
     },
     {
       team: doctors.map((d) => ({ specialty: d.specialty })),
@@ -784,6 +799,7 @@ export default async function StorePage({
         headerCount={headerCount}
         ordersFulfilled={ordersFulfilled}
         isFollowing={isFollowing}
+        unclaimed={unclaimed}
       />
     ),
 
@@ -901,6 +917,7 @@ export default async function StorePage({
         dict={dict}
         lang={lang}
         whatsapp={store.whatsapp ?? null}
+        contactOnly={experience.showcase}
       />
     ),
 
@@ -920,7 +937,13 @@ export default async function StorePage({
     ),
 
     courses: courses.length > 0 && (
-      <StoreCourses courses={courses} dict={dict} lang={lang} whatsapp={store.whatsapp ?? null} />
+      <StoreCourses
+        courses={courses}
+        dict={dict}
+        lang={lang}
+        whatsapp={store.whatsapp ?? null}
+        contactOnly={experience.showcase}
+      />
     ),
 
     portfolio: portfolio.length > 0 && (
@@ -933,6 +956,7 @@ export default async function StorePage({
         lang={lang}
         dict={dict}
         isFollowing={isFollowing}
+        unclaimed={unclaimed}
       />
     ) : (
       <StoreProductsSection
@@ -945,6 +969,7 @@ export default async function StorePage({
         canOrderProducts={experience.canOrderProducts}
         initialServiceId={initialServiceId}
         directoryOnly={experience.directoryOnly}
+        showcase={experience.showcase}
         doctors={doctors}
         providerServices={providerServices}
         currentUser={currentUser}
@@ -1106,7 +1131,13 @@ export default async function StorePage({
             label: ctaLabel.contactStore,
             note: null,
           }
-        : null
+        : contactTel
+          ? {
+              href: `tel:${contactTel}`,
+              label: dict.store.call,
+              note: null,
+            }
+          : null
       : {
           targetId: primary.targetId ?? undefined,
           label: ctaLabel[primary.action],
@@ -1157,9 +1188,7 @@ export default async function StorePage({
       data-sf={sf.key}
       style={accentStyle(sf.accent) as React.CSSProperties | undefined}
     >
-      {store.isReal && UUID_RE.test(id) && (
-        <TrackVisit storeId={id} path="store" />
-      )}
+      {ownedStore && <TrackVisit storeId={id} path="store" />}
       {store.isReal && (
         <script
           type="application/ld+json"
@@ -1167,22 +1196,24 @@ export default async function StorePage({
             __html: jsonLdScript(
               storeJsonLd({
                 name: store.name,
-                description: store.description,
-                image: store.logoUrl ?? store.coverUrl,
+                description: unclaimed ? null : store.description,
+                image: unclaimed ? null : (store.logoUrl ?? store.coverUrl),
                 url: `${SITE_URL}/${lang}${storeCanonicalPath(id, store.slug)}`,
                 sector: store.category,
                 telephone: store.whatsapp ?? store.phone,
                 area: store.area,
-                lat: branches[0]?.lat ?? null,
-                lng: branches[0]?.lng ?? null,
+                lat: branches[0]?.lat ?? (unclaimed ? store.lat : null) ?? null,
+                lng: branches[0]?.lng ?? (unclaimed ? store.lng : null) ?? null,
                 openingHours: toOpeningHours(
                   parseHours(store.hours) as unknown as Record<
                     string,
                     { open: string; close: string }
                   > | null,
                 ),
-                rating: headerRating,
-                reviewCount: headerCount,
+                // A directory row states what a source states: no stars, no
+                // description, no invented opening hours.
+                rating: unclaimed ? null : headerRating,
+                reviewCount: unclaimed ? null : headerCount,
               }),
             ),
           }}
@@ -1199,7 +1230,54 @@ export default async function StorePage({
           // The identity block (header + summary) is not a rail destination:
           // no anchor, no scroll margin, no box of its own.
           if (key === "header" || key === "summary")
-            return <Fragment key={key}>{node}</Fragment>;
+            return (
+              <Fragment key={key}>
+                {node}
+                {/* Where this came from, what is known, and how the owner steps
+                    in — straight under the name, before anything else. */}
+                {key === "header" && unclaimed && (
+                  <>
+                    <StoreDirectoryNotice
+                      dataSource={store.dataSource}
+                      sourceUrl={store.sourceUrl}
+                      dict={dictSlice(dict, ["directory"])}
+                    />
+                    <StoreDirectoryFacts
+                      store={store}
+                      lang={lang}
+                      dict={dictSlice(dict, ["directory", "catalog"])}
+                    />
+                    <StoreClaimCard
+                      storeId={id}
+                      storeName={store.name}
+                      supportHref={supportWaLink(
+                        dict.directory.claim.waText
+                          .replace("{store}", store.name)
+                          .replace("{url}", `${SITE_URL}/${lang}/store/${id}`),
+                      )}
+                      dict={dictSlice(dict, ["directory", "common"])}
+                    />
+                  </>
+                )}
+                {/* A showcase store takes no order: say so once, and put the
+                    ways to reach it where the cart would have been. */}
+                {key === "header" && experience.showcase && !unclaimed && (
+                  <div className="mt-4 rounded-2xl border border-border bg-surface p-4">
+                    <p className="mb-3 text-sm font-medium leading-relaxed text-muted-foreground">
+                      {dict.showcase.storeNote}
+                    </p>
+                    <StoreContactActions
+                      whatsapp={store.whatsapp}
+                      phone={store.phone}
+                      lat={store.lat}
+                      lng={store.lng}
+                      waText={`${dict.store.inquiryGreeting} ${store.name}`}
+                      dict={dictSlice(dict, ["store"])}
+                    />
+                  </div>
+                )}
+              </Fragment>
+            );
           return (
             <Fragment key={key}>
               {/* The rail is emitted after the identity block, so it starts

@@ -187,7 +187,7 @@ export default async function AbandonedCartsPage({
     .eq("id", storeId)
     .maybeSingle();
   if (!storeData) redirect(`/${lang}/merchant`);
-  const store = storeData as { id: string; name: string; slug: string | null; owner_id: string };
+  const store = storeData as { id: string; name: string; slug: string | null; owner_id: string | null };
 
   if (store.owner_id !== user.id) {
     const { data: staffRow } = await supabase

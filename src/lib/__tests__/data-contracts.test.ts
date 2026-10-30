@@ -571,6 +571,7 @@ describe("FETCH_BOUNDS coherence", () => {
   // starts reading FETCH_BOUNDS, or the bound it names goes unguarded.
   const boundedPages = [
     "src/app/[lang]/(dashboard)/admin/stores/page.tsx",
+    "src/app/[lang]/(dashboard)/admin/claims/page.tsx",
     "src/app/[lang]/(dashboard)/admin/leaders/page.tsx",
   ];
   const callers: [string, string][] = [

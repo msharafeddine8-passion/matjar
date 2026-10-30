@@ -6,6 +6,8 @@ import { toCategoryKey, type CategoryKey } from "@/lib/catalog";
 import type { StorePlan } from "@/lib/plan-tiers";
 import { FETCH_BOUNDS, fetchAllByIds, fetchAllPages, warnIfTruncated } from "./bounds";
 import type { ServiceOption } from "@/lib/service-options";
+import type { ListingMode } from "@/lib/store-experience";
+import { readStoreListing } from "./store-listing";
 
 type VariantRow = {
   id: string;
@@ -54,6 +56,16 @@ export type StoreView = {
   announcement?: string | null;
   /** Live on the platform — NOT opening hours. Read `hours` for open/closed. */
   isOpen: boolean;
+  /** 0338. Absent on the demo catalogue, which reads as a full, owned store. */
+  unclaimed?: boolean;
+  listingMode?: ListingMode;
+  /** Where an unclaimed row came from, for the notice on its page. */
+  dataSource?: string | null;
+  sourceUrl?: string | null;
+  /** Unclaimed rows only: the street address a public source gave. The column
+   *  stays private (0314); see fetchStoreView. */
+  address?: string | null;
+  region?: string | null;
   plan?: StorePlan;
   rating?: number;
   reviews?: number;
@@ -154,7 +166,7 @@ async function fetchStoreView(
   const { data } = await supabase
     .from("stores")
     .select(
-      "name, slug, description, announcement, storefront_theme, area, status, plan, logo_url, cover_url, cover_position, phone, whatsapp, hours, booking_slot_minutes, booking_cancel_hours, instagram, facebook, website, accepts_delivery, accepts_pickup, min_order, prep_time, payment_note, return_policy, specialties, insurance, commercial_reg_verified, loyalty_redemption_enabled, loyalty_points_per_unit, accent_color, storefront_layout, lat, lng, business_types(slug)",
+      "name, owner_id, region, slug, description, announcement, storefront_theme, area, status, plan, logo_url, cover_url, cover_position, phone, whatsapp, hours, booking_slot_minutes, booking_cancel_hours, instagram, facebook, website, accepts_delivery, accepts_pickup, min_order, prep_time, payment_note, return_policy, specialties, insurance, commercial_reg_verified, loyalty_redemption_enabled, loyalty_points_per_unit, accent_color, storefront_layout, lat, lng, business_types(slug)",
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -162,6 +174,18 @@ async function fetchStoreView(
   if (!data) return null;
 
   const bt = data.business_types as unknown as { slug: string } | null;
+  const ownerId = (data.owner_id as string | null) ?? null;
+  const listing = await readStoreListing(supabase, id, ownerId);
+  // stores.address is revoked from every client role (0314) and no owned store
+  // has one, so a directory row's address comes through a getter that answers
+  // for unowned rows only. Not deployed yet → the call errors → no address line.
+  let address: string | null = null;
+  if (listing.unclaimed) {
+    const { data: addr } = await supabase.rpc("directory_store_address", {
+      p_store_id: id,
+    });
+    address = typeof addr === "string" && addr.trim() ? addr.trim() : null;
+  }
   // MP-040. The storefront renders this whole array, so a catalogue that stops
   // at PostgREST's 1000-row default is a store quietly missing stock — the one
   // failure nobody thinks to check for. Same select, same filters, same order;
@@ -310,6 +334,12 @@ async function fetchStoreView(
     // cause. Same fallback as before — `retail` — now narrowed and reported.
     category: toCategoryKey(bt?.slug, `store ${id}`),
     area: (data.area as string | null) ?? null,
+    region: (data.region as string | null) ?? null,
+    unclaimed: listing.unclaimed,
+    listingMode: listing.listingMode,
+    dataSource: listing.dataSource,
+    sourceUrl: listing.sourceUrl,
+    address,
     description: (data.description as string | null) ?? null,
     announcement: (data.announcement as string | null) ?? null,
     isOpen: data.status === "active",

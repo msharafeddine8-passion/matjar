@@ -348,6 +348,32 @@ export type StoreCardRow = {
   insurance?: string | null;
 };
 
+/**
+ * What a display-only store's card may not say. The fulfilment columns default
+ * to TRUE in the database, so a directory row would otherwise advertise delivery
+ * and pickup nobody ever offered, and a showcase store would keep the terms of a
+ * transaction it switched off. Prices and the catalogue count stay: they are
+ * still true. An unclaimed store also has no rating to speak of, whatever a
+ * caller passed.
+ */
+export function withoutTransactionFacts(
+  source: SectorCardSource,
+  unclaimed: boolean,
+): SectorCardSource {
+  return {
+    ...source,
+    acceptsDelivery: false,
+    acceptsPickup: false,
+    minOrder: null,
+    prepTime: null,
+    deliveryFeeMin: null,
+    deliveryFeeMax: null,
+    deliveryEtaMin: null,
+    deliveryEtaMax: null,
+    ...(unclaimed ? { ratingAvg: null, ratingCount: null } : {}),
+  };
+}
+
 export function storeRowCardSource(row: StoreCardRow): SectorCardSource {
   const num = (v: number | string | null | undefined) =>
     v == null || v === "" ? null : Number(v);

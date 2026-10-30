@@ -73,6 +73,8 @@ import {
   type OfferingSectionKey,
 } from "@/lib/offering";
 import { dictSlice, subDict } from "@/lib/dict-slice";
+import { getStoreContact } from "@/lib/data/store-listing";
+import { StoreContactActions } from "@/components/store/store-contact-actions";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -163,9 +165,14 @@ export default async function ProductPage({
   // old page branched once on "service or non-commerce sector" and rendered one
   // hardcoded sequence for everything else, which is why a dental cleaning
   // showed a stock badge and "منتجات مشابهة".
+  // Display-only store (0338): the row is still priced and described, but the
+  // action is contact — no buy box, no buy bar, no booking hand-off.
+  const storeContact = await getStoreContact(product.storeId);
+  const showcase = storeContact?.showcase === true;
   const offering = resolveOffering({
     category: product.category,
     itemKind: product.itemKind,
+    showcase,
   });
   const copy = dict.offering[offering.noun];
   const ctaLabel = dict.offering.cta[offering.cta];
@@ -522,7 +529,28 @@ export default async function ProductPage({
       id="buy-box"
       className="mt-6 rounded-2xl border border-border bg-surface p-5"
     >
-      {offering.cta === "bookAppointment" ? (
+      {showcase ? (
+        <>
+          <p className="mb-3 text-sm font-medium leading-relaxed text-muted-foreground">
+            {dict.showcase.productLead}
+          </p>
+          <StoreContactActions
+            whatsapp={storeContact?.whatsapp}
+            phone={storeContact?.phone}
+            lat={storeContact?.lat}
+            lng={storeContact?.lng}
+            waText={`${dict.store.inquiryGreeting} ${name}`}
+            dict={dictSlice(dict, ["store"])}
+          />
+          <Link
+            href={storeHref}
+            className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-border px-6 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            <StoreIcon className="h-4 w-4" />
+            {dict.product.visitStore}
+          </Link>
+        </>
+      ) : offering.cta === "bookAppointment" ? (
         /* Routes into the EXISTING booking engine with this service
            preselected — the page states the outcome and hands off; it does not
            re-implement any part of place_booking. */
@@ -655,9 +683,11 @@ export default async function ProductPage({
           price={basePrice}
           priceText={priceText}
           scanLabel={
-            offering.cta === "bookAppointment"
-              ? dict.offering.scanToBook
-              : dict.share.scanToOrder
+            showcase
+              ? dict.share.scanToView
+              : offering.cta === "bookAppointment"
+                ? dict.offering.scanToBook
+                : dict.share.scanToOrder
           }
           imageUrl={product.images[0] ?? null}
           baseUrl={SITE_URL}
@@ -746,7 +776,7 @@ export default async function ProductPage({
     <ProductReviews
       data={productReviews}
       productId={product.id}
-      canWrite={!!user}
+      canWrite={!!user && !storeContact?.unclaimed}
       lang={l}
       dict={dict}
       copy={{
@@ -761,7 +791,7 @@ export default async function ProductPage({
     <ProductQA
       productId={product.id}
       questions={questions}
-      canAsk={!!user}
+      canAsk={!!user && !storeContact?.unclaimed}
       canAnswer={isStoreOwner}
       dict={dictSlice(dict, ["common", "productQa"])}
       askPlaceholder={copy.qaPlaceholder}

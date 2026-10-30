@@ -19,6 +19,7 @@ import {
 } from "@/lib/data-quality";
 import { FETCH_BOUNDS, fetchAllByIds, warnIfTruncated } from "./bounds";
 import { cardRollups, escapeForOr } from "./discovery";
+import { getShowcaseStoreIds } from "./store-listing";
 import {
   storeRowCardSource,
   type CardStore,
@@ -49,11 +50,12 @@ export type ListedStore = Store & {
  *  read them; the card renders none of them. The fulfilment / insurance
  *  columns feed the card's facts line. */
 const LISTING_SELECT =
-  "id, name, area, region, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, description, phone, whatsapp, service_area, accepts_delivery, accepts_pickup, min_order, prep_time, insurance, business_types(slug)";
+  "id, owner_id, name, area, region, plan, is_verified, commercial_reg_verified, featured_until, logo_url, cover_url, cover_position, lat, lng, hours, rating_avg, rating_count, description, phone, whatsapp, service_area, accepts_delivery, accepts_pickup, min_order, prep_time, insurance, business_types(slug)";
 
 // Maps a database store row into the shape the StoreCard expects.
 function rowToStore(row: {
   id: string;
+  owner_id?: string | null;
   name: string;
   area: string | null;
   region: string | null;
@@ -109,10 +111,12 @@ function rowToStore(row: {
       logo_url: row.logo_url,
       cover_url: row.cover_url,
     },
-    { sector: category },
+    { sector: category, directory: row.owner_id === null },
   );
   return {
     id: row.id,
+    unclaimed: row.owner_id === null,
+    showcase: row.owner_id === null,
     name: { ar: name, en: name },
     area: { ar: row.area ?? "", en: row.area ?? "" },
     region: (row.region as RegionKey) ?? undefined,
@@ -146,10 +150,10 @@ function listable(list: ListedStore[]): ListedStore[] {
   return list.filter((s) => s.quality !== "blocked");
 }
 
-// Bounded so the explore/category pages never issue an unbounded query. The
-// client still filters + sorts (incl. "near me", which needs coordinates in
-// memory) within this window; beyond it, users rely on search. Raise or move
-// to server-side pagination / PostGIS nearest-search when store count nears it.
+// Bounded so the surfaces that read this listing (the map, the open-now rail)
+// never issue an unbounded query. OWNED stores only: the directory's thousands
+// of unclaimed rows (0338) stay off the home rails and off the map, whose pins
+// are all loaded and drawn at once. /explore and /category page them instead.
 const STORE_FETCH_LIMIT = 200;
 
 // The active-store listing is public, identical for everyone, and the heaviest
@@ -165,11 +169,16 @@ const fetchActiveStores = unstable_cache(
       .select(LISTING_SELECT)
       .eq("status", "active")
       .is("deleted_at", null)
+      .not("owner_id", "is", null)
       .order("created_at", { ascending: false })
       .limit(STORE_FETCH_LIMIT);
+    const showcase = new Set(await getShowcaseStoreIds());
     const list = listable(
       ((data ?? []) as unknown as Parameters<typeof rowToStore>[0][]).map(
-        rowToStore,
+        (row) => {
+          const store = rowToStore(row);
+          return showcase.has(store.id) ? { ...store, showcase: true } : store;
+        },
       ),
     );
     // Paid featured stores float to the top of the default listing (stable
@@ -180,7 +189,7 @@ const fetchActiveStores = unstable_cache(
     return list;
   },
   // v2: entries now carry hoursKnown + facts; an older cached entry has neither.
-  ["active-stores-listing-v2"],
+  ["active-stores-listing-v3"],
   // 5 min, not 60 s: every merchant write busts the "stores" tag
   // (cache-actions.ts), so this only bounds staleness from other paths. At 60 s
   // these rollups were a quarter of all SSR requests (~6,100/day).
@@ -371,11 +380,15 @@ export async function searchStores(
   const orClause = si.storeTextOrClause(p);
   const doctorClause = si.doctorSpecialtyOrClause(p);
 
+  // Owned stores keep the whole window; directory rows (0338) get their own
+  // smaller one below. Sharing one unordered window would let thousands of
+  // unclaimed pharmacies push the one real pharmacy off the page.
   let textQuery = supabase
     .from("stores")
     .select(SELECT)
     .eq("status", "active")
     .is("deleted_at", null)
+    .not("owner_id", "is", null)
     .or(
       orClause ||
         `name.ilike.%${escapeForOr(term)}%,description.ilike.%${escapeForOr(term)}%,area.ilike.%${escapeForOr(term)}%`,
@@ -387,6 +400,7 @@ export async function searchStores(
     .select(SELECT.replace("business_types(slug)", "business_types!inner(slug)"))
     .eq("status", "active")
     .is("deleted_at", null)
+    .not("owner_id", "is", null)
     .in("business_types.slug", p.sectors);
   if (explicitRegion) sectorQuery = sectorQuery.eq("region", explicitRegion);
 
@@ -395,9 +409,32 @@ export async function searchStores(
     .select(SELECT)
     .eq("status", "active")
     .is("deleted_at", null)
+    .not("owner_id", "is", null)
     .eq("region", explicitRegion ?? p.region ?? "");
 
-  const [text, sector, place, doctors] = await Promise.all([
+  let unclaimedText = supabase
+    .from("stores")
+    .select(SELECT)
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .is("owner_id", null)
+    .or(
+      orClause ||
+        `name.ilike.%${escapeForOr(term)}%,description.ilike.%${escapeForOr(term)}%,area.ilike.%${escapeForOr(term)}%`,
+    );
+  if (explicitRegion) unclaimedText = unclaimedText.eq("region", explicitRegion);
+
+  let unclaimedSector = supabase
+    .from("stores")
+    .select(SELECT.replace("business_types(slug)", "business_types!inner(slug)"))
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .is("owner_id", null)
+    .in("business_types.slug", p.sectors);
+  if (explicitRegion) unclaimedSector = unclaimedSector.eq("region", explicitRegion);
+
+  const DIRECTORY_WINDOW = 24;
+  const [text, sector, place, doctors, directoryText, directorySector, showcaseIds] = await Promise.all([
     textQuery.limit(SEARCH_WINDOW),
     p.sectors.length ? sectorQuery.limit(SEARCH_WINDOW) : null,
     p.pullRegion && (explicitRegion ?? p.region)
@@ -406,7 +443,11 @@ export async function searchStores(
     doctorClause
       ? supabase.from("doctors").select("store_id").or(doctorClause).limit(100)
       : null,
+    unclaimedText.limit(DIRECTORY_WINDOW),
+    p.sectors.length ? unclaimedSector.limit(DIRECTORY_WINDOW) : null,
+    getShowcaseStoreIds(),
   ]);
+  const showcase = new Set(showcaseIds);
 
   // Clinics named by a doctor's specialty but not already in hand.
   const doctorIds = new Set(
@@ -417,6 +458,8 @@ export async function searchStores(
     ...((text.data ?? []) as unknown as Row[]),
     ...((sector?.data ?? []) as unknown as Row[]),
     ...((place?.data ?? []) as unknown as Row[]),
+    ...((directoryText.data ?? []) as unknown as Row[]),
+    ...((directorySector?.data ?? []) as unknown as Row[]),
   ]) {
     rows.set(r.id, r);
   }
@@ -433,7 +476,12 @@ export async function searchStores(
     for (const r of (data ?? []) as unknown as Row[]) rows.set(r.id, r);
   }
 
-  const listed = listable([...rows.values()].map(rowToStore));
+  const listed = listable(
+    [...rows.values()].map((row) => {
+      const store = rowToStore(row);
+      return showcase.has(store.id) ? { ...store, showcase: true } : store;
+    }),
+  );
   const byId = new Map([...rows.values()].map((r) => [r.id, r]));
   const ranked = si.rankStores(
     listed.map((s) => {
@@ -459,7 +507,13 @@ export async function searchStores(
   // A sector member that never mentions what was asked for («بيتزا» → a
   // butcher) is a suggestion: the page shows it under «يمكن يعجبك» and does
   // not count it as a result.
-  const top: (ListedStore & { suggested?: boolean })[] = ranked.slice(0, 24).map((x) => {
+  // A real shop that answers the query outranks a directory row that answers it
+  // better. Stable, so each half keeps the order rankStores gave it.
+  const ownedFirst = [
+    ...ranked.filter((x) => !x.store.unclaimed),
+    ...ranked.filter((x) => x.store.unclaimed),
+  ];
+  const top: (ListedStore & { suggested?: boolean })[] = ownedFirst.slice(0, 24).map((x) => {
     const suggested = si.isSuggestionOnly(x, it, p, doctorIds);
     return suggested ? Object.assign(x.store, { suggested }) : x.store;
   });
@@ -497,6 +551,7 @@ const fetchFeaturedStores = unstable_cache(
       .select(LISTING_SELECT)
       .eq("status", "active")
       .is("deleted_at", null)
+      .not("owner_id", "is", null)
       .or(`plan.in.(pro,business),featured_until.gt.${nowIso}`)
       .limit(limit);
     const real = listable(

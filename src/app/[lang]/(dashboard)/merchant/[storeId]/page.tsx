@@ -1,3 +1,4 @@
+import { readStoreListing } from "@/lib/data/store-listing";
 import { requestNow } from "@/lib/now";
 import Link from "next/link";
 import Image from "next/image";
@@ -159,7 +160,7 @@ export default async function StoreOsHomePage({
     slug: string | null;
     status: string;
     accent_color: string | null;
-    owner_id: string;
+    owner_id: string | null;
     short_code: string;
     plan: StorePlan | null;
     trial_ends_at: string | null;
@@ -179,6 +180,9 @@ export default async function StoreOsHomePage({
   };
   const category = toCategoryKey(s.business_types?.slug, `store ${storeId}`);
   const sector = getSector(category);
+  /** Display only (0338): no order or booking can exist, so this page does not
+   *  ask about them, count them or point at them. Requests stay. */
+  const { showcase } = await readStoreListing(supabase, storeId, s.owner_id);
   /** Nothing public exists for this store yet — no page, no shareable link. */
   const isPending = s.status !== "active";
   /** Suspended and rejected are outcomes, not waiting rooms: the merchant is
@@ -213,8 +217,11 @@ export default async function StoreOsHomePage({
     const min = OS_MODULE_META[key].minPlan;
     return (isOwner || staffMayOpen(key, perms)) && (!min || hasPlan(homePlan, min));
   };
-  const canOrders = isOwner || (perms.orders ?? false);
-  const canBookings = isOwner || (perms.bookings ?? false);
+  const canOrders = !showcase && (isOwner || (perms.orders ?? false));
+  const canBookings = !showcase && (isOwner || (perms.bookings ?? false));
+  // Requests share the bookings permission but not its fate: a showcase store
+  // still answers enquiries.
+  const canRequests = isOwner || (perms.bookings ?? false);
   const canProducts = isOwner || (perms.products ?? false);
   const canCustomers = isOwner || (perms.customers ?? false);
   const canRevenue = canOrders;
@@ -317,7 +324,7 @@ export default async function StoreOsHomePage({
           .order("requested_time", { ascending: true, nullsFirst: false })
           .limit(5)
       : Promise.resolve(none),
-    canBookings && hasRequests
+    canRequests && hasRequests
       ? supabase
           .from("service_requests")
           .select("id", { count: "exact", head: true })
@@ -654,7 +661,7 @@ export default async function StoreOsHomePage({
       count: null,
       href: `${base}/kitchen`,
     });
-  if (canBookings && hasRequests)
+  if (canRequests && hasRequests)
     counters.push({
       key: "requests",
       label: t.todayRequests,
@@ -951,6 +958,7 @@ export default async function StoreOsHomePage({
     ],
   };
   const quickActions: QuickAction[] = quickDefs[category]
+    .filter((a) => !showcase || !["orders", "kitchen", "bookings", "pos"].includes(a.key))
     .filter((a) =>
       a.path in OS_MODULE_META
         ? canOpen(a.path as OsModuleKey)
@@ -1087,6 +1095,23 @@ export default async function StoreOsHomePage({
             <ChevronPrev className="h-4 w-4" />
             {dict.merchant.products.back}
           </Link>
+
+          {showcase && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-2xl border border-border bg-surface-muted/60 px-4 py-3">
+              <p className="min-w-0 text-sm">
+                <span className="font-bold">{dict.showcase.osTitle}</span>
+                <span className="ms-1.5 text-muted-foreground">{dict.showcase.osBody}</span>
+              </p>
+              {isOwner && (
+                <Link
+                  href={`${base}/settings`}
+                  className="inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline lg:min-h-0"
+                >
+                  {dict.showcase.osChange}
+                </Link>
+              )}
+            </div>
+          )}
 
           <QuickPanel
             storeId={storeId}

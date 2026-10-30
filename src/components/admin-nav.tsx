@@ -29,6 +29,7 @@ import {
   FileText,
   Wrench,
   SearchX,
+  FileQuestion,
 } from "lucide-react";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
@@ -39,6 +40,7 @@ import { AdminCommandPalette } from "@/components/admin-command-palette";
 const icons = {
   overview: LayoutGrid,
   stores: StoreIcon,
+  claims: FileQuestion,
   orders: Receipt,
   market: ShoppingBag,
   delivery: Truck,
@@ -75,6 +77,7 @@ const GROUPS: { key: string; items: { key: NavKey; path: string }[] }[] = [
     key: "marketplace",
     items: [
       { key: "stores", path: "/stores" },
+      { key: "claims", path: "/claims" },
       { key: "orders", path: "/orders" },
       { key: "market", path: "/market" },
       { key: "delivery", path: "/delivery" },
@@ -136,7 +139,10 @@ export function AdminNav({
   const groups = dict.admin.navGroups as Record<string, string>;
   // "demand" is a page of the growth section, not a section of its own: it is
   // gated by growth (as its RLS is, 0306) and labelled from its own namespace.
-  const sectionOf = (k: NavKey) => (k === "demand" ? "growth" : k);
+  // "claims" likewise sits under stores: store_claim_requests' RLS and
+  // admin_resolve_store_claim both check admin_can('stores') (0338).
+  const sectionOf = (k: NavKey) =>
+    k === "demand" ? "growth" : k === "claims" ? "stores" : k;
   const labelOf = (k: NavKey) =>
     k === "demand" ? dict.demand.nav : dict.admin.nav[k];
 

@@ -114,6 +114,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .select("id, slug, updated_at")
         .eq("status", "active")
         .is("deleted_at", null)
+        // Unclaimed directory rows have their own files (app/directory/sitemap.ts).
+        .not("owner_id", "is", null)
         .limit(ROWS),
       supabase
         .from("products")

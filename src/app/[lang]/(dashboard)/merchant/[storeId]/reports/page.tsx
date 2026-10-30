@@ -177,7 +177,7 @@ export default async function StoreReportsPage({
 
   // Revenue data: staff need the orders permission.
   const isOwner =
-    (store as unknown as { owner_id: string }).owner_id === user.id;
+    (store as unknown as { owner_id: string | null }).owner_id === user.id;
   if (!isOwner) {
     const { data: staffRow } = await supabase
       .from("store_staff")

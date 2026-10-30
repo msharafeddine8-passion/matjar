@@ -14,6 +14,7 @@ import type { Metadata, MetadataRoute } from "next";
 import { hasEnough } from "@/lib/rail";
 import { SITE_URL, displayTitle, localeAlternates, shareImages } from "@/lib/site";
 import type { GatedSection } from "@/lib/data/section-supply";
+import { directoryPageIndexable } from "@/lib/listing";
 
 export const SEO_LOCALES = ["ar", "en"] as const;
 export type SeoLocale = (typeof SEO_LOCALES)[number];
@@ -138,6 +139,13 @@ export function buildStoreMetadata(opts: {
     coverUrl?: string | null;
     logoUrl?: string | null;
     isReal: boolean;
+    /** 0338: an unclaimed directory row. It gets a neutral description, since it
+     *  cannot be ordered from, and noindex while it is thin. */
+    unclaimed?: boolean;
+    phone?: string | null;
+    whatsapp?: string | null;
+    website?: string | null;
+    address?: string | null;
   } | null;
 }): Metadata {
   const { lang, id, store } = opts;
@@ -146,9 +154,13 @@ export function buildStoreMetadata(opts: {
   const name = displayTitle(store.name);
   const description = (
     store.description?.trim() ||
-    (lang === "ar"
-      ? `${name} على متجر — اطلب أو تواصل مباشرةً.`
-      : `${name} on Matjar — order or contact directly.`)
+    (store.unclaimed
+      ? lang === "ar"
+        ? `${name} — معلومات عامة عن المحل، بانتظار تأكيد صاحبه.`
+        : `${name} — public information about this business, awaiting its owner's confirmation.`
+      : lang === "ar"
+        ? `${name} على متجر — اطلب أو تواصل مباشرةً.`
+        : `${name} on Matjar — order or contact directly.`)
   ).slice(0, 160);
   // Cover or logo through the Supabase resizer; the platform card when the
   // store has neither (this object replaces the layout's openGraph whole).
@@ -171,7 +183,9 @@ export function buildStoreMetadata(opts: {
       description,
       images: images.twitter,
     },
-    ...(store.isReal ? {} : { robots: NOINDEX_FOLLOW }),
+    ...(store.isReal && (!store.unclaimed || directoryPageIndexable(store))
+      ? {}
+      : { robots: NOINDEX_FOLLOW }),
   };
 }
 

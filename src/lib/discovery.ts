@@ -92,6 +92,8 @@ export function isFacetFilter(key: FilterKey): key is FacetFilterKey {
  *  Produced by src/lib/data/discovery.ts; hand-built in tests. */
 export type DiscoveryCoverage = {
   total: number;
+  /** How many of `total` are unclaimed directory rows (0338). */
+  unclaimed?: number;
   bySector: Partial<Record<CategoryKey, number>>;
   byGroup: Partial<Record<GroupKey, number>>;
   byRegion: Partial<Record<RegionKey, number>>;
