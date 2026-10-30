@@ -55,11 +55,8 @@ export function StoreDirectoryNotice({
               className="underline underline-offset-2 hover:text-primary"
             >
               {t.sourceLabel}
-              {dataSource ? (
-                <>
-                  : <bdi>{dataSource}</bdi>
-                </>
-              ) : null}
+              {/* The site it came from: "web" tells a reader nothing. */}
+              : <bdi>{new URL(href).hostname.replace(/^www\./, "")}</bdi>
             </a>
           </p>
         ) : null}

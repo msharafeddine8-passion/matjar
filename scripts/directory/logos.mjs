@@ -52,7 +52,8 @@ async function one(url, file, website) {
   const stats = await sharp(flat).stats();
   const spread = Math.max(...stats.channels.map((c) => c.stdev));
   if (spread < 12 || stats.entropy > 6.6) return false;
-  await img.resize(256, 256, { fit: "inside", withoutEnlargement: false }).webp({ quality: 82 }).toFile(file);
+  // Square on white: transparent dark logos vanish in dark mode, and cards crop to a square.
+  await img.resize(216, 216, { fit: "contain", background: "#ffffff" }).extend({ top: 20, bottom: 20, left: 20, right: 20, background: "#ffffff" }).flatten({ background: "#ffffff" }).webp({ quality: 85 }).toFile(file);
   return true;
 }
 
