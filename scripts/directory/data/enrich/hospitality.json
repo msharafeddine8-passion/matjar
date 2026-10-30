@@ -1,0 +1,65 @@
+[
+  {
+    "source_key": "osm:node/2214945969",
+    "phone": "+961 9546666",
+    "whatsapp": null,
+    "website": "https://www.eddesands.com/",
+    "instagram": "https://www.instagram.com/eddesands/",
+    "facebook": "https://www.facebook.com/eddesands",
+    "source_url": "https://bam.agendaculturel.com/explore/hotels-and-resorts/eddesands-hotel-and-wellness"
+  },
+  {
+    "source_key": "osm:node/9965624197",
+    "phone": "+961 9540440",
+    "whatsapp": null,
+    "website": "https://ahiramhotel.com",
+    "instagram": "https://www.instagram.com/hotelahiram/",
+    "facebook": "https://www.facebook.com/AhiramHotel",
+    "source_url": "https://bam.agendaculturel.com/explore/hotels-and-resorts/ahiram-hotel"
+  },
+  {
+    "source_key": "osm:node/9965624198",
+    "phone": "+961 76333569",
+    "whatsapp": null,
+    "website": "http://abdelliterraces.net/",
+    "instagram": "https://www.instagram.com/abdelliterraces/",
+    "facebook": "https://www.facebook.com/lesterrassesdeabdelli",
+    "source_url": "https://bam.agendaculturel.com/explore/guesthouses/abdelli-terraces"
+  },
+  {
+    "source_key": "osm:node/9986732223",
+    "phone": "+961 76333569",
+    "whatsapp": null,
+    "website": "http://abdelliterraces.net/",
+    "instagram": "https://www.instagram.com/abdelliterraces/",
+    "facebook": "https://www.facebook.com/lesterrassesdeabdelli",
+    "source_url": "https://bam.agendaculturel.com/explore/guesthouses/abdelli-terraces"
+  },
+  {
+    "source_key": "osm:node/6116307972",
+    "phone": "+961 1742390",
+    "whatsapp": null,
+    "website": "https://www.hamragardens.com/en/",
+    "instagram": "https://www.instagram.com/hamra_urban_gardens/",
+    "facebook": "https://www.facebook.com/hamraurbangardens",
+    "source_url": "https://bam.agendaculturel.com/explore/hotels-and-resorts/hamra-urban-gardens"
+  },
+  {
+    "source_key": "osm:node/7681304156",
+    "phone": "+961 7347111",
+    "whatsapp": null,
+    "website": null,
+    "instagram": "https://www.instagram.com/murex.hotel/",
+    "facebook": "https://www.facebook.com/HotelMurex",
+    "source_url": "https://bam.agendaculturel.com/explore/hotels-and-resorts/murex-hotel"
+  },
+  {
+    "source_key": "osm:node/3814085619",
+    "phone": "+961 8622600",
+    "whatsapp": null,
+    "website": "https://www.shamsrestaurant.com/layali-al-shams",
+    "instagram": "https://www.instagram.com/layalialshamshotel/",
+    "facebook": "https://www.facebook.com/layalialshams",
+    "source_url": "https://bam.agendaculturel.com/explore/hotels-and-resorts/hotel-layali-al-shams"
+  }
+]
