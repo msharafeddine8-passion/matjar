@@ -730,9 +730,9 @@ export async function getDiscoveryResults(
   const start = (page - 1) * DISCOVERY_PAGE_SIZE;
   const slice = list.slice(start, page * DISCOVERY_PAGE_SIZE);
 
-  // What the owned stores leave of this screen, from the directory. Reachable
-  // rows first: `phone` sorts them ahead of the ones with no number, and `id`
-  // makes the order total, which is what makes `.range()` paging safe.
+  // What the owned stores leave of this screen, from the directory. The fullest
+  // rows first: a logo, then a phone number; `id` makes the order total, which
+  // is what makes `.range()` paging safe.
   const room = DISCOVERY_PAGE_SIZE - slice.length;
   if (directoryEligible && unclaimedTotal > 0 && room > 0) {
     const from = Math.max(0, start - list.length);
@@ -743,6 +743,7 @@ export async function getDiscoveryResults(
         .eq("status", "active")
         .is("deleted_at", null)
         .is("owner_id", null)
+        .order("logo_url", { ascending: true, nullsFirst: false })
         .order("phone", { ascending: true, nullsFirst: false })
         .order("id", { ascending: true })
         .range(from, from + room - 1),
