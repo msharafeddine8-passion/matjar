@@ -2,3 +2,5 @@ data/.cache/
 data/osm.json
 data/batches/
 data/existing.json
+data/presence.json
+data/verify*.json
