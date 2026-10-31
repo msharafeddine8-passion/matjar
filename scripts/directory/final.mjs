@@ -35,11 +35,11 @@ const LOW_SHOPS = new Set(["greengrocer", "convenience", "kiosk", "variety_store
   "frozen_food", "dairy", "farm", "hardware", "doityourself", "second_hand", "charity", "supermarket"]);
 // Curated rows that were themselves flagged as not fitting.
 const DROP_CURATED = /(institut des finances)/i;
-// The owner removed wine producers and sellers. Beer, arak and spirits share the
-// "winery" tag in the sources, and stay.
-const OTHER_DRINKS = /(beer|brew|arak|distillery|whisky|\bgin\b|cider|cidra|almaza)/i;
-const WINE_NAMES = /(ch[aâ]teau kefraya|massaya|the wine haven|les caves de taillevent)/i;
-const isWine = (r) => WINE_NAMES.test(r.name) || (/winery|نبيذ/i.test(r.specialties ?? "") && (/winery/i.test(r.name) || !OTHER_DRINKS.test(r.name)));
+// The owner wants nothing haram listed: alcohol makers and sellers, bars, pubs and
+// lounges. The sources tag all drink makers "winery", beer and arak included.
+const HARAM_KINDS = /(winery|نبيذ|rooftop or lounge|pub or club)/i;
+const HARAM_NAMES = /(ch[aâ]teau kefraya|massaya|the wine haven|les caves de taillevent|baritalia kitchen|bobo fou bistro|fin faim bistro|fred kitchen & bar|sld bar|sud restobar|بلم بيتش بار|colonel bed & brew|greenhouse cafe & bar|jive bar|junya caf|zur krone)/i;
+const isHaram = (r) => HARAM_NAMES.test(r.name) || HARAM_KINDS.test(r.specialties ?? "");
 
 const verify = existsSync(join(DATA, "verify.json")) ? read(join(DATA, "verify.json")) : {};
 
@@ -51,7 +51,7 @@ function add(raw, tier) {
   for (const k of ["phone", "whatsapp"]) { r[k] = clean(r[k]); if (r[k] && !/^\+961 \d{7,8}$/.test(r[k])) r[k] = null; }
   if (!r.name || r.name.length < 2 || !SECTORS.has(r.sector) || !REGIONS.has(r.region)) return;
   if (!r.source_key || !r.source_url || !validUrl(r.source_url)) return;
-  if (LOW_NAME.test(r.name) || isWine(r)) return;
+  if (LOW_NAME.test(r.name) || isHaram(r)) return;
   pool.push(r);
 }
 
