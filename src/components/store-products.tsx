@@ -135,6 +135,7 @@ export function StoreProducts({
   checkout,
   viewer,
   lbpRate = 0,
+  priceLbpRate = 0,
   sections = [],
   layout = null,
   initialBrand = null,
@@ -152,6 +153,9 @@ export function StoreProducts({
   /** The per-customer half: signed in, saved addresses. */
   viewer: CheckoutViewer;
   lbpRate?: number;
+  /** 0342: when > 0, product prices print in lira at this rate (display-only
+   *  stores only; the checkout below keeps its own USD totals). */
+  priceLbpRate?: number;
   layout?: "grid" | "menu" | "showcase" | null;
   initialBrand?: string | null;
   sections?: SectionInfo[];
@@ -419,7 +423,7 @@ export function StoreProducts({
                   label={dict.store.bundleIncludes}
                 />
                 <p className="mt-1">
-                  <PriceTag p={p} lang={lang} />
+                  <PriceTag p={p} lang={lang} lbpPriceRate={priceLbpRate} />
                 </p>
                 {lowStockOf(p) && (
                   <p className="mt-1 text-xs font-bold text-warning">
@@ -498,7 +502,7 @@ export function StoreProducts({
                   label={dict.store.bundleIncludes}
                 />
                 <p className="mt-0.5 text-sm">
-                  <PriceTag p={p} lang={lang} />
+                  <PriceTag p={p} lang={lang} lbpPriceRate={priceLbpRate} />
                   {lowStockOf(p) && (
                     <span className="ms-2 text-xs font-bold text-warning">
                       {lowStockOf(p)}

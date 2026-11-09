@@ -59,6 +59,8 @@ export type StoreView = {
   /** 0338. Absent on the demo catalogue, which reads as a full, owned store. */
   unclaimed?: boolean;
   listingMode?: ListingMode;
+  /** 0342: a showcase store printing its prices in lira. */
+  pricesInLbp?: boolean;
   /** Where an unclaimed row came from, for the notice on its page. */
   dataSource?: string | null;
   sourceUrl?: string | null;
@@ -337,6 +339,7 @@ async function fetchStoreView(
     region: (data.region as string | null) ?? null,
     unclaimed: listing.unclaimed,
     listingMode: listing.listingMode,
+    pricesInLbp: listing.pricesInLbp,
     dataSource: listing.dataSource,
     sourceUrl: listing.sourceUrl,
     address,

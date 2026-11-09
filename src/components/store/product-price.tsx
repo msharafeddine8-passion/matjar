@@ -1,6 +1,6 @@
 import { Zap } from "lucide-react";
 import type { Locale } from "@/i18n/config";
-import { formatUsd } from "@/lib/currency";
+import { formatUsd, formatLbpPrice } from "@/lib/currency";
 import { effectivePrice, compareAtPrice, isFlashActive } from "@/lib/pricing";
 import type { PricingFields } from "@/lib/pricing";
 import {
@@ -87,11 +87,23 @@ export function UnitSuffix({
   );
 }
 
-export function PriceTag({ p, lang }: { p: PricedProduct; lang: Locale }) {
+export function PriceTag({
+  p,
+  lang,
+  lbpPriceRate = 0,
+}: {
+  p: PricedProduct;
+  lang: Locale;
+  /** 0342: a display-only store that prices in lira passes the USD→LBP rate,
+   *  and the amounts here print as lira. 0 (default) keeps USD. */
+  lbpPriceRate?: number;
+}) {
   const eff = effectivePrice(p);
   const compare = compareAtPrice(p);
   const flash = isFlashActive(p);
   const unit = unitPricingOf(p);
+  const money = (usd: number) =>
+    (lbpPriceRate > 0 && formatLbpPrice(usd, lbpPriceRate, lang)) || formatUsd(usd);
   return (
     <span className="sf-price inline-flex flex-wrap items-center gap-x-1.5">
       {/* .text-money = tabular numerals + LTR bidi isolation, the house rule
@@ -99,7 +111,7 @@ export function PriceTag({ p, lang }: { p: PricedProduct; lang: Locale }) {
       <span
         className={`text-money font-bold ${flash ? "text-warning" : "text-primary"}`}
       >
-        {formatUsd(eff)}
+        {money(eff)}
       </span>
       {/* The unit rides immediately after the amount, before the struck-through
           compare-at price, so "$5 / كيلو  $6" reads as one price and its old
@@ -107,7 +119,7 @@ export function PriceTag({ p, lang }: { p: PricedProduct; lang: Locale }) {
       {unit && <UnitSuffix unit={unit} unitPrice={eff} lang={lang} />}
       {compare != null && (
         <span className="text-money text-xs font-normal text-muted-foreground line-through">
-          {formatUsd(compare)}
+          {money(compare)}
         </span>
       )}
       {flash && <Zap className="h-3.5 w-3.5 fill-accent text-accent" />}

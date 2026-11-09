@@ -79,3 +79,17 @@ export function formatLbp(usd: number, rate: number, lang: Locale): string {
   const lbp = Math.round(usd * rate);
   return `≈ ${lbp.toLocaleString("en-US")} ${lang === "ar" ? "ل.ل." : "LBP"}`;
 }
+
+/**
+ * "80,000 ل.ل." — a USD-stored price printed as the lira price a shop actually
+ * asks (0342, display-only stores that price in lira). Rounded to the nearest
+ * 1,000: lira prices are set in thousands, and a price stored to the cent
+ * cannot carry the exact lira amount back (80,000 / 89,700 = $0.89, and
+ * 0.89 × 89,700 = 79,833). No "≈": for these stores this IS the price.
+ * Returns "" without a rate, so callers fall back to USD.
+ */
+export function formatLbpPrice(usd: number, rate: number, lang: string): string {
+  if (!rate || !(usd > 0)) return "";
+  const lbp = Math.round((Number(usd) * rate) / 1000) * 1000;
+  return `${lbp.toLocaleString("en-US")} ${lang === "ar" ? "ل.ل." : "LBP"}`;
+}

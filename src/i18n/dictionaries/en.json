@@ -3873,6 +3873,8 @@
     "toggleBody": "Prices and photos stay visible, but customers reach you by WhatsApp or phone. There is no cart and no booking on the site.",
     "toggleOnNote": "Your store is now display only.",
     "toggleSaved": "Saved.",
+    "lbpLabel": "Prices in lira",
+    "lbpHint": "Show your prices in Lebanese lira instead of dollars, rounded to the nearest thousand at the platform rate.",
     "formTitle": "How do you want to work on Matjar?",
     "formFull": "Take orders and bookings",
     "formFullHint": "Customers order or book from the site directly.",

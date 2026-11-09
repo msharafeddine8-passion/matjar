@@ -100,6 +100,8 @@ export const STORE_PRIVATE_COLUMNS = [
  */
 export const STORE_COLUMNS_ADDED_0338 = [
   "listing_mode", "info_status", "data_source", "source_url", "claimed_at",
+  // 0342, granted to anon + authenticated in its own migration.
+  "prices_in_lbp",
 ] as const;
 
 const PRIVATE = new Set<string>(STORE_PRIVATE_COLUMNS);

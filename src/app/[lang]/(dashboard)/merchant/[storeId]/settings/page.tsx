@@ -166,6 +166,7 @@ export default async function StoreSettingsPage({
           <ListingModeToggle
             storeId={storeId}
             initial={listing.listingMode}
+            initialLbp={listing.pricesInLbpSetting}
             dict={dictSlice(dict, ["showcase", "auth"])}
           />
         </div>

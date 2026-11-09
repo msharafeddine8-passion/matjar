@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { formatUsd, type FormatUsdOptions } from "@/lib/currency";
+import { formatUsd, formatLbpPrice, type FormatUsdOptions } from "@/lib/currency";
 
 // The one way to put a price on screen.
 //
@@ -35,6 +35,7 @@ export function Money({
   cents,
   fixed,
   prefix,
+  lbp,
   className = "",
   ...props
 }: {
@@ -51,14 +52,18 @@ export function Money({
    *  neutral, and in Arabic the RTL run then puts it on the wrong end — the
    *  discount line reads "$12−". */
   prefix?: string;
+  /** 0342: a display-only store that prices in lira passes the USD→LBP rate and
+   *  page language, and the amount prints as its lira price. 0 (default) keeps USD. */
+  lbp?: { rate: number; lang: string };
 } & Omit<ComponentProps<"span">, "children">) {
   return (
     <span className={`text-money ${className}`} {...props}>
       {prefix}
-      {formatUsd(
-        value,
-        fixed ? { fixed: true } : cents ? { cents: true } : undefined,
-      )}
+      {(lbp && lbp.rate > 0 && formatLbpPrice(value, lbp.rate, lbp.lang)) ||
+        formatUsd(
+          value,
+          fixed ? { fixed: true } : cents ? { cents: true } : undefined,
+        )}
     </span>
   );
 }

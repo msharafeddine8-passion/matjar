@@ -256,6 +256,10 @@ export default async function ProductPage({
       ? dict.offering.priceOnConsult
       : formatUsd(basePrice);
   const lbpRate = await getUsdLbpRate();
+  // 0342: a display-only store that prices in lira shows the lira price as THE
+  // price (no "≈" line under a dollar figure). JSON-LD keeps USD.
+  const lbpPricing =
+    storeContact?.pricesInLbp && lbpRate > 0 ? { rate: lbpRate, lang: l } : undefined;
   // Related lists are filtered to this offering's own kind, so a clinic page
   // recommends services and a shop page recommends goods. Sections the variant
   // does not render are not fetched at all.
@@ -386,17 +390,17 @@ export default async function ProductPage({
             {fromPrice != null ? (
               fromPrice
             ) : (
-              <Money value={basePrice} />
+              <Money value={basePrice} lbp={lbpPricing} />
             )}
           </span>
           {compareAt != null && fromPrice == null && (
             <span className="text-money text-lg text-muted-foreground line-through">
-              <Money value={compareAt} />
+              <Money value={compareAt} lbp={lbpPricing} />
             </span>
           )}
           {flashEnd != null && <FlashCountdown endsAt={flashEnd} dict={dictSlice(dict, ["flash"])} />}
         </div>
-        {lbpRate > 0 && lbpPrice != null && (
+        {lbpRate > 0 && lbpPrice != null && !lbpPricing && (
           <p dir="ltr" className="mt-1 text-sm tabular-nums text-muted-foreground">
             {formatLbp(lbpPrice, lbpRate, l)}
           </p>

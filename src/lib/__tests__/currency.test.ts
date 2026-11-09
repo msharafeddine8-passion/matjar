@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatUsd, formatLbp } from "@/lib/currency";
+import { formatUsd, formatLbp, formatLbpPrice } from "@/lib/currency";
 
 describe("formatUsd", () => {
   it("formats small amounts without a separator", () => {
@@ -99,5 +99,24 @@ describe("a computed total never leaks a float artifact", () => {
   it("still differs from {cents:true} only in grouping below 1000", () => {
     expect(formatUsd(999.994)).toBe("$999.99");
     expect(formatUsd(999.994, { cents: true })).toBe("$999.99");
+  });
+});
+
+describe("formatLbpPrice (0342)", () => {
+  it("gives back the lira price a cent-rounded USD price came from", () => {
+    // The Al-Meer menu at 89,700: each lira price stored as round(lbp / rate, 2).
+    for (const lbp of [50_000, 80_000, 100_000, 300_000]) {
+      const usd = Math.round((lbp / 89_700) * 100) / 100;
+      expect(formatLbpPrice(usd, 89_700, "ar")).toBe(
+        `${lbp.toLocaleString("en-US")} ل.ل.`,
+      );
+    }
+  });
+  it("labels English as LBP", () => {
+    expect(formatLbpPrice(0.89, 89_700, "en")).toBe("80,000 LBP");
+  });
+  it("returns empty without a rate or a price, so callers fall back to USD", () => {
+    expect(formatLbpPrice(1, 0, "ar")).toBe("");
+    expect(formatLbpPrice(0, 89_700, "ar")).toBe("");
   });
 });

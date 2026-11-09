@@ -23,6 +23,11 @@ import { FETCH_BOUNDS, warnIfTruncated } from "./bounds";
 export type StoreListing = ListingFacts & {
   dataSource: string | null;
   sourceUrl: string | null;
+  /** 0342: print prices in lira. Only ever true for a showcase store — a full
+   *  store's cart and checkout settle in USD. */
+  pricesInLbp: boolean;
+  /** The stored flag itself, for the owner's settings switch. */
+  pricesInLbpSetting: boolean;
 };
 
 type ListingRow = {
@@ -36,16 +41,32 @@ export async function readStoreListing(
   storeId: string,
   ownerId: string | null,
 ): Promise<StoreListing> {
-  const { data } = await supabase
-    .from("stores")
-    .select("listing_mode, data_source, source_url")
-    .eq("id", storeId)
-    .maybeSingle();
+  // Two reads, not one: prices_in_lbp (0342) is asked on its own so a missing
+  // grant costs only the lira display, never the showcase answer above it —
+  // checkout.ts trusts that answer to keep a display-only store from taking
+  // orders.
+  const [{ data }, { data: lbpRow }] = await Promise.all([
+    supabase
+      .from("stores")
+      .select("listing_mode, data_source, source_url")
+      .eq("id", storeId)
+      .maybeSingle(),
+    supabase
+      .from("stores")
+      .select("prices_in_lbp")
+      .eq("id", storeId)
+      .maybeSingle(),
+  ]);
   const row = data as unknown as ListingRow | null;
+  const facts = resolveListing({ ownerId, listingMode: row?.listing_mode });
+  const setting =
+    (lbpRow as unknown as { prices_in_lbp: boolean | null } | null)?.prices_in_lbp === true;
   return {
-    ...resolveListing({ ownerId, listingMode: row?.listing_mode }),
+    ...facts,
     dataSource: row?.data_source ?? null,
     sourceUrl: row?.source_url ?? null,
+    pricesInLbp: facts.showcase && setting,
+    pricesInLbpSetting: setting,
   };
 }
 

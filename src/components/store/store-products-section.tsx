@@ -192,6 +192,7 @@ export function StoreProductsSection({
               viewer={viewer}
               layout={layout ?? store.storefrontLayout}
               lbpRate={lbpRate}
+              priceLbpRate={store.pricesInLbp ? lbpRate : 0}
               sections={store.sections}
               products={goods
                 .filter((p) => p.id)
@@ -302,6 +303,7 @@ export function StoreProductsSection({
                               <p className="mt-2 text-sm">
                                 <Money
                                   value={p.discountPrice ?? p.price}
+                                  lbp={store.pricesInLbp ? { rate: lbpRate, lang } : undefined}
                                   className="font-bold text-foreground"
                                 />
                               </p>
@@ -344,6 +346,7 @@ export function StoreProductsSection({
             viewer={viewer}
             layout={layout ?? store.storefrontLayout}
             lbpRate={lbpRate}
+            priceLbpRate={store.pricesInLbp ? lbpRate : 0}
             sections={store.sections}
             products={goods
               .filter((p) => p.id)

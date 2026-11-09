@@ -18,10 +18,14 @@ import { Switch } from "@/components/ui/switch";
 export function ListingModeToggle({
   storeId,
   initial,
+  initialLbp = false,
   dict,
 }: {
   storeId: string;
   initial: ListingMode;
+  /** 0342: the stored prices_in_lbp flag. Offered only while display-only is
+   *  on — a full store's cart and checkout settle in USD. */
+  initialLbp?: boolean;
   dict: Pick<Dictionary, "showcase" | "auth">;
 }) {
   const router = useRouter();
@@ -31,6 +35,26 @@ export function ListingModeToggle({
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const on = mode === "showcase";
+  const [lbp, setLbp] = useState(initialLbp);
+
+  async function changeLbp(next: boolean) {
+    setBusy(true);
+    setError(null);
+    setNote(null);
+    const { error: saveError } = await createClient()
+      .from("stores")
+      .update({ prices_in_lbp: next, updated_at: new Date().toISOString() })
+      .eq("id", storeId);
+    setBusy(false);
+    if (saveError) {
+      setError(dict.auth.errorGeneric);
+      return;
+    }
+    setLbp(next);
+    setNote(t.toggleSaved);
+    await revalidateStore(storeId);
+    router.refresh();
+  }
 
   async function change(next: boolean) {
     const nextMode: ListingMode = next ? "showcase" : "full";
@@ -74,6 +98,24 @@ export function ListingModeToggle({
           />
         </span>
       </div>
+      {on && (
+        <div className="mt-4 flex items-start gap-3 border-t border-border pt-4">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold leading-snug">{t.lbpLabel}</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              {t.lbpHint}
+            </p>
+          </div>
+          <span className="shrink-0 pt-1">
+            <Switch
+              checked={lbp}
+              onChange={changeLbp}
+              label={t.lbpLabel}
+              disabled={busy}
+            />
+          </span>
+        </div>
+      )}
       {(note || error) && (
         <p
           role={error ? "alert" : "status"}
