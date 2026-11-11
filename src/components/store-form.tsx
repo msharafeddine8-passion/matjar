@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PageKindChoices } from "@/components/page-kind-picker";
+import type { PageKind } from "@/lib/page-kind";
 import { createClient } from "@/lib/supabase/client";
 import { fieldClass } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
@@ -65,7 +67,7 @@ export function StoreForm({
   regions,
 }: {
   lang: Locale;
-  dict: Pick<Dictionary, "groups" | "merchant" | "store" | "showcase">;
+  dict: Pick<Dictionary, "groups" | "merchant" | "store" | "showcase" | "pageKind">;
   businessTypes: BizOption[];
   regions: Option[];
 }) {
@@ -73,6 +75,8 @@ export function StoreForm({
   const [loading, setLoading] = useState(false);
   // 0338. Full is the default; display-only is one honest question away.
   const [showcase, setShowcase] = useState(false);
+  // 0344. null = a full store; otherwise one simple page of that kind.
+  const [pageKind, setPageKind] = useState<PageKind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [waWarn, setWaWarn] = useState(false);
   // Vanity handle, auto-suggested from the name until the merchant edits it.
@@ -143,6 +147,7 @@ export function StoreForm({
       .insert({
         owner_id: user.id,
         listing_mode: showcase ? "showcase" : "full",
+        ...(pageKind ? { page_kind: pageKind } : {}),
         name,
         slug: slug.trim().toLowerCase() || null,
         business_type_id: typeId,
@@ -425,6 +430,12 @@ export function StoreForm({
           className={field}
         />
       </div>
+
+      <fieldset>
+        <legend className="mb-1 text-sm font-semibold">{dict.pageKind.title}</legend>
+        <p className="mb-2 text-xs leading-relaxed text-muted-foreground">{dict.pageKind.body}</p>
+        <PageKindChoices value={pageKind} onChange={setPageKind} t={dict.pageKind} />
+      </fieldset>
 
       <fieldset>
         <legend className="mb-2 text-sm font-semibold">{dict.showcase.formTitle}</legend>

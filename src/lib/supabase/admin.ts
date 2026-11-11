@@ -44,7 +44,16 @@ import { SUPABASE_URL } from "@/lib/supabase/config";
 //      because it hands back another user's push credentials for any uid.
 //      Authenticated by a timing-safe comparison against PUSH_HOOK_SECRET.
 //
-// ===== The rule for a fifth =====
+//   5. api/email/hook/route.ts (0343) — e-mails a merchant notification. Same
+//      shape as #4: called by the database over pg_net, secret-header
+//      authenticated, and it only calls email_payload(notification_id) and
+//      email_mark_enabled(), both granted to service_role alone.
+//
+//   6. api/email/optout/route.ts (0343) — a one-click link from an e-mail; the
+//      person may not be signed in. Authority is an HMAC over the user id
+//      (PUSH_HOOK_SECRET), checked before email_optout(uid) is called.
+//
+// ===== The rule for a seventh =====
 //
 // A new use is a security review, not a convenience. It has to satisfy all
 // three of the things the four above have in common:

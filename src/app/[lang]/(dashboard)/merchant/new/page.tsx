@@ -93,7 +93,7 @@ export default async function NewStorePage({
         <div className="mt-6">
           <StoreForm
             lang={lang}
-            dict={dictSlice(dict, ["groups", "merchant", "store", "showcase"])}
+            dict={dictSlice(dict, ["groups", "merchant", "store", "showcase", "pageKind"])}
             businessTypes={businessTypes}
             regions={regionOptions}
           />

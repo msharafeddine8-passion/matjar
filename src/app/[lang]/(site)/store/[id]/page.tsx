@@ -102,6 +102,7 @@ import { StoreDirectoryFacts } from "@/components/store/store-directory-facts";
 import { StoreClaimCard } from "@/components/store/store-claim-card";
 import { StoreContactActions } from "@/components/store/store-contact-actions";
 import { supportWaLink } from "@/lib/support";
+import { SINGLE_PAGE_SECTIONS, pageKindLayout } from "@/lib/page-kind";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -585,6 +586,9 @@ export default async function StorePage({
   const weekHours = parseHours(store.hours);
   // Theme = defaults; the merchant's own accent color / layout always win.
   const sf = resolveTheme(store);
+  // 0344. A single-page store: one clean page, no marketplace furniture.
+  const pageKind = store.pageKind ?? null;
+  const catalogLayout = pageKind ? (pageKindLayout(pageKind) ?? sf.layout) : sf.layout;
   const sectionTitle =
     store.category === "food"
       ? dict.store.menu
@@ -979,7 +983,7 @@ export default async function StorePage({
         Icon={Icon}
         style={style}
         initialBrand={initialBrand}
-        layout={sf.layout}
+        layout={catalogLayout}
       />
     ),
 
@@ -1057,7 +1061,9 @@ export default async function StorePage({
     showEmptyOfferings
       ? profile.order.filter((key) => present[key] || key === "catalog")
       : profile.modules
-  ).filter((key) => key !== "announcement" && key !== "hero");
+  )
+    .filter((key) => key !== "announcement" && key !== "hero")
+    .filter((key) => !pageKind || SINGLE_PAGE_SECTIONS.has(key));
   // The list StoreProductsSection gates its own content on.
   // (catalogPrimaryCount in the engine is the count of exactly this list.)
   const catalogPrimary =
@@ -1074,7 +1080,7 @@ export default async function StorePage({
     ...(dict.store.tabs as unknown as Record<string, string>),
     ...(dict.profile.tabs as unknown as Record<string, string>),
   };
-  const sectionTabs: StoreSectionTab[] = contained
+  const sectionTabs: StoreSectionTab[] = pageKind ? [] : contained
     .filter((key) => key !== "header" && key !== "summary")
     // The empty state is not a destination: no chip that scrolls to it.
     .filter((key) => !(showEmptyOfferings && key === "catalog"))
@@ -1261,6 +1267,18 @@ export default async function StorePage({
                 )}
                 {/* A showcase store takes no order: say so once, and put the
                     ways to reach it where the cart would have been. */}
+                {key === "header" && pageKind && !experience.showcase && !unclaimed && (
+                  <div className="mt-4">
+                    <StoreContactActions
+                      whatsapp={store.whatsapp}
+                      phone={store.phone}
+                      lat={null}
+                      lng={null}
+                      waText={`${dict.store.inquiryGreeting} ${store.name}`}
+                      dict={dictSlice(dict, ["store"])}
+                    />
+                  </div>
+                )}
                 {key === "header" && experience.showcase && !unclaimed && (
                   <div className="mt-4 rounded-2xl border border-border bg-surface p-4">
                     <p className="mb-3 text-sm font-medium leading-relaxed text-muted-foreground">
@@ -1306,7 +1324,7 @@ export default async function StorePage({
         {/* MJ-026. Last thing on the page, the way a report control should be:
             findable when something is wrong, invisible while nothing is. Only
             on a real store — a demo row has no one to report. */}
-        {store.isReal && UUID_RE.test(id) && (
+        {store.isReal && !pageKind && UUID_RE.test(id) && (
           <div className="mt-10 border-t border-border pt-5">
             <ContentReport
               entityType="store"

@@ -6871,5 +6871,22 @@
     "home": "Home",
     "explore": "Browse stores",
     "askUs": "Looking for something specific? Ask us"
+  },
+  "pageKind": {
+    "title": "Page type",
+    "body": "A full store, or one simple page without reviews, hours or a map? A single page shows only the cover, name, description, items and contact buttons.",
+    "full": "Full store",
+    "fullHint": "Every section: reviews, hours, branches, map…",
+    "menu": "Digital menu",
+    "menuHint": "A list of items and prices, like a restaurant menu",
+    "landing": "Landing page",
+    "landingHint": "One page about your business with a contact button",
+    "book": "Book page",
+    "bookHint": "One book with its cover and price",
+    "product": "Product page",
+    "productHint": "One product on a clean page",
+    "course": "Course page",
+    "courseHint": "One course with sign-up",
+    "saved": "Saved. Your page uses the new look."
   }
 }

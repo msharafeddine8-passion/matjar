@@ -7,7 +7,7 @@ import type { StorePlan } from "@/lib/plan-tiers";
 import { FETCH_BOUNDS, fetchAllByIds, fetchAllPages, warnIfTruncated } from "./bounds";
 import type { ServiceOption } from "@/lib/service-options";
 import type { ListingMode } from "@/lib/store-experience";
-import { readStoreListing } from "./store-listing";
+import { readStoreListing, type PageKind } from "./store-listing";
 
 type VariantRow = {
   id: string;
@@ -61,6 +61,8 @@ export type StoreView = {
   listingMode?: ListingMode;
   /** 0342: a showcase store printing its prices in lira. */
   pricesInLbp?: boolean;
+  /** 0344. A single-page store (menu, landing, book, product, course). */
+  pageKind?: PageKind | null;
   /** Where an unclaimed row came from, for the notice on its page. */
   dataSource?: string | null;
   sourceUrl?: string | null;
@@ -342,6 +344,7 @@ async function fetchStoreView(
     pricesInLbp: listing.pricesInLbp,
     dataSource: listing.dataSource,
     sourceUrl: listing.sourceUrl,
+    pageKind: listing.pageKind,
     address,
     description: (data.description as string | null) ?? null,
     announcement: (data.announcement as string | null) ?? null,

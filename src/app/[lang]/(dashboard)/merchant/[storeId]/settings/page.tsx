@@ -1,5 +1,6 @@
 import { ListingModeToggle } from "@/components/listing-mode-toggle";
 import { readStoreListing } from "@/lib/data/store-listing";
+import { PageKindPicker } from "@/components/page-kind-picker";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
@@ -168,6 +169,13 @@ export default async function StoreSettingsPage({
             initial={listing.listingMode}
             initialLbp={listing.pricesInLbpSetting}
             dict={dictSlice(dict, ["showcase", "auth"])}
+          />
+        </div>
+        <div className="mt-6">
+          <PageKindPicker
+            storeId={storeId}
+            initial={listing.pageKind}
+            dict={dictSlice(dict, ["pageKind", "auth"])}
           />
         </div>
         <div className="mt-6">

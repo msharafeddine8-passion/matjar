@@ -109,7 +109,7 @@ export function Hero({
           viewport still reaches the gateways (measured, see the commit), and
           the mark is the one thing on this page that says "app, not website"
           before a customer has read a word. */}
-      <Container className="grid gap-4 py-4 text-center lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-10 lg:py-14 lg:text-start">
+      <Container className="grid grid-cols-[minmax(0,1fr)] gap-4 py-4 text-center lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-10 lg:py-14 lg:text-start">
        <div>
         {/* V4: below `lg` the headline is read, not seen.
             `max-lg:sr-only` keeps the <h1> in the document and in the

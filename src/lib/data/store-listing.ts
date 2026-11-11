@@ -4,6 +4,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createPublicClient } from "@/lib/supabase/public-client";
 import { resolveListing, type ListingFacts } from "@/lib/listing";
 import { FETCH_BOUNDS, warnIfTruncated } from "./bounds";
+import { toPageKind, type PageKind } from "@/lib/page-kind";
+
+export type { PageKind };
 
 // The ONLY reader of the columns 0338 added (STORE_COLUMNS_ADDED_0338 — the
 // grants test holds every other file to it).
@@ -28,12 +31,14 @@ export type StoreListing = ListingFacts & {
   pricesInLbp: boolean;
   /** The stored flag itself, for the owner's settings switch. */
   pricesInLbpSetting: boolean;
+  pageKind: PageKind | null;
 };
 
 type ListingRow = {
   listing_mode: string | null;
   data_source: string | null;
   source_url: string | null;
+  page_kind?: string | null;
 };
 
 export async function readStoreListing(
@@ -67,7 +72,19 @@ export async function readStoreListing(
     sourceUrl: row?.source_url ?? null,
     pricesInLbp: facts.showcase && setting,
     pricesInLbpSetting: setting,
+    pageKind: await readPageKind(supabase, storeId),
   };
+}
+
+// Its own query for the same reason as the rest of this file: a missing grant
+// on page_kind (0344) then costs only this answer — the store renders full.
+async function readPageKind(supabase: SupabaseClient, storeId: string): Promise<PageKind | null> {
+  const { data } = await supabase
+    .from("stores")
+    .select("page_kind")
+    .eq("id", storeId)
+    .maybeSingle();
+  return toPageKind((data as { page_kind?: string | null } | null)?.page_kind);
 }
 
 /** Owned stores that chose display-only, for the cards' facts line. An id list
